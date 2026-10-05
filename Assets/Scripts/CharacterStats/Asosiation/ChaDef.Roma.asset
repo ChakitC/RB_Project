@@ -47,21 +47,40 @@ MonoBehaviour:
   weaponHandMode: 2
   combatRole: 5
   chainAttackSkill: {fileID: 0}
+  partyFollowUpSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
   introChainCutscene: {fileID: 11400000, guid: 3ee8ff8ceb425384e9ca8dc16042f9bb, type: 2}
+  partyRole: 0
   skillSlots:
   - slotId: 0
     displayName: Roma.Ualtimeat
+    slotKind: 0
     hotkey: 0
     defaultOptionIndex: 0
     options:
     - optionId: Roma.Ualtimeat.1
       displayName: Roma.Ualtimeat.1
       skillAsset: {fileID: 11400000, guid: 7f5265c036ab5814580557d966839af1, type: 2}
-      skillLevel: 1
-      supportAssets: []
-      maxSupportSlots: 3
+      upgradeTreeOverride: {fileID: 0}
+  - slotId: roma.passive.stamina-momentum
+    displayName: Stamina / Momentum
+    slotKind: 3
+    hotkey: 0
+    defaultOptionIndex: 0
+    options:
+    - optionId: roma.stamina-momentum
+      displayName: Stamina / Momentum
+      skillAsset: {fileID: 11400000, guid: f332ba5a200446b4594e61646b3144bf, type: 2}
       upgradeTreeOverride: {fileID: 0}
   skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    slotKind: 0
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 900
   maxStamina: 80
   Damage: 14
@@ -70,6 +89,7 @@ MonoBehaviour:
   critRate: 10
   Enagy: 100
   speed: 4.7
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.55
   ArmorScaling: 0.25
@@ -79,7 +99,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 11400000, guid: 4c82a7fcfcae8dd40a18292469760c2f, type: 2}

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="13" result="Passed" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:49Z" duration="10.8834885">
+  <test-suite type="TestSuite" id="1027" name="BA Clone" fullname="BA Clone" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:49Z" duration="10.883489" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1012" name="AICombatP0.PlayMode.Tests.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/AICombatP0.PlayMode.Tests.dll" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:48Z" duration="9.501320" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1001" name="AICombatP0RuntimeTests" fullname="AICombatP0RuntimeTests" classname="AICombatP0RuntimeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:48Z" duration="9.490307" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1011" name="ContextFormationControlAndAbort" fullname="AICombatP0RuntimeTests.ContextFormationControlAndAbort" methodname="ContextFormationControlAndAbort" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="256510436" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:39Z" duration="0.144735" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1010" name="ContextNestedTreesAndLifecycle" fullname="AICombatP0RuntimeTests.ContextNestedTreesAndLifecycle" methodname="ContextNestedTreesAndLifecycle" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="810368518" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:39Z" duration="0.202877" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Opsive Injected Graph Diagnostics] Reference generation snapshot
+Reason=populated Signature=1815390298
+UniqueID=767201106 RuntimeUniqueID=793564651
+LogicNodes.Length=5 LogicNodeProperties.Length=5
+PreviousReferenceCount=0 ActiveReferenceCount=1 BackingArrayLengthBeforeTruncate=1 StaleReferenceCount=0
+InjectedSubtreeReferenceCount=1
+Source[0] NodeIndex=2 NodeCount=3 GraphReference=Opsive.BehaviorDesigner.Runtime.Tasks.Actions.SubtreeReference Graphs.Length=1 SelectedNodeCounts=[3] RuntimeNodeIndices=[0:0>2,1>3,2>4]
+Reference[0] NodeIndex=2 RuntimeNodeIndex=2 ContiguousSpan=[2,5) SpanWithinLogicNodes=True Graph=NestedChild GraphReference=Opsive.BehaviorDesigner.Runtime.Tasks.Actions.SubtreeReference SelectedNodeCounts=[3] RuntimeNodeIndices=[0:0>2,1>3,2>4]
+
+[Opsive Injected Graph Diagnostics] Reference generation snapshot
+Reason=populated Signature=-1786475301
+UniqueID=767201106 RuntimeUniqueID=1648953005
+LogicNodes.Length=5 LogicNodeProperties.Length=5
+PreviousReferenceCount=1 ActiveReferenceCount=1 BackingArrayLengthBeforeTruncate=1 StaleReferenceCount=0
+InjectedSubtreeReferenceCount=1
+Source[0] NodeIndex=2 NodeCount=3 GraphReference=Opsive.BehaviorDesigner.Runtime.Tasks.Actions.SubtreeReference Graphs.Length=1 SelectedNodeCounts=[3] RuntimeNodeIndices=[0:0>2,1>3,2>4]
+Reference[0] NodeIndex=2 RuntimeNodeIndex=2 ContiguousSpan=[2,5) SpanWithinLogicNodes=True Graph=NestedChild GraphReference=Opsive.BehaviorDesigner.Runtime.Tasks.Actions.SubtreeReference SelectedNodeCounts=[3] RuntimeNodeIndices=[0:0>2,1>3,2>4]
+
+Warning: The behavior tree UpdateMode must be set to Manual in order to be ticked manually.
+Warning: The behavior tree UpdateMode must be set to Manual in order to be ticked manually.
+Warning: The behavior tree UpdateMode must be set to Manual in order to be ticked manually.
+Warning: The behavior tree UpdateMode must be set to Manual in order to be ticked manually.
+]]></output>
+        </test-case>
+        <test-case id="1009" name="ExistingMovementOwnershipRegression" fullname="AICombatP0RuntimeTests.ExistingMovementOwnershipRegression" methodname="ExistingMovementOwnershipRegression" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="784098770" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:39Z" duration="0.101963" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[
+IgnoreFailingMessages:true
+Failed to create agent because it is not close enough to the NavMesh
+
+IgnoreFailingMessages:false
+]]></output>
+        </test-case>
+        <test-case id="1006" name="FiringCandidateFailuresAndRetarget" fullname="AICombatP0RuntimeTests.FiringCandidateFailuresAndRetarget" methodname="FiringCandidateFailuresAndRetarget" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="116134941" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:39Z" duration="0.047830" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1004" name="LastObservationIsFrozenAndConsumedOnce" fullname="AICombatP0RuntimeTests.LastObservationIsFrozenAndConsumedOnce" methodname="LastObservationIsFrozenAndConsumedOnce" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1747778027" result="Passed" start-time="2026-10-03 05:52:39Z" end-time="2026-10-03 05:52:41Z" duration="1.760455" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1005" name="LiveTreeSharesAssetButNotActorState" fullname="AICombatP0RuntimeTests.LiveTreeSharesAssetButNotActorState" methodname="LiveTreeSharesAssetButNotActorState" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1971005867" result="Passed" start-time="2026-10-03 05:52:41Z" end-time="2026-10-03 05:52:44Z" duration="2.812658" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[StateHub] Weapon: Ready -> Firing
+[StateHub] Weapon: Firing -> Ready
+[StateHub] Move: Stand -> Stunned
+[StateHub] Move: Stunned -> Stand
+]]></output>
+        </test-case>
+        <test-case id="1002" name="NavigationAndRecovery" fullname="AICombatP0RuntimeTests.NavigationAndRecovery" methodname="NavigationAndRecovery" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1197797277" result="Passed" start-time="2026-10-03 05:52:44Z" end-time="2026-10-03 05:52:48Z" duration="4.129802" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[StateHub] Move: Stand -> Stunned
+[StateHub] Move: Stunned -> Stand
+]]></output>
+        </test-case>
+        <test-case id="1007" name="RealReloadCompletesWithoutHeldFire" fullname="AICombatP0RuntimeTests.RealReloadCompletesWithoutHeldFire" methodname="RealReloadCompletesWithoutHeldFire" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1032809651" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:48Z" duration="0.175859" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[StateHub] Weapon: Ready -> NoBullet
+[StateHub] Weapon: NoBullet -> Reloading
+[StateHub] Weapon: Reloading -> Ready
+[StateHub] Weapon: Ready -> Firing
+[StateHub] Weapon: Firing -> Ready
+]]></output>
+        </test-case>
+        <test-case id="1003" name="ReloadAndAbort" fullname="AICombatP0RuntimeTests.ReloadAndAbort" methodname="ReloadAndAbort" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1292407176" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:48Z" duration="0.037115" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[StateHub] Weapon: Ready -> Firing
+[StateHub] Weapon: Firing -> Ready
+[StateHub] Weapon: Ready -> NoBullet
+]]></output>
+        </test-case>
+        <test-case id="1008" name="WorldSlowPauseAndMovementHandoff" fullname="AICombatP0RuntimeTests.WorldSlowPauseAndMovementHandoff" methodname="WorldSlowPauseAndMovementHandoff" classname="AICombatP0RuntimeTests" runstate="Runnable" seed="1252132219" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:48Z" duration="0.053211" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1017" name="AITargetSensor.PlayMode.Tests.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/AITargetSensor.PlayMode.Tests.dll" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:49Z" duration="1.309525" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1013" name="AITargetSensorRuntimeTests" fullname="AITargetSensorRuntimeTests" classname="AITargetSensorRuntimeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:49Z" duration="1.300699" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1016" name="AuthoredPrefabs" fullname="AITargetSensorRuntimeTests.AuthoredPrefabs" methodname="AuthoredPrefabs" classname="AITargetSensorRuntimeTests" runstate="Runnable" seed="1837238691" result="Passed" start-time="2026-10-03 05:52:48Z" end-time="2026-10-03 05:52:49Z" duration="0.581647" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[CharacterVisibilityController] No ZLZ_CharacterVFX on the bound visual - visibility changes will not render.
+[ThirdPersonAimRigController] Generic Animator 'MinigunTerret_Summon(Clone)' requires ThirdPersonAimBoneMap on the Animator GameObject. Visual upper-body aim is disabled.
+]]></output>
+        </test-case>
+        <test-case id="1015" name="ClockAndScanCosts" fullname="AITargetSensorRuntimeTests.ClockAndScanCosts" methodname="ClockAndScanCosts" classname="AITargetSensorRuntimeTests" runstate="Runnable" seed="1549947215" result="Passed" start-time="2026-10-03 05:52:49Z" end-time="2026-10-03 05:52:49Z" duration="0.525065" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[AI sensor benchmark: 10 sensors, 100 scans, 0.474 ms, 0 bytes.
+AI sensor benchmark: 50 sensors, 500 scans, 5.300 ms, 0 bytes.
+AI sensor benchmark: 100 sensors, 1000 scans, 19.176 ms, 0 bytes.
+]]></output>
+        </test-case>
+        <test-case id="1014" name="PerceptionAndFiring" fullname="AITargetSensorRuntimeTests.PerceptionAndFiring" methodname="PerceptionAndFiring" classname="AITargetSensorRuntimeTests" runstate="Runnable" seed="2092814822" result="Passed" start-time="2026-10-03 05:52:49Z" end-time="2026-10-03 05:52:49Z" duration="0.185642" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[StateHub] Life: Alive -> Down
+Saving results to: C:/Users/Hyperlore14/Documents/Codex/2026-10-03/new-chat/work/owner-context/evidence/PlayMode.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

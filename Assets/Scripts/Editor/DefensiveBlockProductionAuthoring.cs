@@ -60,10 +60,10 @@ public static class DefensiveBlockProductionAuthoring
         {
             var ctx = root.GetComponentInChildren<PlayerContext>(true); ctx.ResolveReferences();
             ctx.interruptionCommand.defensiveBlockEnabled = true;
-            var guard = ctx.GetComponent<DefensiveBlockController>() ?? ctx.gameObject.AddComponent<DefensiveBlockController>();
+            var guard = ctx.DefensiveBlock ?? ctx.gameObject.AddComponent<DefensiveBlockController>();
             guard.defaultSettings = actor;
             ctx.ResolveReferences();
-            var view = ctx.GetComponent<DefensiveBlockReadyCue>() ?? ctx.gameObject.AddComponent<DefensiveBlockReadyCue>();
+            var view = guard.GetComponent<DefensiveBlockReadyCue>() ?? guard.gameObject.AddComponent<DefensiveBlockReadyCue>();
             view.cuePrefab = cue;
         });
         foreach (string path in new[] { "Assets/Prefab/Player/Ally_Stryker.prefab", "Assets/Prefab/Player/Ally_Helper.prefab" })

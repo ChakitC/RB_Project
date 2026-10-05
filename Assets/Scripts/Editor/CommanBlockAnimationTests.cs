@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using Animancer;
 using NUnit.Framework;
 using UnityEditor;
@@ -360,6 +361,87 @@ public sealed class CommanBlockAnimationTests
     }
 
     [Test]
+    public void SlidePairOffsetsUseSavedClipProfileAndRestoreLocomotion()
+    {
+        profile.slide = NewTransition("Slide", 0f);
+        profile.shootHoldLoop = NewTransition("Slide hold", 0f);
+        profile.locomotionDirectionalClips.forward = NewTransition("Forward", 0f).Clip;
+        profile.pairOffsetProfiles = ScriptableObject.CreateInstance<PairOffsetProfilesSO>();
+        created.Add(profile.pairOffsetProfiles);
+        var saved = profile.pairOffsetProfiles.UpsertProfile(true, "Saved slide",
+            PairOffsetBasePose.None, PairOffsetUpperAction.None,
+            profile.slide.Clip, profile.shootHoldLoop.Clip, 1f);
+        saved.AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 35), 1f);
+        profile.pairOffsetProfiles.UpsertProfile(true, "Forward",
+            PairOffsetBasePose.Forward, PairOffsetUpperAction.ShootHold,
+            profile.locomotionDirectionalClips.forward, profile.shootHoldLoop.Clip, 1f)
+            .AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 5), 1f);
+        var bone = new GameObject("OffsetBone");
+        bone.transform.SetParent(brain.transform, false);
+        PlayUpper(profile.shootHoldLoop, PairOffsetUpperAction.ShootHold);
+        var locomotion = typeof(CharacterAnimBrain).GetField("locomotion", Hidden).GetValue(brain);
+        var update = locomotion.GetType().GetMethod("Update");
+        var enter = locomotion.GetType().GetMethod("OnEnterState");
+        var poses = new List<PairOffsetBasePoseWeight>();
+        var actions = new List<PairOffsetActionWeight>();
+        var applier = brain.gameObject.AddComponent<CharacterPairOffsetApplier>();
+        typeof(CharacterPairOffsetApplier).GetMethod("OnEnable", Hidden).Invoke(applier, null);
+        var late = typeof(CharacterPairOffsetApplier).GetMethod("LateUpdate", Hidden);
+
+        brain.IsSliding = true;
+        update.Invoke(locomotion, null);
+        Advance(0.2f);
+        Assert.That(brain.TryGetPairOffsetContributions(poses, actions, out _), Is.True);
+        Assert.That(poses.Count, Is.EqualTo(1));
+        Assert.That(poses[0].Pose, Is.EqualTo(PairOffsetBasePose.Slide));
+        Assert.That(profile.FindPairOffsetProfile(poses[0].Pose, actions[0].Action, false), Is.SameAs(saved));
+        bone.transform.localRotation = Quaternion.identity;
+        late.Invoke(applier, null);
+        Assert.That(Mathf.DeltaAngle(35, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(0.01));
+
+        // Re-entering locomotion during a slide must select Slide immediately too.
+        enter.Invoke(locomotion, null);
+        brain.TryGetPairOffsetContributions(poses, actions, out _);
+        Assert.That(poses[0].Pose, Is.EqualTo(PairOffsetBasePose.Slide));
+        brain.IsSliding = false;
+        update.Invoke(locomotion, null);
+        Advance(0.5f);
+        brain.TryGetPairOffsetContributions(poses, actions, out _);
+        Assert.That(poses.Exists(x => x.Pose == PairOffsetBasePose.Slide), Is.False);
+        enter.Invoke(locomotion, null);
+        ((Vector2MixerState)animancer.Layers[0].CurrentState).Parameter = Vector2.zero;
+        Advance(0.5f);
+        bone.transform.localRotation = Quaternion.identity;
+        late.Invoke(applier, null);
+        brain.TryGetPairOffsetContributions(poses, actions, out _);
+        Assert.That(poses[0].Pose, Is.EqualTo(PairOffsetBasePose.Idle));
+        Assert.That(Quaternion.Angle(Quaternion.identity, bone.transform.localRotation), Is.LessThan(0.01f));
+
+        brain.IsSliding = true;
+        profile.slide = new ClipTransition();
+        enter.Invoke(locomotion, null);
+        Advance(0.5f);
+        brain.TryGetPairOffsetContributions(poses, actions, out _);
+        Assert.That(poses[0].Pose, Is.EqualTo(PairOffsetBasePose.Idle), "Missing slide clip must keep mixer offsets.");
+    }
+
+    [Test]
+    public void SlidePairOffsetsPreferExplicitKeysAndSupportPulseFallback()
+    {
+        profile.slide = NewTransition("Slide", 0f);
+        profile.shootPulse = NewTransition("Slide pulse", 0f);
+        profile.pairOffsetProfiles = ScriptableObject.CreateInstance<PairOffsetProfilesSO>();
+        created.Add(profile.pairOffsetProfiles);
+        var legacy = profile.pairOffsetProfiles.UpsertProfile(true, "Legacy slide",
+            PairOffsetBasePose.None, PairOffsetUpperAction.None,
+            profile.slide.Clip, profile.shootPulse.Clip, 1f);
+        Assert.That(profile.FindPairOffsetProfile(PairOffsetBasePose.Slide, PairOffsetUpperAction.ShootPulse, false), Is.SameAs(legacy));
+        var keyed = profile.pairOffsetProfiles.UpsertProfile(true, "Keyed slide",
+            PairOffsetBasePose.Slide, PairOffsetUpperAction.ShootPulse, null, null, 1f);
+        Assert.That(profile.FindPairOffsetProfile(PairOffsetBasePose.Slide, PairOffsetUpperAction.ShootPulse, false), Is.SameAs(keyed));
+    }
+
+    [Test]
     public void PairOffsetsUseNewBonePoseAndDoNotAccumulateBetweenEvaluations()
     {
         var bone = new GameObject("OffsetBone");
@@ -548,6 +630,176 @@ public sealed class CommanBlockAnimationTests
         late.Invoke(applier, null);
         Assert.That(Mathf.DeltaAngle(reboundPose, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(0.01));
         Assert.That(brain.TryPlayCommanBlock(), Is.True);
+    }
+
+    [Test]
+    public void PairOffsetFadeUsesEvaluatedStatesThroughInterruptionAndMissingProfiles()
+    {
+        profile.slide = NewTransition("Fade slide", 0.4f);
+        profile.sprint = NewTransition("Fade sprint", 0.4f);
+        profile.shootHoldLoop = NewTransition("Fade hold", 0f);
+        profile.reload = NewTransition("Fade reload", 0.4f);
+        profile.pairOffsetProfiles = ScriptableObject.CreateInstance<PairOffsetProfilesSO>();
+        created.Add(profile.pairOffsetProfiles);
+        profile.pairOffsetProfiles.UpsertProfile(true, "Idle hold", PairOffsetBasePose.Idle,
+            PairOffsetUpperAction.ShootHold, null, null, 1).AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 10), 1);
+        profile.pairOffsetProfiles.UpsertProfile(true, "Slide hold", PairOffsetBasePose.Slide,
+            PairOffsetUpperAction.ShootHold, null, null, 1).AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 50), 1);
+        profile.pairOffsetProfiles.UpsertProfile(true, "Slide reload", PairOffsetBasePose.Slide,
+            PairOffsetUpperAction.Reload, null, null, 1).AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, -20), 1);
+        var bone = new GameObject("OffsetBone"); bone.transform.SetParent(brain.transform, false);
+        var hold = PlayUpper(profile.shootHoldLoop, PairOffsetUpperAction.ShootHold);
+        Advance(0.2f);
+        var applier = brain.gameObject.AddComponent<CharacterPairOffsetApplier>();
+        typeof(CharacterPairOffsetApplier).GetMethod("OnEnable", Hidden).Invoke(applier, null);
+        var late = typeof(CharacterPairOffsetApplier).GetMethod("LateUpdate", Hidden);
+        var play = Presentation.GetType().GetMethod("PlayLocomotionTransition", Hidden, null, new[] { typeof(ITransition) }, null);
+        var idle = animancer.Layers[0].CurrentState;
+        var slide = (AnimancerState)play.Invoke(Presentation, new object[] { profile.slide });
+        AnimancerState reload = null;
+        float Sample()
+        {
+            var poses = new List<PairOffsetBasePoseWeight>(); var actions = new List<PairOffsetActionWeight>();
+            Assert.That(brain.TryGetPairOffsetContributions(poses, actions, out _), Is.True);
+            Assert.That(poses.FindAll(x => x.Pose == PairOffsetBasePose.Slide).ConvertAll(x => x.Weight).Sum(), Is.EqualTo(slide.Weight).Within(0.0001f));
+            float coverage = animancer.Layers[1].Weight * (1f - animancer.Layers[2].Weight);
+            float expected = coverage * (hold.Weight * (idle.Weight * 10 + slide.Weight * 50) + (reload != null ? reload.Weight * slide.Weight * -20 : 0));
+            bone.transform.localRotation = Quaternion.identity;
+            late.Invoke(applier, null);
+            Assert.That(Mathf.DeltaAngle(expected, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(0.01f));
+            return expected;
+        }
+        Advance(0.01f);
+        Assert.That(Sample(), Is.InRange(10f, 15f), "First fade sample must not jump straight to the slide correction.");
+        Advance(0.08f); Sample();
+        play.Invoke(Presentation, new object[] { profile.sprint }); // Third state has no profiles: identity contribution.
+        reload = PlayUpper(profile.reload, PairOffsetUpperAction.Reload);
+        for (int i = 0; i < 8; i++) { Advance(0.02f); Sample(); }
+        play.Invoke(Presentation, new object[] { profile.slide }); // Reverse before either fade finishes.
+        for (int i = 0; i < 12; i++) { Advance(0.02f); Sample(); }
+        animancer.Graph.PauseGraph();
+        float paused = bone.transform.localEulerAngles.z;
+        late.Invoke(applier, null);
+        Assert.That(Mathf.DeltaAngle(paused, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(0.01f));
+    }
+
+    [Test]
+    public void PairOffsetEvaluatorIsOrderIndependentAndKeepsIdentityWeight()
+    {
+        var bone = brain.transform;
+        var evaluator = new PairOffsetEvaluator();
+        var first = new Vector3(25, 40, -10); var second = new Vector3(-35, 5, 50);
+        evaluator.Add(bone, first, .3f); evaluator.Add(bone, second, .2f);
+        var result = evaluator.GetRotation(bone);
+        evaluator.Clear(); evaluator.Add(bone, second, .2f); evaluator.Add(bone, first, .3f);
+        Assert.That(Quaternion.Angle(result, evaluator.GetRotation(bone)), Is.LessThan(.01f));
+        evaluator.Clear(); evaluator.Add(bone, new Vector3(0, 0, 80), .25f);
+        Assert.That(Quaternion.Angle(Quaternion.Euler(0, 0, 20), evaluator.GetRotation(bone)), Is.LessThan(.01f));
+        evaluator.Clear(); evaluator.Add(bone, first, .5f);
+        Assert.That(Quaternion.Angle(Quaternion.Slerp(Quaternion.identity, Quaternion.Euler(first), .5f), evaluator.GetRotation(bone)), Is.LessThan(.01f));
+    }
+
+    [Test]
+    public void RomaPairOffsetsFollowActualRigDuringSlideFade()
+    {
+        var source = AssetDatabase.LoadAssetAtPath<CharacterAnimProfileSO>("Assets/Data/Animation/Roma/Roma_AnimProfile.asset");
+        var modelAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Character/Roma/Roma.fbx");
+        Assert.That(source, Is.Not.Null); Assert.That(modelAsset, Is.Not.Null);
+        var model = Object.Instantiate(modelAsset, brain.transform);
+        var modelAnimator = model.GetComponentInChildren<Animator>();
+        modelAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        animancer.Animator = modelAnimator;
+        profile = Object.Instantiate(source); created.Add(profile);
+        brain.SetAnimProfileOverride(profile);
+        Assert.That(Invoke("TryInitialize"), Is.True);
+        var mixer = (Vector2MixerState)animancer.Layers[0].CurrentState;
+        mixer.Parameter = Vector2.up;
+        PlayUpper(profile.shootHoldLoop, PairOffsetUpperAction.ShootHold);
+        Advance(.4f);
+        var saved = profile.FindPairOffsetProfile(PairOffsetBasePose.Slide, PairOffsetUpperAction.ShootHold, false);
+        Assert.That(saved, Is.Not.Null); Assert.That(saved.BoneOffsets.Count, Is.GreaterThan(0));
+        var bone = modelAnimator.transform.Find(saved.BoneOffsets[0].BonePath);
+        Assert.That(bone, Is.Not.Null, saved.BoneOffsets[0].BonePath);
+        var applier = brain.gameObject.AddComponent<CharacterPairOffsetApplier>();
+        typeof(CharacterPairOffsetApplier).GetMethod("OnEnable", Hidden).Invoke(applier, null);
+        var late = typeof(CharacterPairOffsetApplier).GetMethod("LateUpdate", Hidden);
+        var play = Presentation.GetType().GetMethod("PlayLocomotionTransition", Hidden, null, new[] { typeof(ITransition) }, null);
+        play.Invoke(Presentation, new object[] { profile.slide });
+        var poses = new List<PairOffsetBasePoseWeight>(); var actions = new List<PairOffsetActionWeight>();
+        var expected = new PairOffsetEvaluator();
+        var evidence = new System.Text.StringBuilder("frame,slideWeight,correctionAngle\n");
+        for (int frame = 0; frame < 55; frame++)
+        {
+            if (frame == 12) play.Invoke(Presentation, new object[] { profile.ResolveLocomotionMixer() });
+            if (frame == 18) play.Invoke(Presentation, new object[] { profile.slide });
+            if (frame == 28)
+            {
+                animancer.Graph.Speed = .2f;
+                play.Invoke(Presentation, new object[] { profile.ResolveLocomotionMixer() });
+            }
+            Advance(1f / 60f);
+            var sampled = bone.localRotation;
+            brain.TryGetPairOffsetContributions(poses, actions, out var profiles);
+            expected.Clear();
+            foreach (var pose in poses)
+            foreach (var action in actions)
+            {
+                var pair = PairOffsetEvaluator.FindProfile(profiles, pose.Pose, action.Action, pose.Clip, action.Clip);
+                if (pair == null) continue;
+                foreach (var offset in pair.BoneOffsets)
+                    if (offset.Enabled && offset.BonePath == saved.BoneOffsets[0].BonePath)
+                        expected.Add(bone, offset.LocalEulerOffset, pose.Weight * action.Weight * pair.Weight * offset.Weight);
+            }
+            late.Invoke(applier, null);
+            Assert.That(Quaternion.Angle(sampled * expected.GetRotation(bone), bone.localRotation), Is.LessThan(.05f), "Frame " + frame);
+            evidence.AppendLine(frame + "," + poses.Where(x => x.Pose == PairOffsetBasePose.Slide).Sum(x => x.Weight).ToString("F5", System.Globalization.CultureInfo.InvariantCulture) + "," + Quaternion.Angle(sampled, bone.localRotation).ToString("F5", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        var folder = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../../BuildArtifacts/PairOffsets"));
+        System.IO.Directory.CreateDirectory(folder);
+        System.IO.File.WriteAllText(System.IO.Path.Combine(folder, Application.isPlaying ? "RomaPlayMode.csv" : "RomaEditMode.csv"), evidence.ToString());
+    }
+
+    [Test]
+    public void PairOffsetMixerReadsActualChildWeights()
+    {
+        profile.pairOffsetProfiles = ScriptableObject.CreateInstance<PairOffsetProfilesSO>(); created.Add(profile.pairOffsetProfiles);
+        PlayUpper(NewTransition("Mixer hold", 0f), PairOffsetUpperAction.ShootHold);
+        var mixer = (Vector2MixerState)animancer.Layers[0].CurrentState;
+        mixer.Parameter = new Vector2(.35f, .65f);
+        Advance(.1f);
+        var poses = new List<PairOffsetBasePoseWeight>(); var actions = new List<PairOffsetActionWeight>();
+        brain.TryGetPairOffsetContributions(poses, actions, out _);
+        var keys = new[] { PairOffsetBasePose.Idle, PairOffsetBasePose.Forward, PairOffsetBasePose.Backward, PairOffsetBasePose.Left, PairOffsetBasePose.Right };
+        for (int i = 0; i < mixer.ChildCount; i++)
+            Assert.That(poses.FindAll(x => x.Pose == keys[i]).ConvertAll(x => x.Weight).Sum(), Is.EqualTo(mixer.Weight * mixer.GetChild(i).Weight).Within(.0001f));
+    }
+
+    [Test]
+    public void PairOffsetPreviewBlendsSavedProfilesAndProtectsCapture()
+    {
+        var go = new GameObject("Offset preview test"); created.Add(go);
+        var animator = go.AddComponent<Animator>();
+        var bone = new GameObject("OffsetBone"); bone.transform.SetParent(go.transform, false);
+        var idle = NewTransition("Preview idle", 0).Clip;
+        var slide = NewTransition("Preview slide", 0).Clip;
+        var shoot = NewTransition("Preview shoot", 0).Clip;
+        var offsets = ScriptableObject.CreateInstance<PairOffsetProfilesSO>(); created.Add(offsets);
+        offsets.UpsertProfile(true, "Idle", idle, shoot, 1).AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 10), 1);
+        offsets.UpsertProfile(true, "Slide", slide, shoot, 1).AddBoneOffset(true, "OffsetBone", new Vector3(0, 0, 50), 1);
+        var preview = go.AddComponent<SoloRootMotionPreview>();
+        void Set(string field, object value) => typeof(SoloRootMotionPreview).GetField(field, Hidden).SetValue(preview, value);
+        Set("animator", animator); Set("previewMode", SoloRootMotionPreview.PreviewMode.UpperBody);
+        Set("clip", slide); Set("upperBodyClip", shoot); Set("transitionFromBaseClip", idle);
+        Set("baseTransitionWeight", .25f); Set("upperBodyWeight", .5f);
+        Set("applyPairBoneOffsets", true); Set("pairOffsetProfileAsset", offsets);
+        preview.Play(); preview.Pause();
+        Assert.That(Mathf.DeltaAngle(10, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(.01f));
+        Assert.That(preview.CaptureCurrentPoseAsActivePairOffsets(), Is.Zero);
+        preview.Evaluate(0);
+        Assert.That(Mathf.DeltaAngle(10, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(.01f), "Repeated preview samples cannot accumulate offsets.");
+        Set("baseTransitionWeight", 1f); preview.Evaluate(0);
+        Assert.That(Mathf.DeltaAngle(25, bone.transform.localEulerAngles.z), Is.EqualTo(0).Within(.01f));
+        Object.DestroyImmediate(go);
     }
 
     private ClipTransition NewTransition(string name, float fade)

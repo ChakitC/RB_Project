@@ -18,6 +18,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
     "Does not stay Running for the challenge.")]
 public class TriggerSpecialShootPointRound : ActionNode
 {
+    public SharedVariable<CharacteContext> context;
     [UnityEngine.Tooltip(
         "Optional point-count override, clamped to the profile maximum and the usable anchor " +
         "count. Zero or less uses the profile default.")]
@@ -43,10 +44,7 @@ public class TriggerSpecialShootPointRound : ActionNode
 
     void CacheReferences()
     {
-        if (controller != null)
-            return;
-
-        controller = SpecialShootPointTaskUtility.Resolve(gameObject);
+        controller = SpecialShootPointTaskUtility.Resolve(AIContextBinding.Read(context));
     }
 
     public override void Reset()

@@ -8,6 +8,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [Opsive.Shared.Utility.Description("Success ถ้า Ally อยู่ใกล้ Player (<= nearDistance)")]
 public class IsNearPlayer : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]
     public SharedVariable<GameObject> player;
 
@@ -16,12 +17,14 @@ public class IsNearPlayer : Conditional
 
     public override TaskStatus OnUpdate()
     {
+        var ctx = AIContextBinding.Read(context);
+        if (ctx == null) return TaskStatus.Failure;
         if (player == null || player.Value == null)
         {
             return TaskStatus.Failure;
         }
 
-        Vector3 myPos = transform.position;
+        Vector3 myPos = ctx.transform.position;
         Vector3 playerPos = player.Value.transform.position;
 
         // ทำงานในระนาบพื้น

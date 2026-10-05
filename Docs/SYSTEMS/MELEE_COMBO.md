@@ -117,3 +117,12 @@ retired `Assets/Character/GRS_02/Rector_MeleeComboSO.asset` was replaced with Re
 `Rector_HavyAttack` as an explicitly approved placeholder; its original hit
 windows and impact values remain intact. Review that character's animation
 timing when its intended clip becomes available.
+
+## Passive next-attack snapshot
+
+Basic-melee HitStart reserves and commits the next-attack passive bonus for the
+activated step. That step retains AttackId, ChainId and its damage multiplier
+through all contacts, including multiple targets and the cooperative defensive-block
+damage snapshot. Duplicate activation while the step is already active does not
+reserve again. Interrupting before HitStart spends nothing; a released miss spends
+the reservation. Standard skills and Follow-Up executions do not take this path.

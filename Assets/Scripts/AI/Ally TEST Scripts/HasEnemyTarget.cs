@@ -8,6 +8,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [Opsive.Shared.Utility.Description("Success ถ้า AITargetSensor เจอศัตรูตัวปัจจุบัน และอัปเดต currentEnemy ให้ BT")]
 public class HasEnemyFromSensor : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     public SharedVariable<GameObject> currentEnemy;
     public SharedVariable<bool> InCombat;
 
@@ -61,10 +62,7 @@ public class HasEnemyFromSensor : Conditional
 
     private void CacheSensor()
     {
-        if (sensor != null)
-            return;
-
-        sensor = AITargetSensor.ResolveFor(transform);
+        sensor = AIContextBinding.Read(context)?.AITargetSensor;
     }
 
     private void SubscribeToSensor()
@@ -92,6 +90,8 @@ public class HasEnemyFromSensor : Conditional
 
     private void HandleSensorTargetChanged(Transform oldTarget, Transform newTarget)
     {
+        CacheSensor();
+        SubscribeToSensor();
         SyncOutputsFromSensor();
     }
 
@@ -103,7 +103,7 @@ public class HasEnemyFromSensor : Conditional
             return false;
         }
 
-        return SyncOutputsFromTarget(sensor.Snapshot.CurrentTarget);
+        return SyncOutputsFromTarget(sensor.ReadSnapshot.CurrentTarget);
     }
 
     private bool SyncOutputsFromTarget(Transform target)

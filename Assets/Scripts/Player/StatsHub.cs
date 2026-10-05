@@ -89,6 +89,8 @@ public class StatsHub : MonoBehaviour
     float _cachedMaxStamina;
     float _cachedMaxEnergy;
     float _cachedSkillBaseDamage;
+    float _convertedStaminaRegen;
+    List<Vector2> _passiveConversions;
 
     void Awake()
     {
@@ -192,13 +194,24 @@ public class StatsHub : MonoBehaviour
         UnsubscribeModifierProviders();
         _modifierProviders.Clear();
 
-        var behaviours = GetComponentsInChildren<MonoBehaviour>(true);
+        // Context peers can live above or beside this module; include the explicitly bound passive provider.
+        if (ctx != null && ctx.PassiveController != null)
+        {
+            _modifierProviders.Add(ctx.PassiveController);
+            SubscribeModifierProvider(ctx.PassiveController);
+        }
+        var behaviours = ctx != null
+            ? ctx.GetComponentsInChildren<MonoBehaviour>(true)
+            : GetComponentsInChildren<MonoBehaviour>(true);
         for (int i = 0; i < behaviours.Length; i++)
         {
             if (behaviours[i] == null || behaviours[i] == this)
                 continue;
 
-            if (behaviours[i] is IStatModifierProvider provider)
+            if (ctx != null && CharacterContextModuleLookup.ResolveContext(behaviours[i]) != ctx)
+                continue;
+
+            if (behaviours[i] is IStatModifierProvider provider && !_modifierProviders.Contains(provider))
             {
                 _modifierProviders.Add(provider);
                 SubscribeModifierProvider(provider);
@@ -353,6 +366,25 @@ public class StatsHub : MonoBehaviour
         _cachedMaxReserveAmmo = totals.MaxReserveAmmo;
         _cachedMaxHealth = totals.MaxHealth;
         _cachedMaxStamina = totals.MaxStamina;
+        _convertedStaminaRegen = 0f;
+        if (ctx != null && ctx.PassiveController != null && ctx.PassiveController.HasConversions)
+        {
+            _passiveConversions ??= new List<Vector2>();
+            _passiveConversions.Clear();
+            ctx.PassiveController.AppendConversions(_passiveConversions);
+            float baseRegen = ctx.StaminaSystem != null ? ctx.StaminaSystem.BaseRegenerationRate : 0;
+            float preConversion = Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.StaminaRegenRate, baseRegen));
+            float bonus = Mathf.Max(0f, preConversion - baseRegen);
+            float requested = 0;
+            foreach (var conversion in _passiveConversions) requested += conversion.x;
+            float divisor = Mathf.Max(1f, requested);
+            foreach (var conversion in _passiveConversions)
+            {
+                float consumed = bonus * conversion.x / divisor;
+                _convertedStaminaRegen += consumed;
+                _cachedMaxStamina += consumed * conversion.y;
+            }
+        }
         _cachedMaxEnergy = totals.MaxEnergy;
         _cachedSkillBaseDamage = totals.SkillBaseDamage;
 
@@ -473,6 +505,10 @@ public class StatsHub : MonoBehaviour
                 hash = CombineHash(hash, provider is UnityEngine.Object obj ? obj.GetInstanceID() : 0);
                 hash = CombineHash(hash, provider is Behaviour behaviour && behaviour.isActiveAndEnabled ? 1 : 0);
             }
+
+            hash = CombineHash(hash, ctx != null && ctx.PassiveController != null ? ctx.PassiveController.ConversionSignature : 17);
+            if (ctx != null && ctx.PassiveController != null && ctx.PassiveController.HasConversions)
+                hash = CombineHash(hash, ctx.StaminaSystem != null ? ctx.StaminaSystem.BaseRegenerationRate : 0f);
 
             hash = CombineHash(hash, modifiers.Count);
             for (int i = 0; i < modifiers.Count; i++)
@@ -809,7 +845,7 @@ public class StatsHub : MonoBehaviour
     public float GetStaminaRegenerationRate(float baseRate)
     {
         EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.StaminaRegenRate, Mathf.Max(0f, baseRate)));
+        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.StaminaRegenRate, Mathf.Max(0f, baseRate)) - _convertedStaminaRegen);
     }
 
     public float GetMaximumEnergy()

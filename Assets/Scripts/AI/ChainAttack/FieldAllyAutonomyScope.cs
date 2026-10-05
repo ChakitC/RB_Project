@@ -341,11 +341,12 @@ internal sealed class FieldAllyAutonomyScope
         {
             resolved ??= new List<MonoBehaviour>(2);
 
-            PlayerInputHandler inputHandler = owner.GetComponent<PlayerInputHandler>();
+            var player = owner.ActorContextRef as PlayerContext;
+            PlayerInputHandler inputHandler = player != null ? player.inputHandler : null;
             if (inputHandler != null && !resolved.Contains(inputHandler))
                 resolved.Add(inputHandler);
 
-            PlayerMovementCC playerMovement = owner.GetComponent<PlayerMovementCC>();
+            PlayerMovementCC playerMovement = player != null ? player.movement : null;
             if (playerMovement != null && !resolved.Contains(playerMovement))
                 resolved.Add(playerMovement);
         }

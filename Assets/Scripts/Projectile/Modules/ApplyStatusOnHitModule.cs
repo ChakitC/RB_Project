@@ -25,7 +25,7 @@ public sealed class ApplyStatusOnHitModule : ProjectileModule
         if (targetComponent == null)
             return;
 
-        var controller = targetComponent.GetComponentInParent<StatusEffectController>();
+        var controller = CharacterContextModuleLookup.ResolveStatusEffects(targetComponent.gameObject);
         if (controller == null)
             return;
 

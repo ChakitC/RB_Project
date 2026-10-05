@@ -34,7 +34,8 @@ public readonly struct CombatEventMetadata
         int statusStacks = 0,
         string reactionId = null,
         string followUpSkillId = null,
-        ChainActorRole followUpOwnerRole = ChainActorRole.None)
+        ChainActorRole followUpOwnerRole = ChainActorRole.None,
+        ulong dashExecutionId = 0)
     {
         RequestedDamage = Mathf.Max(0f, requestedDamage);
         ResolvedDamage = Mathf.Max(0f, resolvedDamage);
@@ -58,6 +59,7 @@ public readonly struct CombatEventMetadata
         ReactionId = reactionId;
         FollowUpSkillId = followUpSkillId;
         FollowUpOwnerRole = followUpOwnerRole;
+        DashExecutionId = dashExecutionId;
     }
 
     public float RequestedDamage { get; }
@@ -83,5 +85,10 @@ public readonly struct CombatEventMetadata
     public string ReactionId { get; }
     public string FollowUpSkillId { get; }
     public ChainActorRole FollowUpOwnerRole { get; }
+    public ulong DashExecutionId { get; }
+    public CombatEventMetadata WithDashExecution(ulong id) => new(
+        RequestedDamage, ResolvedDamage, AppliedDamage, HealthBeforeHit, MaxHealth, WasCritical, HitZone,
+        StaggerApplied, EnteredChainReady, WeaponInstanceId, AmmoBefore, AmmoAfter, MaxMagazine, AmmoConsumed,
+        IsLastRound, SourceKind, WeaponAffixId, StatusEffectId, StatusStacks, ReactionId, FollowUpSkillId, FollowUpOwnerRole, id);
     public bool IsWeaponAffixGenerated => !string.IsNullOrWhiteSpace(WeaponAffixId);
 }

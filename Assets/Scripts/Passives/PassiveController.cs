@@ -5,355 +5,372 @@ using UnityEngine;
 [DefaultExecutionOrder(-112)]
 public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
 {
-    [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private CombatEventBus combatEventBus;
     [SerializeField] private StatusEffectController statusEffectController;
-
-    [Header("Loadout")]
     [SerializeField] private List<PassiveDefinition> runtimePassives = new();
     [SerializeField] private List<PassiveDefinition> extraPassives = new();
-
-    [Header("Safety")]
+    [SerializeField, HideInInspector] private List<string> runtimeGrantIds = new();
+    [SerializeField, HideInInspector] private List<string> extraGrantIds = new();
+    [SerializeField, HideInInspector] private List<PassiveDefinition> runtimeGrantDefinitions = new();
+    [SerializeField, HideInInspector] private List<PassiveDefinition> extraGrantDefinitions = new();
+    [SerializeField] private bool diagnostics;
+    public string LastDiagnostic { get; private set; }
+    internal void Trace(string rule, string reason) { if (diagnostics) LastDiagnostic = rule + ": " + reason; }
     [SerializeField, Min(1)] private int maxEventDepth = 8;
     [SerializeField, Min(0f)] private float chainStateTtlSeconds = 10f;
-
-    readonly List<RuntimeStatModifier> _alwaysOnModifiers = new();
-    readonly List<ActivePassiveModifier> _activeModifiers = new();
-    readonly List<TriggeredPassiveRuntime> _triggeredPassives = new();
-    readonly List<EquippedPassive> _customPassives = new();
-    readonly List<IPassiveDefinitionProvider> _passiveProviders = new();
-    readonly List<PassiveDefinition> _providerPassiveBuffer = new();
-    readonly Dictionary<ulong, HashSet<RuleExecutionKey>> _executionsByChain = new();
-    readonly Dictionary<ulong, double> _chainLastSeenTime = new();
-    readonly List<ulong> _chainCleanupBuffer = new();
-    readonly List<PassiveEventSourceRequest> _eventSourceRequests = new();
-    readonly List<PassiveEventSourceRequest> _eventSourceKindRequests = new();
-    readonly HashSet<PassiveEventSourceKind> _requiredEventSourceKinds = new();
+    Dictionary<string, PassiveRuntime> runtimes;
+    List<ActivePassiveModifier> _activeModifiers;
+    List<PassiveGrant> explicitGrants;
     readonly Dictionary<PassiveEventSourceKind, PassiveEventSource> _activeEventSources = new();
     readonly HashSet<PassiveEventSource> _autoAddedEventSources = new();
+    readonly HashSet<PassiveEventSourceKind> _requiredEventSourceKinds = new();
+    readonly List<PassiveEventSourceRequest> _eventSourceRequests = new();
+    readonly List<PassiveEventSourceRequest> _eventSourceKindRequests = new();
     readonly List<PassiveEventSourceKind> _eventSourceKindCleanupBuffer = new();
-
-    public event Action StatModifiersChanged;
-
-    /// <summary>
-    /// Raised when a passive actually fired - a triggered rule ran its actions, or a custom
-    /// behavior completed a proc. Presentation-only: nothing in the passive pipeline reads it, so
-    /// a missing listener costs nothing and a listener can never change what the passive does.
-    /// </summary>
-    public event Action<PassiveDefinition> PassiveTriggered;
-
+    CharacterSkillManager skillManager;
+    CombatEventBus subscribedBus;
+    StaminaSystem subscribedResource;
     long _nextIndependentModifierId;
-    bool _subscribed;
-    CharacterSkillManager _subscribedSkillManager;
-
-    void Awake()
-    {
-        ResolveReferences();
-
-        if (ctx != null)
-            ctx.PassiveController = this;
-
-        statsHub?.RebuildModifierProviders();
-    }
-
-    void OnEnable()
-    {
-        ResolveReferences();
-        RefreshPassiveLoadout();
-        SubscribeToEvents();
-    }
-
-    void ResolveReferences()
-    {
-        if (!ctx)
-        {
-            TryGetComponent(out ctx);
-            if (!ctx)
-                ctx = GetComponentInParent<CharacteContext>();
-        }
-
-        ctx?.ResolveReferences();
-
-        if (ctx != null && ctx.PassiveController != this)
-            ctx.PassiveController = this;
-
-        if (!statsHub && ctx != null)
-            statsHub = ctx.StatsHub;
-        if (!statsHub)
-            TryGetComponent(out statsHub);
-        if (!statsHub && ctx != null)
-            statsHub = ctx.GetComponentInChildren<StatsHub>(true);
-
-        if (!combatEventBus && ctx != null)
-            combatEventBus = ctx.CombatEventBus;
-        if (!combatEventBus)
-            TryGetComponent(out combatEventBus);
-        if (!combatEventBus && ctx != null)
-            combatEventBus = ctx.GetComponentInChildren<CombatEventBus>(true);
-
-        if (!statusEffectController && ctx != null)
-            statusEffectController = ctx.GetComponentInChildren<StatusEffectController>(true);
-        if (!statusEffectController)
-            TryGetComponent(out statusEffectController);
-
-        SubscribeToSkillManager(ctx != null ? ctx.SkillManager : null);
-    }
-
-    void SubscribeToSkillManager(CharacterSkillManager skillManager)
-    {
-        if (ReferenceEquals(_subscribedSkillManager, skillManager))
-            return;
-
-        if (_subscribedSkillManager != null)
-            _subscribedSkillManager.PassiveLoadoutChanged -= HandlePassiveLoadoutChanged;
-
-        _subscribedSkillManager = skillManager;
-
-        if (_subscribedSkillManager != null)
-            _subscribedSkillManager.PassiveLoadoutChanged += HandlePassiveLoadoutChanged;
-    }
-
-    void HandlePassiveLoadoutChanged()
-    {
-        if (isActiveAndEnabled)
-            RefreshPassiveLoadout();
-    }
-
+    bool rebuilding, refreshPending;
+    int dispatchDepth;
+    public event Action StatModifiersChanged;
+    public event Action<PassiveDefinition> PassiveTriggered;
+    public event Action RuntimeLoadoutChanged;
+    public void AppendRuntimes(List<PassiveRuntime> buffer)
+    { if (runtimes != null) foreach (var runtime in runtimes.Values) buffer.Add(runtime); }
+    public CharacteContext Owner => ctx;
+    public double Clock { get; private set; }
+    public double GameClock { get; private set; }
+    public int MaxEventDepth => maxEventDepth;
+    public float ChainRetentionSeconds => chainStateTtlSeconds;
+    public int RuntimeCount => runtimes?.Count ?? 0;
+    public int RuntimeStateCount
+    { get { int count = 0; if (runtimes != null) foreach (var runtime in runtimes.Values) count += runtime.StateCount; return count; } }
+    public bool HasCombatSubscription => subscribedBus != null;
+    public bool RequiresTick { get; private set; }
+    public bool ContainsRuntime(PassiveRuntime runtime) => runtimes != null && runtimes.TryGetValue(runtime.Grant.Key, out var current) && ReferenceEquals(runtime, current);
+    void Awake() => ResolveReferences();
+    void OnEnable() { ResolveReferences(); RefreshPassiveLoadout(); }
     void OnDisable()
     {
-        UnsubscribeFromEvents();
-        ReleaseAllOptionalEventSources();
-        UnloadCustomPassives();
-        _activeModifiers.Clear();
-        _executionsByChain.Clear();
-        _chainLastSeenTime.Clear();
-        NotifyStatModifiersChanged();
+        Unsubscribe();
+        if (skillManager != null) skillManager.PassiveLoadoutChanged -= RefreshPassiveLoadout;
+        skillManager = null;
+        runtimes = null; _activeModifiers = null; Clock = GameClock = 0; RequiresTick = false;
+        PassiveDispatch.ReleaseOwner(this);
+        PassiveTicker.SetRequired(this, false);
+        ReleaseAllOptionalEventSources(); NotifyStatModifiersChanged();
+        RuntimeLoadoutChanged?.Invoke();
     }
-
-    void OnDestroy()
+    void OnValidate()
     {
-        SubscribeToSkillManager(null);
+        ReconcileIds(runtimePassives, runtimeGrantIds, runtimeGrantDefinitions);
+        ReconcileIds(extraPassives, extraGrantIds, extraGrantDefinitions);
     }
-
-    void Update()
+    static void ReconcileIds(List<PassiveDefinition> definitions, List<string> ids, List<PassiveDefinition> previous)
     {
-        double now = Time.timeAsDouble;
-
-        if (CleanupExpiredModifiers(now))
-            NotifyStatModifiersChanged();
-
-        CleanupOldChainState(now);
+        if (previous.Count == 0) { EnsureIds(ids, definitions.Count); previous.AddRange(definitions); return; }
+        var oldIds = new List<string>(ids);
+        var oldDefinitions = new List<PassiveDefinition>(previous);
+        ids.Clear();
+        foreach (var definition in definitions)
+        {
+            int index = oldDefinitions.IndexOf(definition);
+            ids.Add(index >= 0 && index < oldIds.Count ? oldIds[index] : Guid.NewGuid().ToString("N"));
+            if (index >= 0) oldDefinitions[index] = null;
+        }
+        previous.Clear(); previous.AddRange(definitions);
+        EnsureIds(ids, definitions.Count);
     }
-
-    void NotifyStatModifiersChanged()
+    static void EnsureIds(List<string> ids, int count)
     {
-        var handler = StatModifiersChanged;
-        if (handler != null)
-            handler.Invoke();
-        else
-            statsHub?.MarkDirty();
+        while (ids.Count < count) ids.Add(Guid.NewGuid().ToString("N"));
+        if (ids.Count > count) ids.RemoveRange(count, ids.Count - count);
+        var seen = new HashSet<string>();
+        for (int i = 0; i < ids.Count; i++) if (string.IsNullOrWhiteSpace(ids[i]) || !seen.Add(ids[i])) { ids[i] = Guid.NewGuid().ToString("N"); seen.Add(ids[i]); }
     }
-
+    void ResolveReferences()
+    {
+        if (!ctx) ctx = CharacterContextModuleLookup.ResolveContext(gameObject);
+        ctx?.ResolveReferences();
+        if (ctx == null) return;
+        ctx.PassiveController = this;
+        statsHub = ctx.StatsHub; combatEventBus = ctx.CombatEventBus; statusEffectController = ctx.StatusEffects;
+        if (skillManager == ctx.SkillManager) return;
+        if (skillManager != null) skillManager.PassiveLoadoutChanged -= RefreshPassiveLoadout;
+        skillManager = ctx.SkillManager;
+        if (skillManager != null) skillManager.PassiveLoadoutChanged += RefreshPassiveLoadout;
+    }
     public void RefreshPassiveLoadout()
     {
-        List<ActivePassiveModifier> preservedModifiers = new(_activeModifiers);
-        Dictionary<RuleStateKey, TriggeredRuleState> preservedRuleStates = CaptureTriggeredRuleStates();
-        HashSet<CustomPassiveDef> previousCustomDefinitions = CaptureCustomDefinitions();
-
-        _alwaysOnModifiers.Clear();
-        _activeModifiers.Clear();
-        _triggeredPassives.Clear();
-        _customPassives.Clear();
-
-        TryAddPassivesFromSkillManager();
-
-        AddPassivesFromList(runtimePassives);
-        AddPassivesFromProviders();
-        AddPassivesFromList(extraPassives);
-
-        RestoreTriggeredRuleStates(preservedRuleStates);
-        _activeModifiers.AddRange(preservedModifiers);
-        NotifyCustomPassiveLifecycleDelta(previousCustomDefinitions);
-
-        RefreshOptionalEventSources();
-        statsHub?.RebuildModifierProviders();
-        NotifyStatModifiersChanged();
-    }
-
-    bool TryAddPassivesFromSkillManager()
-    {
-        CharacterSkillManager skillManager = ctx != null ? ctx.SkillManager : null;
-        if (skillManager == null || !skillManager.HasConfiguredPassiveSlots)
-            return false;
-
-        List<EquippedPassive> equippedPassives = new();
-        skillManager.AppendConfiguredPassiveDefinitions(equippedPassives);
-        if (equippedPassives.Count == 0)
-            return false;
-
-        AddPassivesFromList(equippedPassives);
-        return true;
-    }
-
-    HashSet<CustomPassiveDef> CaptureCustomDefinitions()
-    {
-        var set = new HashSet<CustomPassiveDef>();
-        for (int i = 0; i < _customPassives.Count; i++)
+        if (!isActiveAndEnabled) return;
+        if (rebuilding || dispatchDepth > 0) { refreshPending = true; return; }
+        rebuilding = true;
+        try
         {
-            if (_customPassives[i].Definition is CustomPassiveDef definition)
-                set.Add(definition);
-        }
-
-        return set;
-    }
-
-    void NotifyCustomPassiveLifecycleDelta(HashSet<CustomPassiveDef> previousDefinitions)
-    {
-        var currentDefinitions = new HashSet<CustomPassiveDef>();
-
-        for (int i = 0; i < _customPassives.Count; i++)
-        {
-            EquippedPassive equipped = _customPassives[i];
-            if (equipped.Definition is not CustomPassiveDef definition || definition.behaviors == null)
-                continue;
-
-            currentDefinitions.Add(definition);
-
-            if (previousDefinitions.Contains(definition))
-                continue;
-
-            for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnEquipped(this, definition, equipped.Upgrades);
-        }
-
-        foreach (CustomPassiveDef definition in previousDefinitions)
-        {
-            if (definition == null || definition.behaviors == null || currentDefinitions.Contains(definition))
-                continue;
-
-            for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnUnequipped(this, definition);
-        }
-    }
-
-    Dictionary<RuleStateKey, TriggeredRuleState> CaptureTriggeredRuleStates()
-    {
-        var map = new Dictionary<RuleStateKey, TriggeredRuleState>();
-
-        for (int i = 0; i < _triggeredPassives.Count; i++)
-        {
-            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
-            if (runtime?.Definition == null || runtime.RuleStates == null)
-                continue;
-
-            string passiveId = runtime.Definition.RuntimeId;
-            for (int j = 0; j < runtime.RuleStates.Count; j++)
+            ResolveReferences(); if (ctx == null) return;
+            OnValidate();
+            var grants = new List<PassiveGrant>();
+            if (skillManager != null)
             {
-                TriggeredRuleState state = runtime.RuleStates[j];
-                if (state?.Rule == null)
-                    continue;
-
-                map[new RuleStateKey(passiveId, state.Rule.RuntimeRuleId)] = state;
+                var equipped = new List<EquippedPassive>(); skillManager.AppendConfiguredPassiveDefinitions(equipped);
+                for (int i = 0; i < equipped.Count; i++) grants.Add(new PassiveGrant(equipped[i].Definition, "skill", equipped[i].GrantId ?? i.ToString(), equipped[i].Upgrades));
             }
-        }
-
-        return map;
-    }
-
-    void RestoreTriggeredRuleStates(Dictionary<RuleStateKey, TriggeredRuleState> preserved)
-    {
-        if (preserved == null || preserved.Count == 0)
-            return;
-
-        double now = Time.timeAsDouble;
-
-        for (int i = 0; i < _triggeredPassives.Count; i++)
-        {
-            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
-            if (runtime?.Definition == null || runtime.RuleStates == null)
-                continue;
-
-            string passiveId = runtime.Definition.RuntimeId;
-            for (int j = 0; j < runtime.RuleStates.Count; j++)
+            if (explicitGrants != null) grants.AddRange(explicitGrants);
+            else AddList(runtimePassives, runtimeGrantIds, "runtime", grants);
+            AddList(extraPassives, extraGrantIds, "extra", grants);
+            foreach (var component in ctx.GetComponentsInChildren<MonoBehaviour>(true))
             {
-                TriggeredRuleState state = runtime.RuleStates[j];
-                if (state?.Rule == null)
-                    continue;
-
-                if (preserved.TryGetValue(new RuleStateKey(passiveId, state.Rule.RuntimeRuleId), out TriggeredRuleState previous))
-                    state.CopyStateFrom(previous, now);
+                if (component == null || !component.isActiveAndEnabled) continue;
+                if (CharacterContextModuleLookup.ResolveContext(component.gameObject) != ctx && component != ctx.AccessoryLoadout) continue;
+                if (component is IPassiveGrantProvider provider) provider.AppendPassiveGrants(grants);
+                else if (component is IPassiveDefinitionProvider legacy)
+                {
+                    var definitions = new List<PassiveDefinition>(); legacy.AppendPassiveDefinitions(definitions);
+                    for (int i = 0; i < definitions.Count; i++) grants.Add(new PassiveGrant(definitions[i], "provider:" + component.GetInstanceID(), i.ToString()));
+                }
             }
+            var next = grants.Count > 0 ? new Dictionary<string, PassiveRuntime>() : null;
+            foreach (var grant in grants)
+            {
+                if (grant.Definition == null) continue;
+                var errors = PassiveRecipeValidator.Validate(grant.Definition.recipe);
+                if (grant.Definition.recipe != null) grant.Options?.Validate(grant.Definition.recipe, errors);
+                if (errors.Count > 0) { Debug.LogError("[Passive] " + grant.Definition.name + ": " + string.Join("; ", errors), grant.Definition); continue; }
+                if (next.ContainsKey(grant.Key)) { Debug.LogError("[Passive] Duplicate grant " + grant.Key, this); continue; }
+                PassiveRuntime runtime = null; runtimes?.TryGetValue(grant.Key, out runtime);
+                runtime ??= new PassiveRuntime(this, grant);
+                next.Add(grant.Key, runtime);
+                try { runtime.Rebuild(grant); } catch (Exception error) { runtime.Fail(error); }
+            }
+            runtimes = next?.Count > 0 ? next : null;
+            if (runtimes == null) PassiveDispatch.ReleaseOwner(this);
+            RefreshOptionalSources(); RefreshSubscriptions();
+            statsHub?.RebuildModifierProviders(); NotifyStatModifiersChanged();
         }
+        finally { rebuilding = false; }
+        refreshPending = false;
+        RuntimeLoadoutChanged?.Invoke();
     }
-
+    static void AddList(List<PassiveDefinition> list, List<string> ids, string source, List<PassiveGrant> output)
+    { EnsureIds(ids, list.Count); for (int i = 0; i < list.Count; i++) if (list[i] != null) output.Add(new PassiveGrant(list[i], source, ids[i])); }
     public void SetRuntimePassives(IReadOnlyList<PassiveDefinition> passives)
     {
-        runtimePassives.Clear();
-
-        if (passives != null)
+        explicitGrants = null;
+        var previous = new List<PassiveDefinition>(runtimePassives); var oldIds = new List<string>(runtimeGrantIds);
+        runtimePassives.Clear(); runtimeGrantIds.Clear();
+        if (passives != null) foreach (var definition in passives)
         {
-            for (int i = 0; i < passives.Count; i++)
+            if (definition == null) continue;
+            int index = previous.IndexOf(definition); runtimePassives.Add(definition);
+            runtimeGrantIds.Add(index >= 0 && index < oldIds.Count ? oldIds[index] : Guid.NewGuid().ToString("N"));
+            if (index >= 0) previous[index] = null;
+        }
+        runtimeGrantDefinitions.Clear(); runtimeGrantDefinitions.AddRange(runtimePassives);
+        RefreshPassiveLoadout();
+    }
+    public void SetRuntimeGrants(IReadOnlyList<PassiveGrant> grants)
+    { explicitGrants = grants != null ? new List<PassiveGrant>(grants) : null; RefreshPassiveLoadout(); }
+    void Unsubscribe()
+    {
+        if (subscribedBus != null) subscribedBus.EventPublished -= OnCombat;
+        if (subscribedResource != null) { subscribedResource.OnStaminaChanged -= OnResourceChanged; subscribedResource.ResourceSpent -= OnResourceSpent; }
+        subscribedBus = null; subscribedResource = null;
+    }
+    void RefreshSubscriptions()
+    {
+        bool combat = false, changed = false, spent = false;
+        if (runtimes != null) foreach (var runtime in runtimes.Values)
+        { if (runtime.IsAlive) { combat |= runtime.NeedsCombat; changed |= runtime.NeedsResource; spent |= runtime.NeedsResourceSpent; } }
+        Unsubscribe();
+        if (combat && combatEventBus != null) { subscribedBus = combatEventBus; subscribedBus.EventPublished += OnCombat; }
+        if ((changed || spent) && ctx.StaminaSystem != null)
+        {
+            subscribedResource = ctx.StaminaSystem;
+            if (changed) subscribedResource.OnStaminaChanged += OnResourceChanged;
+            if (spent) subscribedResource.ResourceSpent += OnResourceSpent;
+        }
+        RefreshTiming();
+    }
+    internal void RefreshTiming()
+    {
+        bool timers = false;
+        if (runtimes != null) foreach (var runtime in runtimes.Values) timers |= runtime.NeedsClock;
+        RequiresTick = timers || HasTimedModifiers();
+        PassiveTicker.SetRequired(this, RequiresTick);
+    }
+    PassiveEventContext ResourceEvent(PassiveEventType type, float value, string source, ulong fact = 0)
+    {
+        bool child = PassiveDispatch.TryGetCurrent(out var parent);
+        return new(type, ctx.gameObject, ctx.gameObject, ctx.gameObject, source, child ? parent.AttackId : null, value, Time.timeAsDouble,
+            child ? parent.ChainId : CombatEventBus.NextChainId(), child ? parent.Depth + 1 : 0,
+            child ? PassiveEventOrigin.Passive : PassiveEventOrigin.External, parent.OriginPassiveId, parent.OriginRuleId, parent.Metadata,
+            fact == 0 ? CombatEventBus.NextFactId() : fact, parent.FollowUpProvenance);
+    }
+    void OnResourceChanged(float current, float maximum)
+    {
+        NotifyStatModifiersChanged();
+        PassiveDispatch.Enqueue(this, ResourceEvent(PassiveEventType.ResourceChanged, current, "stamina"), PassiveRuleTrigger.ResourceChanged);
+    }
+    void OnResourceSpent(ResourceSpentEvent evt) => PassiveDispatch.Enqueue(this,
+        ResourceEvent(PassiveEventType.ResourceSpent, evt.Amount, evt.Reason, evt.FactId), PassiveRuleTrigger.ResourceSpent);
+    void OnCombat(PassiveEventContext evt) => PassiveDispatch.Enqueue(this, evt, PassiveRuleTrigger.Combat);
+    public void Dispatch(in PassiveEventContext evt, PassiveRuleTrigger trigger)
+    {
+        if (runtimes == null) return;
+        dispatchDepth++;
+        try { foreach (var runtime in runtimes.Values) { try { runtime.Handle(evt, trigger); } catch (Exception error) { runtime.Fail(error); } } }
+        finally { dispatchDepth--; }
+        if (refreshPending) RefreshPassiveLoadout();
+    }
+    public PassiveAttackReservation ReserveNextAttack(string attackId)
+    {
+        if (runtimes == null || string.IsNullOrEmpty(attackId)) return null;
+        PassiveAttackReservation reservation = null;
+        foreach (var runtime in runtimes.Values)
+        { if (!runtime.HasNextAttack) continue; reservation ??= new PassiveAttackReservation(attackId); runtime.ReserveAttack(reservation); }
+        return reservation;
+    }
+    public PassiveWeaponPhase PrepareWeaponShot(ref WeaponShotBuildContext shot)
+    {
+        if (!HasWeaponPhase(PassiveRuleTrigger.BeforeShot) && !HasWeaponPhase(PassiveRuleTrigger.ShotCommitted)) return null;
+        var phase = new PassiveWeaponPhase(this, shot);
+        try { ProcessWeaponPhase(phase, PassiveRuleTrigger.BeforeShot); shot = phase.Shot; return phase; }
+        catch { phase.Dispose(); throw; }
+    }
+    public bool HasWeaponPhase(PassiveRuleTrigger phase)
+    { if (runtimes != null) foreach (var runtime in runtimes.Values) if (runtime.HasPhase(phase)) return true; return false; }
+    public void ModifyWeaponDamage(ref WeaponDamageBuildContext damage)
+    {
+        if (!HasWeaponPhase(PassiveRuleTrigger.BeforeDamage)) return;
+        using var phase = new PassiveWeaponPhase(this, damage);
+        ProcessWeaponPhase(phase, PassiveRuleTrigger.BeforeDamage); damage = phase.Damage;
+    }
+    internal void ProcessWeaponPhase(PassiveWeaponPhase phase, PassiveRuleTrigger trigger)
+    {
+        if (runtimes == null) return;
+        var evt = phase.Shot.PassiveContext;
+        if (phase.IsDamage) evt = new PassiveEventContext(PassiveEventType.None, ctx.gameObject, ctx.gameObject,
+            phase.Damage.Target, null, phase.Damage.AttackId, phase.Damage.Damage, Time.timeAsDouble, 0, 0,
+            PassiveEventOrigin.External, null, null, new CombatEventMetadata(weaponInstanceId: phase.Damage.WeaponInstanceId));
+        using var inline = PassiveDispatch.BeginInline(evt);
+        dispatchDepth++;
+        try
+        {
+            foreach (var runtime in runtimes.Values)
             {
-                var passive = passives[i];
-                if (passive == null)
-                    continue;
-
-                runtimePassives.Add(passive);
+                var shot = phase.Shot; var damage = phase.Damage; int checkpoint = phase.ReservationCount;
+                try { runtime.HandlePhase(phase, trigger, evt); }
+                catch (Exception error)
+                {
+                    phase.Shot = shot; phase.Damage = damage; phase.RollbackFrom(checkpoint); runtime.Fail(error);
+                }
             }
         }
-
-        if (isActiveAndEnabled)
-            RefreshPassiveLoadout();
+        finally { dispatchDepth--; }
+        if (refreshPending) RefreshPassiveLoadout();
     }
-
+    public bool HasConversions
+    { get { if (runtimes != null) foreach (var runtime in runtimes.Values) if (runtime.HasConversions) return true; return false; } }
+    public int ConversionSignature
+    {
+        get
+        {
+            int hash = 17;
+            if (runtimes != null) foreach (var runtime in runtimes.Values)
+                if (runtime.HasConversions) unchecked { hash = hash * 31 + runtime.ConversionSignature; }
+            return hash;
+        }
+    }
+    public void AppendConversions(List<Vector2> buffer)
+    { if (runtimes != null) foreach (var runtime in runtimes.Values) runtime.AppendConversions(buffer); }
     public void AppendStatModifiers(List<RuntimeStatModifier> buffer)
     {
-        if (buffer == null)
-            return;
-
-        for (int i = 0; i < _alwaysOnModifiers.Count; i++)
-            buffer.Add(_alwaysOnModifiers[i]);
-
-        double now = Time.timeAsDouble;
-        for (int i = 0; i < _activeModifiers.Count; i++)
+        if (buffer == null) return;
+        if (runtimes != null) foreach (var runtime in runtimes.Values)
         {
-            var modifier = _activeModifiers[i];
-            if (modifier == null || modifier.IsExpired(now))
-                continue;
-
-            int stackCount = Mathf.Max(1, modifier.Stacks);
-            for (int j = 0; j < modifier.Modifiers.Count; j++)
-            {
-                var statModifier = modifier.Modifiers[j];
-                if (statModifier == null)
-                    continue;
-
-                // (value + add) * multiply * stackCount -- snapshot aggregate scales the base
-                // value first, stacking multiplies the already-scaled result.
-                float scaledValue = statModifier.value;
-                if (modifier.Upgrades != null &&
-                    modifier.Upgrades.TryGetAggregate(statModifier.statType, out float add, out float multiply))
-                {
-                    scaledValue = (scaledValue + add) * multiply;
-                }
-
-                buffer.Add(new RuntimeStatModifier(
-                    statModifier.statType,
-                    statModifier.operation,
-                    scaledValue * stackCount,
-                    modifier.ModifierKey));
-            }
+            int start = buffer.Count;
+            try { runtime.AppendModifiers(buffer); }
+            catch (Exception error) { buffer.RemoveRange(start, buffer.Count - start); runtime.Fail(error); }
         }
+        if (_activeModifiers == null) return;
+        foreach (var modifier in _activeModifiers) if (!modifier.IsExpired(Clock)) foreach (var stat in modifier.Modifiers)
+            buffer.Add(new RuntimeStatModifier(stat.statType, stat.operation, stat.value * modifier.Stacks, modifier.ModifierKey));
+    }
+    public void Tick(float deltaTime)
+    {
+        GameClock += Mathf.Max(0, deltaTime);
+        Clock += Mathf.Max(0, deltaTime) * (ctx != null && ctx.UsesWorldSlow && TimeSlowManager.Instance != null ? TimeSlowManager.Instance.WorldTimeScale : 1f);
+        if (CleanupExpiredModifiers(Clock)) NotifyStatModifiersChanged();
+        if (runtimes != null) foreach (var runtime in runtimes.Values)
+            try { runtime.Tick(); } catch (Exception error) { runtime.Fail(error); }
+        RefreshTiming();
+    }
+    bool CleanupExpiredModifiers(double now)
+    {
+        if (_activeModifiers == null) return false;
+        bool changed = false;
+        for (int i = _activeModifiers.Count - 1; i >= 0; i--) if (_activeModifiers[i].IsExpired(now)) { _activeModifiers.RemoveAt(i); changed = true; }
+        if (_activeModifiers.Count == 0) _activeModifiers = null;
+        return changed;
+    }
+    bool HasTimedModifiers()
+    { if (_activeModifiers != null) foreach (var modifier in _activeModifiers) if (!double.IsPositiveInfinity(modifier.ExpiresAt)) return true; return false; }
+    internal void NotifyStatModifiersChanged() { StatModifiersChanged?.Invoke(); statsHub?.MarkDirty(); }
+    public void NotifyPassiveTriggered(PassiveDefinition definition) { if (definition != null) PassiveTriggered?.Invoke(definition); }
+    public bool PublishChildEvent(in PassiveEventContext parent, PassiveEventType type, GameObject target = null,
+        string eventSourceId = null, float value = 0, string originPassiveId = null, string originRuleId = null)
+    {
+        if (combatEventBus == null || parent.Depth >= maxEventDepth) return false;
+        combatEventBus.Publish(combatEventBus.CreateChildContext(parent, type, ctx.gameObject, target, eventSourceId,
+            parent.AttackId, value, PassiveEventOrigin.Passive, originPassiveId, originRuleId, metadata: parent.Metadata));
+        return true;
+    }
+    void RefreshOptionalSources()
+    {
+        _eventSourceRequests.Clear(); _requiredEventSourceKinds.Clear();
+        if (runtimes != null) foreach (var runtime in runtimes.Values) foreach (var rule in runtime.Grant.Definition.recipe.rules)
+        {
+            if (rule.optionalSource == PassiveEventSourceKind.None || !rule.condition.CanMatchWithUpgrades(new PassiveExecution(runtime, default, rule.id))) continue;
+            _requiredEventSourceKinds.Add(rule.optionalSource);
+            _eventSourceRequests.Add(new PassiveEventSourceRequest(rule.optionalSource, rule.eventType, rule.eventSourceId, rule.sourceDistance, rule.sourceValue));
+        }
+        foreach (var kind in _requiredEventSourceKinds)
+        {
+            var source = EnsureEventSource(kind); if (source == null) continue;
+            _eventSourceKindRequests.Clear(); foreach (var request in _eventSourceRequests) if (request.Kind == kind) _eventSourceKindRequests.Add(request);
+            source.ApplyRequests(ctx, combatEventBus, _eventSourceKindRequests);
+        }
+        ReleaseUnusedOptionalEventSources();
     }
 
     public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades = null)
+    {
+        if (action == null) return false;
+        var snapshot = new PassiveActionDefinition
+        {
+            durationSeconds = action.durationSeconds, grantedStacks = action.grantedStacks,
+            maxStacks = action.maxStacks, stackPolicy = action.stackPolicy
+        };
+        foreach (var modifier in action.modifiers)
+        {
+            float value = modifier.value;
+            if (upgrades != null && upgrades.TryGetAggregate(modifier.statType, out float add, out float multiply)) value = (value + add) * multiply;
+            snapshot.modifiers.Add(new PassiveStatModifier { statType = modifier.statType, operation = modifier.operation, value = value });
+        }
+        bool result = ApplyModifierCore(snapshot, modifierKey, Clock);
+        if (result) { NotifyStatModifiersChanged(); RefreshSubscriptions(); }
+        return result;
+    }
+    bool ApplyModifierCore(PassiveActionDefinition action, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades = null)
     {
         if (action == null || action.modifiers == null || action.modifiers.Count == 0)
             return false;
 
         CleanupExpiredModifiers(now);
+        _activeModifiers ??= new();
 
         int maxStacks = action.maxStacks <= 0 ? int.MaxValue : action.maxStacks;
         int grantedStacks = Mathf.Clamp(action.grantedStacks, 1, maxStacks);
@@ -431,274 +448,6 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    public bool PublishChildEvent(
-        in PassiveEventContext parent,
-        PassiveEventType type,
-        GameObject target = null,
-        string eventSourceId = null,
-        float value = 0f,
-        string originPassiveId = null,
-        string originRuleId = null)
-    {
-        if (combatEventBus == null || type == PassiveEventType.None)
-            return false;
-
-        var child = combatEventBus.CreateChildContext(
-            parent,
-            type,
-            gameObject,
-            target,
-            eventSourceId,
-            parent.AttackId,
-            value,
-            PassiveEventOrigin.Passive,
-            originPassiveId,
-            originRuleId);
-
-        if (child.Depth > maxEventDepth)
-            return false;
-
-        combatEventBus.Publish(child);
-        return true;
-    }
-
-    void SubscribeToEvents()
-    {
-        if (_subscribed || combatEventBus == null)
-            return;
-
-        combatEventBus.EventPublished += HandlePassiveEvent;
-        _subscribed = true;
-    }
-
-    void UnsubscribeFromEvents()
-    {
-        if (!_subscribed || combatEventBus == null)
-            return;
-
-        combatEventBus.EventPublished -= HandlePassiveEvent;
-        _subscribed = false;
-    }
-
-    void HandlePassiveEvent(PassiveEventContext context)
-    {
-        if (context.Type == PassiveEventType.None || context.Depth > maxEventDepth)
-            return;
-
-        TouchChain(context.ChainId, context.Time);
-
-        for (int i = 0; i < _triggeredPassives.Count; i++)
-            HandleTriggeredPassive(_triggeredPassives[i], context);
-
-        for (int i = 0; i < _customPassives.Count; i++)
-        {
-            EquippedPassive equipped = _customPassives[i];
-            if (equipped.Definition is not CustomPassiveDef definition || definition.behaviors == null)
-                continue;
-
-            for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnPassiveEvent(this, definition, context, equipped.Upgrades);
-        }
-    }
-
-    void HandleTriggeredPassive(TriggeredPassiveRuntime runtime, PassiveEventContext context)
-    {
-        if (runtime?.Definition == null || runtime.RuleStates == null)
-            return;
-
-        string passiveId = runtime.Definition.RuntimeId;
-
-        for (int i = 0; i < runtime.RuleStates.Count; i++)
-        {
-            var state = runtime.RuleStates[i];
-            var rule = state.Rule;
-            if (rule == null || rule.trigger != context.Type)
-                continue;
-
-            if (!PassiveUpgradeGate.IsRuleEnabled(rule, runtime.Upgrades))
-                continue;
-
-            if (!MatchesOriginFilter(rule.originFilter, context.Origin))
-                continue;
-
-            if (!MatchesEventSource(rule, context))
-                continue;
-
-            if (rule.requireTarget && context.Target == null)
-                continue;
-
-            if (rule.requireAttackId && string.IsNullOrWhiteSpace(context.AttackId))
-                continue;
-
-            state.RecordEvent(context.Time);
-            if (!state.IsReady(context.Time))
-                continue;
-
-            if (!RegisterRuleExecution(context, passiveId, rule))
-                continue;
-
-            ExecuteRuleActions(runtime.Definition, rule, context, runtime.Upgrades);
-            state.Consume(context.Time);
-        }
-    }
-
-    void ExecuteRuleActions(TriggeredPassiveDef definition, TriggeredPassiveRule rule, PassiveEventContext context, SkillUpgradeStatSnapshot upgrades)
-    {
-        if (definition == null || rule == null || rule.actions == null)
-            return;
-
-        string passiveId = definition.RuntimeId;
-        string ruleId = rule.RuntimeRuleId;
-
-        for (int i = 0; i < rule.actions.Count; i++)
-        {
-            var action = rule.actions[i];
-            if (action == null)
-                continue;
-
-            GameObject targetObject = ResolveTargetObject(action.targetSelector, context);
-
-            switch (action.actionType)
-            {
-                case PassiveActionType.GrantModifier:
-                    ApplyModifierAction(action, targetObject, ResolveModifierKey(passiveId, ruleId, action), context.Time, upgrades);
-                    break;
-
-                case PassiveActionType.ApplyStatusEffect:
-                    ApplyStatusEffectAction(action, targetObject, ResolveAppliedById(passiveId, ruleId, action), context, passiveId, ruleId);
-                    break;
-
-                case PassiveActionType.EmitEvent:
-                    PublishChildEvent(context, action.emittedEventType, targetObject, ResolveEmittedEventSourceId(passiveId, ruleId, action), action.emittedValue, passiveId, ruleId);
-                    break;
-            }
-        }
-
-        NotifyPassiveTriggered(definition);
-    }
-
-    /// <summary>
-    /// Announces a passive that just did something, for HUD cues. Custom behaviors call this
-    /// themselves because only the behavior knows whether its proc roll actually landed.
-    /// </summary>
-    public void NotifyPassiveTriggered(PassiveDefinition definition)
-    {
-        if (definition != null)
-            PassiveTriggered?.Invoke(definition);
-    }
-
-    void ApplyModifierAction(PassiveActionDefinition action, GameObject targetObject, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades)
-    {
-        if (action == null || targetObject == null)
-            return;
-
-        var targetController = targetObject.GetComponentInParent<PassiveController>();
-        if (targetController == null)
-            return;
-
-        if (targetController.TryApplyRuntimeModifier(action, modifierKey, now, upgrades))
-            targetController.NotifyStatModifiersChanged();
-    }
-
-    void ApplyStatusEffectAction(
-        PassiveActionDefinition action,
-        GameObject targetObject,
-        string appliedById,
-        PassiveEventContext context,
-        string passiveId,
-        string ruleId)
-    {
-        if (action == null || targetObject == null)
-            return;
-
-        StatusApplicationSpec resolvedSpec = action.statusSpec;
-        if (resolvedSpec?.effect == null)
-            return;
-
-        var targetStatusController = targetObject.GetComponentInParent<StatusEffectController>();
-        if (targetStatusController == null)
-            return;
-
-        targetStatusController.ApplyEffect(
-            resolvedSpec,
-            gameObject,
-            appliedById,
-            context.ChainId,
-            context.Depth + 1,
-            PassiveEventOrigin.Passive,
-            passiveId,
-            ruleId,
-            followUpProvenance: context.FollowUpProvenance);
-    }
-
-    void RefreshOptionalEventSources()
-    {
-        _eventSourceRequests.Clear();
-        _requiredEventSourceKinds.Clear();
-
-        CollectRequiredEventSourceRequests(_eventSourceRequests);
-
-        for (int i = 0; i < _eventSourceRequests.Count; i++)
-        {
-            var request = _eventSourceRequests[i];
-            if (request.IsValid)
-                _requiredEventSourceKinds.Add(request.Kind);
-        }
-
-        foreach (PassiveEventSourceKind kind in _requiredEventSourceKinds)
-        {
-            PassiveEventSource source = EnsureEventSource(kind);
-            if (source == null)
-                continue;
-
-            _eventSourceKindRequests.Clear();
-            for (int i = 0; i < _eventSourceRequests.Count; i++)
-            {
-                var request = _eventSourceRequests[i];
-                if (request.Kind == kind && request.IsValid)
-                    _eventSourceKindRequests.Add(request);
-            }
-
-            source.ApplyRequests(ctx, combatEventBus, _eventSourceKindRequests);
-        }
-
-        _eventSourceKindRequests.Clear();
-        ReleaseUnusedOptionalEventSources();
-    }
-
-    void CollectRequiredEventSourceRequests(List<PassiveEventSourceRequest> buffer)
-    {
-        if (buffer == null)
-            return;
-
-        for (int i = 0; i < _triggeredPassives.Count; i++)
-        {
-            TriggeredPassiveRuntime runtime = _triggeredPassives[i];
-            if (runtime?.Definition == null || runtime.Definition.rules == null)
-                continue;
-
-            for (int j = 0; j < runtime.Definition.rules.Count; j++)
-            {
-                TriggeredPassiveRule rule = runtime.Definition.rules[j];
-                if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
-                    continue;
-
-                if (!PassiveUpgradeGate.IsRuleEnabled(rule, runtime.Upgrades))
-                    continue;
-
-                var request = new PassiveEventSourceRequest(
-                    rule.eventSourceKind,
-                    rule.trigger,
-                    rule.RuntimeEventSourceId,
-                    rule.eventSourceFloatValue,
-                    rule.eventSourceIntValue);
-
-                if (request.IsValid)
-                    buffer.Add(request);
-            }
-        }
-    }
-
     PassiveEventSource EnsureEventSource(PassiveEventSourceKind kind)
     {
         if (kind == PassiveEventSourceKind.None)
@@ -707,7 +456,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         if (_activeEventSources.TryGetValue(kind, out PassiveEventSource activeSource) && activeSource != null)
             return activeSource;
 
-        PassiveEventSource source = FindEventSource(kind);
+        PassiveEventSource source = FindEventSource(kind, out bool ambiguous);
+        if (ambiguous) return null;
         if (source == null)
         {
             Type sourceType = PassiveEventSourceRegistry.GetSourceType(kind);
@@ -726,8 +476,10 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         return source;
     }
 
-    PassiveEventSource FindEventSource(PassiveEventSourceKind kind)
+    PassiveEventSource FindEventSource(PassiveEventSourceKind kind, out bool ambiguous)
     {
+        ambiguous = false;
+        PassiveEventSource match = null;
         PassiveEventSource[] sources = ctx != null
             ? ctx.GetComponentsInChildren<PassiveEventSource>(true)
             : GetComponentsInChildren<PassiveEventSource>(true);
@@ -735,11 +487,17 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         for (int i = 0; i < sources.Length; i++)
         {
             PassiveEventSource source = sources[i];
-            if (source != null && source.Kind == kind)
-                return source;
+            if (source == null || source.Kind != kind || CharacterContextModuleLookup.ResolveContext(source.gameObject) != ctx) continue;
+            if (match != null)
+            {
+                ambiguous = true;
+                Debug.LogError("[Passive] Multiple owned event sources for " + kind + "; keep one explicit source per actor.", this);
+                return null;
+            }
+            match = source;
         }
 
-        return null;
+        return match;
     }
 
     void ReleaseUnusedOptionalEventSources()
@@ -800,253 +558,6 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             DestroyImmediate(source);
     }
 
-    void AddPassivesFromList(List<PassiveDefinition> passives)
-    {
-        if (passives == null)
-            return;
-
-        for (int i = 0; i < passives.Count; i++)
-            AddPassive(new EquippedPassive(passives[i]));
-    }
-
-    void AddPassivesFromList(List<EquippedPassive> passives)
-    {
-        if (passives == null)
-            return;
-
-        for (int i = 0; i < passives.Count; i++)
-            AddPassive(passives[i]);
-    }
-
-    void AddPassivesFromProviders()
-    {
-        RebuildPassiveProviders();
-
-        _providerPassiveBuffer.Clear();
-
-        for (int i = 0; i < _passiveProviders.Count; i++)
-        {
-            var provider = _passiveProviders[i];
-            if (provider == null)
-                continue;
-
-            provider.AppendPassiveDefinitions(_providerPassiveBuffer);
-        }
-
-        AddPassivesFromList(_providerPassiveBuffer);
-        _providerPassiveBuffer.Clear();
-    }
-
-    void RebuildPassiveProviders()
-    {
-        _passiveProviders.Clear();
-
-        var behaviours = GetComponentsInChildren<MonoBehaviour>(true);
-        for (int i = 0; i < behaviours.Length; i++)
-        {
-            if (behaviours[i] == null || behaviours[i] == this)
-                continue;
-
-            if (behaviours[i] is IPassiveDefinitionProvider provider)
-                _passiveProviders.Add(provider);
-        }
-    }
-
-    void AddPassive(in EquippedPassive equipped)
-    {
-        PassiveDefinition definition = equipped.Definition;
-        if (definition == null)
-            return;
-
-        switch (definition)
-        {
-            case AlwaysOnPassiveDef alwaysOn:
-                AddAlwaysOnPassive(alwaysOn, equipped.Upgrades);
-                break;
-
-            case TriggeredPassiveDef triggered:
-                AddTriggeredPassive(triggered, equipped.Upgrades);
-                break;
-
-            case CustomPassiveDef:
-                _customPassives.Add(equipped);
-                break;
-        }
-    }
-
-    void AddAlwaysOnPassive(AlwaysOnPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
-    {
-        if (definition == null || definition.modifiers == null)
-            return;
-
-        string modifierKey = $"passive:{definition.RuntimeId}";
-        for (int i = 0; i < definition.modifiers.Count; i++)
-        {
-            var modifier = definition.modifiers[i];
-            if (modifier == null)
-                continue;
-
-            // Always-on modifiers are static per loadout, so scale once here at rebuild time
-            // rather than per-frame in AppendStatModifiers.
-            float scaledValue = modifier.value;
-            if (upgrades != null && upgrades.TryGetAggregate(modifier.statType, out float add, out float multiply))
-                scaledValue = (scaledValue + add) * multiply;
-
-            _alwaysOnModifiers.Add(new RuntimeStatModifier(
-                modifier.statType,
-                modifier.operation,
-                scaledValue,
-                modifierKey));
-        }
-    }
-
-    void AddTriggeredPassive(TriggeredPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
-    {
-        if (definition == null)
-            return;
-
-        var runtime = new TriggeredPassiveRuntime(definition, upgrades);
-        _triggeredPassives.Add(runtime);
-    }
-
-    void UnloadCustomPassives()
-    {
-        for (int i = 0; i < _customPassives.Count; i++)
-        {
-            if (_customPassives[i].Definition is not CustomPassiveDef definition || definition.behaviors == null)
-                continue;
-
-            for (int j = 0; j < definition.behaviors.Count; j++)
-                definition.behaviors[j]?.OnUnequipped(this, definition);
-        }
-    }
-
-    bool CleanupExpiredModifiers(double now)
-    {
-        bool removed = false;
-
-        for (int i = _activeModifiers.Count - 1; i >= 0; i--)
-        {
-            if (_activeModifiers[i] == null || !_activeModifiers[i].IsExpired(now))
-                continue;
-
-            _activeModifiers.RemoveAt(i);
-            removed = true;
-        }
-
-        return removed;
-    }
-
-    void CleanupOldChainState(double now)
-    {
-        if (chainStateTtlSeconds <= 0f || _chainLastSeenTime.Count == 0)
-            return;
-
-        _chainCleanupBuffer.Clear();
-
-        foreach (var pair in _chainLastSeenTime)
-        {
-            if (now - pair.Value > chainStateTtlSeconds)
-                _chainCleanupBuffer.Add(pair.Key);
-        }
-
-        for (int i = 0; i < _chainCleanupBuffer.Count; i++)
-        {
-            ulong chainId = _chainCleanupBuffer[i];
-            _chainLastSeenTime.Remove(chainId);
-            _executionsByChain.Remove(chainId);
-        }
-    }
-
-    void TouchChain(ulong chainId, double time)
-    {
-        if (chainId == 0)
-            return;
-
-        _chainLastSeenTime[chainId] = time;
-        if (!_executionsByChain.ContainsKey(chainId))
-            _executionsByChain.Add(chainId, new HashSet<RuleExecutionKey>());
-    }
-
-    bool RegisterRuleExecution(PassiveEventContext context, string passiveId, TriggeredPassiveRule rule)
-    {
-        if (context.ChainId == 0)
-            return true;
-
-        TouchChain(context.ChainId, context.Time);
-
-        int targetId = rule.oncePerTargetPerChain
-            ? context.TargetInstanceId
-            : int.MinValue;
-
-        var key = new RuleExecutionKey(context.ChainId, passiveId, rule.RuntimeRuleId, targetId);
-        var bucket = _executionsByChain[context.ChainId];
-        if (bucket.Contains(key))
-            return false;
-
-        bucket.Add(key);
-        return true;
-    }
-
-    bool MatchesOriginFilter(PassiveOriginFilter filter, PassiveEventOrigin origin)
-    {
-        return filter switch
-        {
-            PassiveOriginFilter.ExternalOnly => origin == PassiveEventOrigin.External,
-            PassiveOriginFilter.NonPassive => origin != PassiveEventOrigin.Passive,
-            PassiveOriginFilter.PassiveOnly => origin == PassiveEventOrigin.Passive,
-            PassiveOriginFilter.Any => true,
-            _ => false
-        };
-    }
-
-    bool MatchesEventSource(TriggeredPassiveRule rule, PassiveEventContext context)
-    {
-        if (rule == null || rule.eventSourceKind == PassiveEventSourceKind.None)
-            return true;
-
-        return string.Equals(context.EventSourceId, rule.RuntimeEventSourceId, StringComparison.Ordinal);
-    }
-
-    GameObject ResolveTargetObject(PassiveTargetSelector selector, PassiveEventContext context)
-    {
-        if (selector == PassiveTargetSelector.EventTarget)
-            return context.Target;
-
-        return gameObject;
-    }
-
-    string ResolveModifierKey(string passiveId, string ruleId, PassiveActionDefinition action)
-    {
-        if (action != null && !string.IsNullOrWhiteSpace(action.modifierKeyOverride))
-            return action.modifierKeyOverride;
-
-        return ResolveDefaultActionId(passiveId, ruleId, action);
-    }
-
-    string ResolveAppliedById(string passiveId, string ruleId, PassiveActionDefinition action)
-    {
-        if (action != null && !string.IsNullOrWhiteSpace(action.appliedByIdOverride))
-            return action.appliedByIdOverride;
-
-        return ResolveDefaultActionId(passiveId, ruleId, action);
-    }
-
-    string ResolveEmittedEventSourceId(string passiveId, string ruleId, PassiveActionDefinition action)
-    {
-        if (action != null && !string.IsNullOrWhiteSpace(action.emittedEventSourceIdOverride))
-            return action.emittedEventSourceIdOverride;
-
-        return ResolveDefaultActionId(passiveId, ruleId, action);
-    }
-
-    string ResolveDefaultActionId(string passiveId, string ruleId, PassiveActionDefinition action)
-    {
-        string actionId = action != null && !string.IsNullOrWhiteSpace(action.actionId) ? action.actionId : "action";
-
-        return $"{passiveId}:{ruleId}:{actionId}";
-    }
-
     ActivePassiveModifier FindActiveModifier(string modifierKey, double now)
     {
         for (int i = 0; i < _activeModifiers.Count; i++)
@@ -1080,147 +591,6 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         return durationSeconds <= 0f ? double.PositiveInfinity : now + durationSeconds;
     }
 
-    sealed class TriggeredPassiveRuntime
-    {
-        public TriggeredPassiveRuntime(TriggeredPassiveDef definition, SkillUpgradeStatSnapshot upgrades)
-        {
-            Definition = definition;
-            Upgrades = upgrades;
-            RuleStates = new List<TriggeredRuleState>();
-
-            if (definition == null || definition.rules == null)
-                return;
-
-            for (int i = 0; i < definition.rules.Count; i++)
-                RuleStates.Add(new TriggeredRuleState(definition.rules[i], upgrades));
-        }
-
-        public TriggeredPassiveDef Definition { get; }
-        public SkillUpgradeStatSnapshot Upgrades { get; }
-        public List<TriggeredRuleState> RuleStates { get; }
-    }
-
-    sealed class TriggeredRuleState
-    {
-        public TriggeredRuleState(TriggeredPassiveRule rule, SkillUpgradeStatSnapshot upgrades)
-        {
-            Rule = rule;
-            ResolveFields(upgrades);
-        }
-
-        public TriggeredPassiveRule Rule { get; }
-        public int Counter { get; private set; }
-        public double WindowExpiresAt { get; private set; }
-        public double CooldownReadyAt { get; private set; }
-
-        // Resolved once per loadout rebuild from (Rule, upgrades) rather than read from Rule.*
-        // per-event, so a node unlock's numeric override takes effect on the next rebuild without
-        // per-call resolution cost.
-        public int ResolvedRequiredCount { get; private set; }
-        public float ResolvedCountWindowSeconds { get; private set; }
-        public float ResolvedCooldownSeconds { get; private set; }
-
-        void ResolveFields(SkillUpgradeStatSnapshot upgrades)
-        {
-            if (Rule == null)
-            {
-                ResolvedRequiredCount = 1;
-                ResolvedCountWindowSeconds = 0f;
-                ResolvedCooldownSeconds = 0f;
-                return;
-            }
-
-            ResolvedRequiredCount = Rule.ResolveRequiredCount(upgrades);
-            ResolvedCountWindowSeconds = Rule.ResolveCountWindowSeconds(upgrades);
-            ResolvedCooldownSeconds = Rule.ResolveCooldownSeconds(upgrades);
-        }
-
-        public void RecordEvent(double time)
-        {
-            if (Rule == null)
-                return;
-
-            if (ResolvedCountWindowSeconds > 0f && Counter > 0 && time > WindowExpiresAt)
-                Counter = 0;
-
-            if (Counter == 0 && ResolvedCountWindowSeconds > 0f)
-                WindowExpiresAt = time + ResolvedCountWindowSeconds;
-
-            Counter++;
-        }
-
-        public bool IsReady(double time)
-        {
-            if (Rule == null)
-                return false;
-
-            return Counter >= Mathf.Max(1, ResolvedRequiredCount) && time >= CooldownReadyAt;
-        }
-
-        public void Consume(double time)
-        {
-            if (Rule == null)
-                return;
-
-            CooldownReadyAt = time + ResolvedCooldownSeconds;
-
-            if (Rule.counterConsumeMode == PassiveCounterConsumeMode.CarryOver)
-                Counter = Mathf.Max(0, Counter - Mathf.Max(1, ResolvedRequiredCount));
-            else
-                Counter = 0;
-
-            if (Counter == 0)
-                WindowExpiresAt = 0d;
-            else if (ResolvedCountWindowSeconds > 0f)
-                WindowExpiresAt = time + ResolvedCountWindowSeconds;
-        }
-
-        public void CopyStateFrom(TriggeredRuleState other, double now)
-        {
-            if (other == null)
-                return;
-
-            Counter = other.Counter;
-            WindowExpiresAt = other.WindowExpiresAt;
-            CooldownReadyAt = other.CooldownReadyAt;
-
-            // An upgrade must never leave the player worse off than it promises: if this rebuild
-            // shortened the cooldown, a carried-over CooldownReadyAt computed under the old (longer)
-            // cooldown must not stay further in the future than the new cooldown allows.
-            double maxCooldownReadyAt = now + ResolvedCooldownSeconds;
-            if (CooldownReadyAt > maxCooldownReadyAt)
-                CooldownReadyAt = maxCooldownReadyAt;
-        }
-    }
-
-    readonly struct RuleStateKey : IEquatable<RuleStateKey>
-    {
-        public RuleStateKey(string passiveId, string ruleId)
-        {
-            PassiveId = passiveId ?? string.Empty;
-            RuleId = ruleId ?? string.Empty;
-        }
-
-        public string PassiveId { get; }
-        public string RuleId { get; }
-
-        public bool Equals(RuleStateKey other)
-        {
-            return string.Equals(PassiveId, other.PassiveId, StringComparison.Ordinal) &&
-                   string.Equals(RuleId, other.RuleId, StringComparison.Ordinal);
-        }
-
-        public override bool Equals(object obj) => obj is RuleStateKey other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (PassiveId.GetHashCode() * 397) ^ RuleId.GetHashCode();
-            }
-        }
-    }
-
     sealed class ActivePassiveModifier
     {
         public string ModifierKey;
@@ -1236,44 +606,6 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         }
     }
 
-    readonly struct RuleExecutionKey : IEquatable<RuleExecutionKey>
-    {
-        public RuleExecutionKey(ulong chainId, string passiveId, string ruleId, int targetId)
-        {
-            ChainId = chainId;
-            PassiveId = passiveId ?? string.Empty;
-            RuleId = ruleId ?? string.Empty;
-            TargetId = targetId;
-        }
 
-        public ulong ChainId { get; }
-        public string PassiveId { get; }
-        public string RuleId { get; }
-        public int TargetId { get; }
 
-        public bool Equals(RuleExecutionKey other)
-        {
-            return ChainId == other.ChainId &&
-                   TargetId == other.TargetId &&
-                   string.Equals(PassiveId, other.PassiveId, StringComparison.Ordinal) &&
-                   string.Equals(RuleId, other.RuleId, StringComparison.Ordinal);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is RuleExecutionKey other && Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = ChainId.GetHashCode();
-                hash = (hash * 397) ^ (PassiveId != null ? PassiveId.GetHashCode() : 0);
-                hash = (hash * 397) ^ (RuleId != null ? RuleId.GetHashCode() : 0);
-                hash = (hash * 397) ^ TargetId;
-                return hash;
-            }
-        }
-    }
 }

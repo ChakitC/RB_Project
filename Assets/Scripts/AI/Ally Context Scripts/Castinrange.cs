@@ -8,6 +8,7 @@ using VHierarchy.Libs;
 [Opsive.Shared.Utility.Description("Success ถ้ามีเป้าสด มี Line of Sight และเป้าอยู่ในช่วง Castinrange")]
 public class Castinrange : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     [Header("Refs")]
 
     [Tooltip("Sensor ที่ใช้ตรวจจับเป้าหมาย จะถูกดึงมาจาก context ตอน OnStart")]
@@ -38,15 +39,12 @@ public class Castinrange : Conditional
 
     public override void OnStart()
     {
-        if (sensor == null)
-        {
-            sensor = AITargetSensor.ResolveFor(transform);
-        }
-        
+        sensor = AIContextBinding.Read(context)?.AITargetSensor;
     }
 
     public override TaskStatus OnUpdate()
     {
+        sensor = AIContextBinding.Read(context)?.AITargetSensor;
         if (sensor == null)
         {
             ClearOutputs();

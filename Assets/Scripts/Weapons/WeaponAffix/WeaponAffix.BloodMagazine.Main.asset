@@ -1,5 +1,439 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-734826237959238531
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive recipe
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: roll
+    kind: 0
+    number: 15
+    status: {fileID: 0}
+  variables:
+  - id: active
+    persistent: 0
+    initial: 0
+    maximum: 1
+  rules:
+  - id: rule-0
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957188
+  - id: rule-1
+    trigger: 0
+    eventType: 3
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 1
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 1
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      children:
+      - kind: 15
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 6
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        children: []
+      - kind: 16
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 11
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 0.25
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 10
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        children: []
+    steps:
+    - rid: 3342399495413957189
+    - rid: 3342399495413957190
+    - rid: 3342399495413957191
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957188
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 14
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 1
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 5
+            value: 0
+            reference: active
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          children: []
+        stat: 16
+        operation: 0
+        value:
+          source: 0
+          value: 15
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957189
+      type: {class: PassiveAmmoStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        amount:
+          source: 11
+          value: 0
+          reference: 
+          multiplyParameter: roll
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 1
+          multiply: 0.01
+          add: 0
+          minimum: 1
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957190
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1
+        successSignal: 
+        successValueVariable: 
+        variable: active
+        operation: 2
+        amount:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957191
+      type: {class: PassiveExpiryStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-2
+        successSignal: Activated
+        successValueVariable: 
+        duration:
+          source: 0
+          value: 4
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        variables:
+        - active
+        expirySignal: Expired
+--- !u!114 &-651372452338400100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977e63054233f2041b66a0125929398e, type: 3}
+  m_Name: Blood Magazine Passive
+  m_EditorClassIdentifier: 
+  passiveId: weapon.main.blood_magazine.v1
+  icon: {fileID: 0}
+  description: Blood Magazine
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: -734826237959238531}
+  hudPrefab: {fileID: 0}
+  definitionId: ee4ca08b1470b084aaec04bce150a8b0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20,6 +454,24 @@ MonoBehaviour:
   weight: 1
   allowedWeaponTypes: 030000000400000005000000
   rootBehavior: {fileID: 7052577243717618438}
+  passiveDefinition: {fileID: -651372452338400100}
+  rollSpec:
+    valueKind: 0
+    minimum: 15
+    maximum: 25
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Direct kill at 25% magazine or less
+    effect: Restore {value}% max magazine and gain +15 Stability
+    restriction: Once per attack
+    duration: 4
+    cap: 0
+  hasTimedEffect: 1
+  rolledValueIsStat: 0
+  rolledValueOperation: 0
+  minimumBaseMagazine: 0
+  passiveSchemaVersion: 2
   feedbackProfile: {fileID: 0}
   minRollValue: 0
   maxRollValue: 0

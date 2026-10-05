@@ -71,16 +71,12 @@ public static class WeaponAffixDisplayUtility
                 : string.Empty;
         }
 
-        WeaponAffixBehavior behavior = definition.rootBehavior;
-        if (behavior == null)
-            return BuildStatSummary(definition, rolledAffix);
-
-        WeaponAffixTooltipData tooltip = behavior.Tooltip;
+        WeaponAffixTooltipData tooltip = definition.tooltip;
         string template = string.IsNullOrWhiteSpace(tooltip.trigger) ? tooltip.effect : $"{tooltip.trigger}: {tooltip.effect}";
-        string summary = SubstituteValue(template, behavior, rolledAffix != null ? rolledAffix.primaryValue : 0f);
+        string summary = SubstituteValue(template, definition, rolledAffix != null ? rolledAffix.primaryValue : 0f);
 
         // Assets default duration to 4s, so only trust it for kinds that really expire.
-        if (tooltip.duration > 0f && behavior.HasTimedEffect) summary += $" for {FormatNumber(tooltip.duration)}s";
+        if (tooltip.duration > 0f && definition.hasTimedEffect) summary += $" for {FormatNumber(tooltip.duration)}s";
         if (tooltip.cap > 0) summary += $" (cap {tooltip.cap})";
         if (!string.IsNullOrWhiteSpace(tooltip.restriction)) summary += $"; {tooltip.restriction}";
         return summary;
@@ -91,7 +87,7 @@ public static class WeaponAffixDisplayUtility
     /// <summary>
     /// Replaces {value} in a tooltip template, supplying the sign and unit the template does not already spell out.
     /// </summary>
-    static string SubstituteValue(string template, WeaponAffixBehavior behavior, float value)
+    static string SubstituteValue(string template, WeaponAffixDefinition definition, float value)
     {
         if (string.IsNullOrEmpty(template))
             return string.Empty;
@@ -104,7 +100,7 @@ public static class WeaponAffixDisplayUtility
         bool templateHasSign = index > 0 && (template[index - 1] == '+' || template[index - 1] == '-');
         bool templateHasUnit = afterToken < template.Length && (template[afterToken] == '%' || template[afterToken] == 'x');
 
-        ModifierOp? op = behavior.RolledValueModifierOp;
+        ModifierOp? op = definition.rolledValueIsStat ? definition.rolledValueOperation : null;
         string replacement;
 
         if (templateHasSign)

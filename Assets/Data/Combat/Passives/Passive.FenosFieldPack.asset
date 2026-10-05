@@ -13,6 +13,138 @@ MonoBehaviour:
   m_Name: Passive.FenosFieldPack
   m_EditorClassIdentifier: 
   passiveId: Passive.Accessory.FenosFieldPack
-  description: Shots have a 6% chance to shake loose a 4-round ammo pickup. This effect has a 2-second cooldown.
+  icon: {fileID: 0}
+  description: Shots have a 6% chance to shake loose a 4-round ammo pickup. This
+    effect has a 2-second cooldown.
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: 7308857456221646721}
+  definitionId: a15b143105554d3b8e1bfae3680e3652
   behaviors:
   - {fileID: 11400000, guid: 2211dece2cc5406685c50bf7ae663a61, type: 2}
+--- !u!114 &7308857456221646721
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive.FenosFieldPack Recipe
+  m_EditorClassIdentifier: 
+  variables: []
+  rules:
+  - id: behavior-0
+    trigger: 0
+    eventType: 1
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 1
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 2
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 0.06
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957119
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957119
+      type: {class: PassivePickupStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: pickup
+        pickupPrefab: {fileID: 3692556497259945272, guid: b56ffa1731764f5487cadfa6a42792e7, type: 3}
+        overrideCollectorRule: 1
+        collectorRule: 5
+        dropCount: 1
+        backOffset: 0.35
+        verticalOffset: 0.65
+        scatterRadius: 0.45
+        useDropArcMotion: 1
+        dropArcSettings:
+          enabled: 1
+          startHeight: 0.35
+          minRadius: 0.8
+          maxRadius: 1.45
+          duration: 0.5
+          arcHeight: 1.15
+          staggerDelay: 0.03
+          angleJitterDegrees: 18
+          landingAttempts: 8
+          landingHeightOffset: 0.06
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 524287
+          groundProbeHeight: 3
+          groundProbeDistance: 8
+          terrainClearanceMask:
+            serializedVersion: 2
+            m_Bits: 131072
+          terrainClearanceRadius: 0.28
+        applyRigidbodyImpulse: 0
+        horizontalImpulse: 1.6
+        upwardImpulse: 2.2
+        extraDropUpgradeId: 
+        procChanceBoostUpgradeId: 
+        procChanceBonus: 0.05
+        cooldownReductionUpgradeId: 
+        cooldownReductionSeconds: 0.5
+        upgradeEffects: []

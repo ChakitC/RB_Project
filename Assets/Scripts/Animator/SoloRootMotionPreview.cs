@@ -121,6 +121,11 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     [SerializeField, Range(0f, 1f), Tooltip("น้ำหนัก blend ของ layer ช่วงบน")]
     private float upperBodyWeight = 1f;
 
+    [SerializeField] private AnimationClip transitionFromBaseClip;
+    [SerializeField] private AnimationClip transitionFromUpperClip;
+    [SerializeField, Range(0f, 1f)] private float baseTransitionWeight = 1f;
+    [SerializeField, Range(0f, 1f)] private float upperTransitionWeight = 1f;
+
     [SerializeField, Tooltip("เปิดใช้ local rotation offset เฉพาะคู่ Base Clip + Upper Body Clip หลัง animation sample")]
     private bool applyPairBoneOffsets;
 
@@ -146,6 +151,13 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     private AnimationClipPlayable playable;
     private AnimationClipPlayable upperBodyPlayable;
     private AnimationLayerMixerPlayable layerMixer;
+    private AnimationMixerPlayable baseTransitionMixer, upperTransitionMixer;
+    private AnimationClipPlayable fromBasePlayable, fromUpperPlayable;
+    private AnimationClip activeFromBaseClip, activeFromUpperClip;
+    private readonly PairOffsetEvaluator offsetEvaluator = new();
+    public bool IsPreviewingTransition => previewMode == PreviewMode.UpperBody &&
+        ((transitionFromBaseClip != null && baseTransitionWeight < 1f) ||
+         (transitionFromUpperClip != null && upperTransitionWeight < 1f));
     private bool isPlaying;
     private bool hasCachedAnimatorRootMotion;
     private bool cachedAnimatorRootMotion;
@@ -473,6 +485,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     public int CaptureCurrentPoseAsActivePairOffsets()
     {
+        // A blended result cannot be baked back into a single pair profile.
+        if (IsPreviewingTransition || upperBodyWeight <= 0f) return 0;
         PairOffsetProfile profile = ResolveActivePairOffsetProfile();
         if (profile == null || profile.boneOffsets == null)
             return 0;
@@ -489,11 +503,9 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
                 continue;
 
             Quaternion delta = Quaternion.Inverse(sampledLocalRotation) * bone.localRotation;
-            Vector3 localEulerOffset = NormalizeEuler(delta.eulerAngles);
-
-            float appliedWeight = Mathf.Clamp01(profile.weight * offset.weight);
-            if (appliedWeight > 0.0001f && appliedWeight < 0.9999f)
-                localEulerOffset = NormalizeEuler(localEulerOffset / appliedWeight);
+            float appliedWeight = Mathf.Clamp01(profile.weight * offset.weight * upperBodyWeight);
+            if (appliedWeight <= 0.0001f) continue;
+            Vector3 localEulerOffset = NormalizeEuler(Quaternion.SlerpUnclamped(Quaternion.identity, delta, 1f / appliedWeight).eulerAngles);
 
             offset.localEulerOffset = localEulerOffset;
             captured++;
@@ -879,6 +891,7 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     {
         isPlaying = false;
         RestoreAppliedPairBoneOffsets();
+        offsetEvaluator.Clear();
 
         if (graph.IsValid())
         {
@@ -915,6 +928,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
     private void SetTime(double value)
     {
         SetPlayableTime(playable, value);
+        SetPlayableTime(fromBasePlayable, value);
+        SetPlayableTime(fromUpperPlayable, value);
 
         if (upperBodyPlayable.IsValid())
             SetPlayableTime(upperBodyPlayable, value);
@@ -1129,8 +1144,22 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         upperBodyPlayable = AnimationClipPlayable.Create(graph, upperBodyClip);
         layerMixer = AnimationLayerMixerPlayable.Create(graph, 2);
 
-        graph.Connect(playable, 0, layerMixer, 0);
-        graph.Connect(upperBodyPlayable, 0, layerMixer, 1);
+        baseTransitionMixer = AnimationMixerPlayable.Create(graph, 2);
+        upperTransitionMixer = AnimationMixerPlayable.Create(graph, 2);
+        graph.Connect(playable, 0, baseTransitionMixer, 1);
+        graph.Connect(upperBodyPlayable, 0, upperTransitionMixer, 1);
+        if (transitionFromBaseClip != null)
+        {
+            fromBasePlayable = AnimationClipPlayable.Create(graph, transitionFromBaseClip);
+            graph.Connect(fromBasePlayable, 0, baseTransitionMixer, 0);
+        }
+        if (transitionFromUpperClip != null)
+        {
+            fromUpperPlayable = AnimationClipPlayable.Create(graph, transitionFromUpperClip);
+            graph.Connect(fromUpperPlayable, 0, upperTransitionMixer, 0);
+        }
+        graph.Connect(baseTransitionMixer, 0, layerMixer, 0);
+        graph.Connect(upperTransitionMixer, 0, layerMixer, 1);
 
         layerMixer.SetInputWeight(0, 1f);
         ApplyUpperBodyLayerSettings();
@@ -1144,6 +1173,10 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
         if (previewMode == PreviewMode.UpperBody && upperBodyClip != null)
             length = Mathf.Max(length, upperBodyClip.length);
+        if (previewMode == PreviewMode.UpperBody && transitionFromBaseClip != null)
+            length = Mathf.Max(length, transitionFromBaseClip.length);
+        if (previewMode == PreviewMode.UpperBody && transitionFromUpperClip != null)
+            length = Mathf.Max(length, transitionFromUpperClip.length);
 
         return length;
     }
@@ -1164,7 +1197,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         return activePreviewMode != previewMode ||
                activeClip != clip ||
                activeUpperBodyClip != upperBodyClip ||
-               activeUpperBodyMask != upperBodyMask;
+               activeUpperBodyMask != upperBodyMask ||
+               activeFromBaseClip != transitionFromBaseClip || activeFromUpperClip != transitionFromUpperClip;
     }
 
     private void MarkGraphConfiguration()
@@ -1173,6 +1207,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
         activeClip = clip;
         activeUpperBodyClip = upperBodyClip;
         activeUpperBodyMask = upperBodyMask;
+        activeFromBaseClip = transitionFromBaseClip;
+        activeFromUpperClip = transitionFromUpperClip;
     }
 
     private void ApplyUpperBodyLayerSettings()
@@ -1182,6 +1218,18 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
         layerMixer.SetInputWeight(0, 1f);
         layerMixer.SetInputWeight(1, upperBodyWeight);
+        float baseWeight = transitionFromBaseClip != null ? Mathf.Clamp01(baseTransitionWeight) : 1f;
+        float upperWeight = transitionFromUpperClip != null ? Mathf.Clamp01(upperTransitionWeight) : 1f;
+        if (baseTransitionMixer.IsValid())
+        {
+            baseTransitionMixer.SetInputWeight(0, 1f - baseWeight);
+            baseTransitionMixer.SetInputWeight(1, baseWeight);
+        }
+        if (upperTransitionMixer.IsValid())
+        {
+            upperTransitionMixer.SetInputWeight(0, 1f - upperWeight);
+            upperTransitionMixer.SetInputWeight(1, upperWeight);
+        }
 
         if (upperBodyMask != null)
             layerMixer.SetLayerMaskFromAvatarMask(1, upperBodyMask);
@@ -1239,7 +1287,39 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     private void ApplyActivePairBoneOffsets()
     {
-        PairOffsetProfile profile = ResolveActivePairOffsetProfile();
+        offsetEvaluator.Clear();
+        if (!applyPairBoneOffsets || previewMode != PreviewMode.UpperBody) return;
+        float baseWeight = transitionFromBaseClip != null ? Mathf.Clamp01(baseTransitionWeight) : 1f;
+        float upperWeight = transitionFromUpperClip != null ? Mathf.Clamp01(upperTransitionWeight) : 1f;
+        AddPreviewPair(clip, upperBodyClip, baseWeight * upperWeight);
+        AddPreviewPair(transitionFromBaseClip, upperBodyClip, (1f - baseWeight) * upperWeight);
+        AddPreviewPair(clip, transitionFromUpperClip, baseWeight * (1f - upperWeight));
+        AddPreviewPair(transitionFromBaseClip, transitionFromUpperClip, (1f - baseWeight) * (1f - upperWeight));
+        foreach (Transform bone in offsetEvaluator.Bones)
+        {
+            appliedPairBoneRotations.Add(new AppliedBoneRotation(bone));
+            bone.localRotation *= offsetEvaluator.GetRotation(bone);
+        }
+    }
+
+    private void AddPreviewPair(AnimationClip baseClip, AnimationClip upperClip, float contribution)
+    {
+        if (baseClip == null || upperClip == null || contribution <= 0f) return;
+        PairOffsetProfile profile = FindPairOffsetProfile(baseClip, upperClip, true);
+        if (profile != null && !profile.enabled) return;
+        if (profile == null)
+        {
+            var saved = PairOffsetEvaluator.FindProfile(pairOffsetProfileAsset,
+                PairOffsetBasePose.None, PairOffsetUpperAction.None, baseClip, upperClip);
+            if (saved == null) return;
+            foreach (var offset in saved.BoneOffsets)
+            {
+                if (offset == null || !offset.Enabled) continue;
+                Transform bone = ResolveRelativeTransform(GetPreviewRoot(), offset.BonePath);
+                offsetEvaluator.Add(bone, offset.LocalEulerOffset, contribution * upperBodyWeight * saved.Weight * offset.Weight);
+            }
+            return;
+        }
         if (profile == null || profile.boneOffsets == null || profile.weight <= 0f)
             return;
 
@@ -1253,17 +1333,11 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
             if (bone == null)
                 continue;
 
-            float weight = Mathf.Clamp01(profile.weight * offset.weight);
+            float weight = Mathf.Clamp01(profile.weight * offset.weight * upperBodyWeight * contribution);
             if (weight <= 0f)
                 continue;
 
-            appliedPairBoneRotations.Add(new AppliedBoneRotation(bone));
-
-            Quaternion offsetRotation = Quaternion.Euler(offset.localEulerOffset);
-            if (weight < 1f)
-                offsetRotation = Quaternion.Slerp(Quaternion.identity, offsetRotation, weight);
-
-            bone.localRotation *= offsetRotation;
+            offsetEvaluator.Add(bone, offset.localEulerOffset, weight);
         }
     }
 
@@ -1462,6 +1536,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     private void SetPlayableSpeed(double value)
     {
+        if (fromBasePlayable.IsValid()) fromBasePlayable.SetSpeed(value);
+        if (fromUpperPlayable.IsValid()) fromUpperPlayable.SetSpeed(value);
         if (playable.IsValid())
             playable.SetSpeed(value);
 
@@ -1480,6 +1556,8 @@ public sealed class SoloRootMotionPreview : MonoBehaviour, IAnimationClipSource
 
     public void GetAnimationClips(List<AnimationClip> clips)
     {
+        if (transitionFromBaseClip != null) clips.Add(transitionFromBaseClip);
+        if (transitionFromUpperClip != null) clips.Add(transitionFromUpperClip);
         if (clip != null)
             clips.Add(clip);
 
@@ -1621,6 +1699,13 @@ internal sealed class SoloRootMotionPreviewEditor : Editor
 
         if (isUpperBodyMode)
         {
+            DrawSectionHeader("Transition Preview", "เลือกคลิปต้นทางแล้วเลื่อนน้ำหนักเพื่อดูช่วง fade ไปยังคู่คลิปปัจจุบัน");
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("transitionFromBaseClip"), new GUIContent("From Base Clip"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("baseTransitionWeight"), new GUIContent("Base Fade To Current"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("transitionFromUpperClip"), new GUIContent("From Upper Clip"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("upperTransitionWeight"), new GUIContent("Upper Fade To Current"));
+            if (preview.IsPreviewingTransition)
+                EditorGUILayout.HelpBox("Transition preview uses local profiles, then the SO. Missing pairs contribute zero offset. Capture Pose is disabled during blending; Save keeps the authored values. Set both fade weights to 1 to capture the current pair.", MessageType.Info);
             DrawSectionHeader("Pair Offset Library", "จัดการ profile offset ระหว่าง component นี้กับ ScriptableObject");
             EditorGUILayout.PropertyField(applyPairBoneOffsetsProperty, Tip("Apply Pair Bone Offsets", "เปิดใช้ rotation offset เฉพาะคู่ Base Clip + Upper Body Clip ปัจจุบัน"));
             EditorGUILayout.PropertyField(pairOffsetProfileAssetProperty, Tip("Pair Offset Profile Asset", "SO ที่ใช้เก็บ profile offset เพื่อเอาไปใช้ต่อกับระบบจริง"));

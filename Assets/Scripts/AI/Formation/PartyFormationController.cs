@@ -204,7 +204,7 @@ public sealed class PartyFormationController : MonoBehaviour
     void ResolveReferences()
     {
         if (playerContext == null)
-            playerContext = GetComponent<PlayerContext>();
+            playerContext = CharacterContextModuleLookup.ResolveContext(this) as PlayerContext;
 
         if (playerContext != null && playerContext.partyFormation != this)
             playerContext.partyFormation = this;

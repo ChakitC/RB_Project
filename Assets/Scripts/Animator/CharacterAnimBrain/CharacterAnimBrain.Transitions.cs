@@ -34,7 +34,7 @@ public sealed partial class CharacterAnimBrain
         profiles = PairOffsetProfiles;
         if (profiles == null) return false;
         presentation.GetActionContributions(actions);
-        basePoses.AddRange(_activePairBasePoseWeights);
+        presentation.GetBaseContributions(basePoses);
         return actions.Count > 0 && basePoses.Count > 0;
     }
 }

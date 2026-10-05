@@ -40,7 +40,7 @@ public sealed class PairOffsetProfilesSO : ScriptableObject
 
     public PairOffsetProfile FindProfile(AnimationClip baseClip, AnimationClip upperBodyClip, bool includeDisabled)
     {
-        if (pairOffsetProfiles == null)
+        if (pairOffsetProfiles == null || baseClip == null || upperBodyClip == null)
             return null;
 
         for (int i = 0; i < pairOffsetProfiles.Count; i++)

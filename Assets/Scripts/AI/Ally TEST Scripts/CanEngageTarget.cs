@@ -11,6 +11,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
     "instead of every action task re-implementing the same check.")]
 public class CanEngageTarget : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     public SharedVariable<GameObject> target;
 
     private CharacteContext ctx;
@@ -51,7 +52,7 @@ public class CanEngageTarget : Conditional
         // so this is normally already true — kept as a defensive cross-check for trees that feed
         // `target` from somewhere else.
         if (sensor == null)
-            return true;
+            return false;
 
         Transform sensorTarget = sensor.Snapshot.CurrentTarget;
         return sensorTarget != null && IsSameTarget(sensorTarget, target.Value.transform);
@@ -64,17 +65,8 @@ public class CanEngageTarget : Conditional
 
     void CacheReferences()
     {
-        if (ctx == null)
-        {
-            ctx = gameObject.GetComponent<CharacteContext>();
-            if (ctx == null)
-                ctx = gameObject.GetComponentInParent<CharacteContext>();
-        }
-
-        if (sensor == null && ctx != null)
-        {
-            sensor = AITargetSensor.ResolveFor(ctx);
-        }
+        ctx = AIContextBinding.Read(context);
+        sensor = ctx != null ? ctx.AITargetSensor : null;
     }
 
     public override void Reset()

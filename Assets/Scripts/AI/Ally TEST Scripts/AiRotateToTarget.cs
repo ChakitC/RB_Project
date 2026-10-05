@@ -6,6 +6,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 
 public class AiRotateToTarget : Action
 {
+    public SharedVariable<CharacteContext> context;
     [Header("Target")]
     public SharedVariable<GameObject> target;
 
@@ -37,30 +38,43 @@ public class AiRotateToTarget : Action
     private bool _cachedUpdateRotation;
     private bool _cachedIsStopped;
     private CharacteContext _ctx;
+    int executionGeneration;
+    CharacterMovementMotor executionMotor;
+    int rotationToken;
+    bool capturedAgent;
     private AITargetSensor _sensor;
 
     public override void OnAwake()
     {
         _self = transform;
-        _agent = gameObject.GetComponent<NavMeshAgent>();
+
     }
 
     public override void OnStart()
     {
-        _ctx = gameObject.GetComponentInParent<CharacteContext>();
-        _sensor = AITargetSensor.ResolveFor(transform);
+        _ctx = AIContextBinding.Read(context);
+        executionGeneration = _ctx != null ? _ctx.LifeGeneration : 0;
+        executionMotor = _ctx != null ? _ctx.MovementMotor : null;
+        _agent = _ctx != null ? _ctx.NavigationAgent : null;
+        _sensor = _ctx != null ? _ctx.AITargetSensor : null;
+        _self = _ctx != null ? _ctx.transform : transform;
+        rotationToken = 0;
+        capturedAgent = false;
 
         _rotateTransform =
             (rotateRoot != null && rotateRoot.Value != null)
             ? rotateRoot.Value.transform
             : _self;
 
-        if (_agent != null)
+        if (_ctx != null && _ctx.stateHub != null && _sensor != null && _agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh)
         {
+            capturedAgent = true;
             _cachedUpdateRotation = _agent.updateRotation;
             _cachedIsStopped = _agent.isStopped;
 
-            if (disableAgentAutoRotation)
+            if (disableAgentAutoRotation && executionMotor != null)
+                rotationToken = executionMotor.AcquireAgentSuspension(_agent, false, true);
+            else if (disableAgentAutoRotation)
                 _agent.updateRotation = false;
 
             if (stopAgentWhileAiming)
@@ -70,6 +84,9 @@ public class AiRotateToTarget : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, _ctx, executionGeneration) ||
+            _ctx.stateHub == null || _sensor == null || _ctx.AITargetSensor != _sensor)
+            return TaskStatus.Failure;
         if (target == null || target.Value == null)
             return failWhenTargetLost ? TaskStatus.Failure : TaskStatus.Success;
 
@@ -117,15 +134,22 @@ public class AiRotateToTarget : Action
 
     public override void OnEnd()
     {
-        if (_agent != null)
+        if (_ctx != null && _ctx.LifeGeneration == executionGeneration)
         {
-            if (disableAgentAutoRotation)
+            if (rotationToken != 0 && executionMotor != null)
+                executionMotor.ReleaseAgentSuspension(rotationToken);
+            else if (capturedAgent && _agent != null && disableAgentAutoRotation)
                 _agent.updateRotation = _cachedUpdateRotation;
-
-            if (stopAgentWhileAiming)
+            if (capturedAgent && _agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh &&
+                stopAgentWhileAiming && AICombatTaskUtility.CanAct(_ctx))
                 _agent.isStopped = _cachedIsStopped;
         }
+        rotationToken = 0;
+        capturedAgent = false;
     }
+
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
 
     public override void Reset()
     {

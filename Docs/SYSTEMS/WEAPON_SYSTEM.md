@@ -550,10 +550,31 @@ They can contribute stat modifiers and react to equip/shot events.
 - Do not edit generated project files to make a new script compile.
 # Affix runtime pipeline
 
-Shots capture ammo-before/after, consumption, last-round state, and weapon
-instance id before spawn. Equipped behavior assets own plain C# runtimes with
-stat, pre-shot, pre-damage, combat-event, and timer hooks. Persistent counters
-live in versioned records on `WeaponInstanceData`.
+Shots capture ammo-before/after, consumption, last-round state, weapon instance
+and ordinary damage before spawn. WeaponAffixDefinition.passiveDefinition feeds
+PassiveGrant into the shared PassiveController/PassiveRuntime engine. The legacy
+WeaponAffixRuntimeController component remains an equipment/API adapter; it does
+not subscribe to combat, tick, or construct behavior runtimes.
+
+BeforeShot reserves charges and patches a mutable build. Successful primary spawn
+commits those reservations and invokes ShotCommitted, where Echo/Breach progress
+and extra projectiles run. Failed spawn refunds charges and Momentum and does not
+increment progress. This intentionally fixes the old pre-spawn consumption;
+the weapon's existing ammo/fire-cadence policy on a failed spawn is unchanged.
+
+Transient reload buffs/stacks/marks/charges disappear with their grant. Only
+declared persistent variables use versioned records on WeaponInstanceData keyed
+by RolledAffixData.grantId. A flying shot retains prepared damage/impact payloads;
+target-dependent BeforeDamage hooks require the same equipped weapon and actor
+lifetime. Extra projectiles preserve provenance and use captured ordinary damage.
+
+Roll ranges, tooltip metadata and minimum-magazine eligibility now live on the
+definition. WeaponStatPreview projects unconditional stats from its composed
+recipe using the same parameter expressions, without creating state or writing saves.
+RestoreMagazineFromPassive returns the actual free restoration; the original
+RestoreMagazineFromAffix bool API forwards to it. Passive area effects enumerate
+CharacterContextRegistry and use ctx.HealthSystem/TargetIdentity, including nested
+health modules; physics is not used solely to discover actors.
 
 ## Runtime state publication
 
@@ -570,3 +591,17 @@ disable publish through this boundary. StateHub admission reads WeaponSystem
 properties directly; WeaponSM is a read-only presentation projection. Ammo and
 reload mechanics remain owned by WeaponSystem. Held-fire resumption waits for
 reload completion; only a fresh RequestOnFire can interrupt a configured reload.
+
+## Passive next-attack snapshot
+
+Normal TryShoot reserves installed next-attack passive variables after launch
+validation, gives the reservation the shot's AttackId, then builds shot damage.
+The captured multiplier applies after affix shot preparation and before projectile
+critical/defense. WeaponProjectileSpawner.TrySpawn reports whether release occurred;
+only successful release commits the reservation. An uncommitted reservation refunds
+on disposal. The original void Spawn API remains a wrapper.
+
+Prepared damage travels with the projectile and survives passive removal. Extra
+affix shots use ordinary preparation without a passive reservation/multiplier.
+RestoreMagazineActual returns the actual ammo restored before notifications;
+RestoreMagazine retains its bool contract. See PASSIVES.md for composition.

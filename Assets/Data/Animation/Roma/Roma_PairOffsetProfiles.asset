@@ -109,3 +109,15 @@ MonoBehaviour:
       bonePath: root/c_traj/root.x/spine_01.x
       localEulerOffset: {x: -11.766846, y: -50.62982, z: 4.277939}
       weight: 1
+  - enabled: 1
+    profileName: Roma_Slide + SMG2_Shoot
+    basePose: 10
+    upperAction: 0
+    baseClip: {fileID: 4008094416722107070, guid: 7f935d58dafaa654cb79a33eea4f5bf3, type: 3}
+    upperBodyClip: {fileID: -2031786773799853965, guid: d911c1b6dff0a0b46959d0d115a9b1f6, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x/spine_02.x
+      localEulerOffset: {x: 81.19507, y: -48.34143, z: -51.27173}
+      weight: 1

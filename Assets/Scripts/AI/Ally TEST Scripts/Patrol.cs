@@ -8,6 +8,13 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [Opsive.Shared.Utility.Description("ตั้งจุดหมายลาดตระเวนให้ NavMeshAgent หนึ่งจุด แล้วสำเร็จเมื่อ Agent เดินถึงจุดนั้น การตัดสินใจต่อสู้ควรอยู่ใน Task อื่น")]
 public class Patrol : Action
 {
+    public SharedVariable<CharacteContext> context;
+    [Tooltip("Optional P0 graph state; legacy graphs keep their existing patrol behavior.")]
+    public SharedVariable<AICombatState> combatState;
+    CharacteContext ctx;
+    int executionGeneration;
+    AICombatNavigation p0Navigation;
+    float waitElapsed;
     [Tooltip("จุดลาดตระเวนแบบเรียงลำดับ ถ้าไม่กำหนด จะสุ่มจุดรอบ patrolCenter หรือรอบ Agent ตัวนี้")]
     public Transform[] patrolPoints;
 
@@ -53,7 +60,18 @@ public class Patrol : Action
 
     public override void OnStart()
     {
+        ctx = AIContextBinding.Read(context);
+        executionGeneration = ctx != null ? ctx.LifeGeneration : 0;
         CacheAgent();
+        p0Navigation = null;
+        if (combatState != null && combatState.Value != null)
+        {
+            ctx = AIContextBinding.Read(context);
+            _agent = ctx != null ? ctx.NavigationAgent : null;
+            p0Navigation = new AICombatNavigation(ctx, combatState.Value);
+            combatState.Value.ObserveTarget(default);
+        }
+        waitElapsed = 0f;
         CachePatrolCenterPositionIfNeeded();
         _destinationSet = false;
         _isWaiting = false;
@@ -62,7 +80,18 @@ public class Patrol : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, ctx, executionGeneration) || ctx.NavigationAgent != _agent) return TaskStatus.Failure;
         CacheAgent();
+
+        if (p0Navigation != null)
+        {
+            if (!AICombatTaskUtility.CanAct(ctx)) return TaskStatus.Failure;
+            if (!AICombatTaskUtility.CanMove(ctx) || AICombatTaskUtility.IsPaused)
+            {
+                if (_destinationSet) p0Navigation.Tick(combatState.Value.Destination);
+                return TaskStatus.Running;
+            }
+        }
 
         if (_agent == null || !_agent.enabled || !_agent.isOnNavMesh)
         {
@@ -76,6 +105,11 @@ public class Patrol : Action
 
         if (_isWaiting)
         {
+            if (p0Navigation != null)
+            {
+                waitElapsed += AICombatTaskUtility.Delta(ctx);
+                return waitElapsed >= (waitTime != null ? waitTime.Value : 0f) ? TaskStatus.Success : TaskStatus.Running;
+            }
             return TimeSlowManager.Instance.WorldTime >= _waitUntilTime
                 ? TaskStatus.Success
                 : TaskStatus.Running;
@@ -86,8 +120,15 @@ public class Patrol : Action
             return StartWaitOrSucceed();
         }
 
+        if (p0Navigation != null && combatState.Value.NavigationFailure != null)
+            return TaskStatus.Failure;
+
         return TaskStatus.Running;
     }
+
+    public override void OnEnd() => p0Navigation?.Cleanup();
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
 
     public override void Reset()
     {
@@ -105,7 +146,21 @@ public class Patrol : Action
     {
         if (!TryGetPatrolDestination(out Vector3 patrolDestination))
         {
+            combatState?.Value?.FailNavigation("No complete patrol path");
             return false;
+        }
+
+        if (p0Navigation != null)
+        {
+            combatState.Value.BeginNavigation("Patrol", default, patrolDestination);
+            if (!p0Navigation.Command(patrolDestination))
+            {
+                combatState.Value.FailNavigation("Patrol path unavailable");
+                return false;
+            }
+            _destinationSet = true;
+            if (destination != null) destination.Value = combatState.Value.Destination;
+            return true;
         }
 
         if (stopDistance != null)
@@ -146,6 +201,8 @@ public class Patrol : Action
 
     private bool HasArrived()
     {
+        if (p0Navigation != null)
+            return p0Navigation.Tick(combatState.Value.Destination) == TaskStatus.Success;
         if (!_destinationSet || _agent.pathPending)
         {
             return false;
@@ -167,16 +224,7 @@ public class Patrol : Action
 
     private void CacheAgent()
     {
-        if (_agent != null)
-        {
-            return;
-        }
-
-        _agent = gameObject.GetComponent<NavMeshAgent>();
-        if (_agent == null)
-        {
-            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
-        }
+        _agent = ctx != null ? ctx.NavigationAgent : null;
     }
 
     private bool TryGetPatrolDestination(out Vector3 patrolDestination)
@@ -285,6 +333,8 @@ public class Patrol : Action
 
     private bool TrySampleNavMesh(Vector3 candidate, out Vector3 patrolDestination)
     {
+        if (p0Navigation != null)
+            return AICombatNavigation.TryPath(_agent, candidate, new NavMeshPath(), out patrolDestination);
         float sampleRadius = navMeshSampleRadius != null ? Mathf.Max(0f, navMeshSampleRadius.Value) : 0f;
         if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, sampleRadius, NavMesh.AllAreas))
         {

@@ -26,7 +26,12 @@ internal sealed class PartyFormationFollowRuntime
     FieldAllyMember _fieldMember;
     AllyInterruptionController _interruptionController;
     PartyFormationController _formation;
-    BehaviorTree _behaviorTree;
+    int _generation;
+    CharacterAnimBrain _subscribedBrain;
+    CharacterAnimBrain _executionBrain;
+    CharacterAnimDriver _executionDriver;
+    CharacterVisibilityController _executionVisibility;
+    bool SameLife => _allyContext != null && _allyContext.LifeGeneration == _generation;
     SharedVariable<bool> _inCombat;
 
     readonly CharacterPlaybackAutoHideSchedule _warpOutAutoHide = new();
@@ -45,22 +50,28 @@ internal sealed class PartyFormationFollowRuntime
 
     public bool IsAvailable => _formation != null;
 
-    public bool TryBegin(GameObject ownerObject, GameObject playerObject)
+    public bool TryBegin(CharacteContext context, GameObject playerObject, SharedVariable<bool> inCombat)
     {
-        CacheReferences(ownerObject, playerObject);
-        return IsAvailable;
+        CacheReferences(context, playerObject, inCombat);
+        return _allyContext != null && IsAvailable;
     }
 
-    public bool TryTick(GameObject ownerObject, GameObject playerObject, out TaskStatus status)
+    public bool TryTick(CharacteContext context, GameObject playerObject, SharedVariable<bool> inCombat, out TaskStatus status)
     {
-        CacheReferences(ownerObject, playerObject);
+        CacheReferences(context, playerObject, inCombat);
+        if (_allyContext == null) { status = TaskStatus.Failure; return false; }
+        if (!_allyContext.isActiveAndEnabled || _inCombat == null)
+        {
+            status = TaskStatus.Failure;
+            return true;
+        }
         if (_formation == null)
         {
             status = TaskStatus.Failure;
             return false;
         }
 
-        if (_agent == null || !_agent.isActiveAndEnabled || _partyLoader == null)
+        if (_agent == null || !_agent.isActiveAndEnabled || _partyLoader == null || _allyContext.stateHub == null)
         {
             status = TaskStatus.Failure;
             return true;
@@ -167,6 +178,16 @@ internal sealed class PartyFormationFollowRuntime
 
     public void End()
     {
+        if (!SameLife)
+        {
+            UnsubscribeFromWarpAnimation(_subscribedBrain);
+            _warpOutAutoHide.Cancel();
+            _warpPhase = FormationWarpPhase.None;
+            _warpRequestId = 0;
+            _ownsFieldMemberReservation = _ownsAgent = _savedStoppingDistance = false;
+            _movingToSlot = false;
+            return;
+        }
         AbortFormationWarp(cancelPlayback: true);
 
         if (!IsExternallyControlled())
@@ -188,14 +209,14 @@ internal sealed class PartyFormationFollowRuntime
         _fieldMember = null;
         _interruptionController = null;
         _formation = null;
-        _behaviorTree = null;
+
         _inCombat = null;
     }
 
     bool TryStartAnimatedTeleport(Vector3 teleportDestination)
     {
-        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
-        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        CharacterAnimBrain animBrain = _executionBrain;
+        CharacterAnimDriver animDriver = _executionDriver;
         if (animBrain == null || animDriver == null)
             return false;
 
@@ -220,7 +241,7 @@ internal sealed class PartyFormationFollowRuntime
 
         StopOwnedAgent();
 
-        CharacterVisibilityController visibility = _allyContext.Visibility;
+        CharacterVisibilityController visibility = _executionVisibility;
         if (visibility != null)
         {
             visibility.Appear();
@@ -238,7 +259,7 @@ internal sealed class PartyFormationFollowRuntime
             return;
         }
 
-        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
+        CharacterAnimBrain animBrain = _executionBrain;
         if (animBrain == null || !animBrain.IsChainPlaybackActive)
         {
             ClearFormationWarpState(revealVisual: true);
@@ -256,7 +277,7 @@ internal sealed class PartyFormationFollowRuntime
             return;
         }
 
-        CharacterVisibilityController visibility = _allyContext != null ? _allyContext.Visibility : null;
+        CharacterVisibilityController visibility = _executionVisibility;
         if (visibility == null)
         {
             _warpOutAutoHide.Cancel();
@@ -299,6 +320,7 @@ internal sealed class PartyFormationFollowRuntime
 
     void OnWarpCastMomentReached(int requestId)
     {
+        if (!SameLife) { End(); return; }
         if (requestId != _warpRequestId ||
             _warpPhase != FormationWarpPhase.WaitingForWarpOutCastMoment)
         {
@@ -306,7 +328,7 @@ internal sealed class PartyFormationFollowRuntime
         }
 
         _warpOutAutoHide.Cancel();
-        _allyContext?.Visibility?.ConcealForTeleport();
+        _executionVisibility?.ConcealForTeleport();
 
         if (_agent == null ||
             !_agent.isActiveAndEnabled ||
@@ -328,6 +350,7 @@ internal sealed class PartyFormationFollowRuntime
 
     void OnWarpPlaybackCompleted(int requestId)
     {
+        if (!SameLife) { End(); return; }
         if (requestId != _warpRequestId)
             return;
 
@@ -345,13 +368,14 @@ internal sealed class PartyFormationFollowRuntime
 
     void OnWarpPlaybackInterrupted(int requestId)
     {
+        if (!SameLife) { End(); return; }
         if (requestId == _warpRequestId)
             ClearFormationWarpState(revealVisual: true);
     }
 
     void StartWarpInOrComplete()
     {
-        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        CharacterAnimDriver animDriver = _executionDriver;
         if (animDriver == null)
         {
             ClearFormationWarpState(revealVisual: true);
@@ -366,7 +390,7 @@ internal sealed class PartyFormationFollowRuntime
             return;
         }
 
-        _allyContext?.Visibility?.Appear();
+        _executionVisibility?.Appear();
     }
 
     void AbortFormationWarp(bool cancelPlayback)
@@ -375,7 +399,7 @@ internal sealed class PartyFormationFollowRuntime
             return;
 
         int requestId = _warpRequestId;
-        CharacterAnimDriver animDriver = _allyContext != null ? _allyContext.AnimDriver : null;
+        CharacterAnimDriver animDriver = _executionDriver;
         ClearFormationWarpState(revealVisual: true);
 
         if (cancelPlayback && requestId > 0)
@@ -384,8 +408,7 @@ internal sealed class PartyFormationFollowRuntime
 
     void ClearFormationWarpState(bool revealVisual)
     {
-        CharacterAnimBrain animBrain = _allyContext != null ? _allyContext.AnimBrain : null;
-        UnsubscribeFromWarpAnimation(animBrain);
+        UnsubscribeFromWarpAnimation(_subscribedBrain);
         _warpOutAutoHide.Cancel();
         _warpPhase = FormationWarpPhase.None;
         _warpRequestId = 0;
@@ -398,7 +421,7 @@ internal sealed class PartyFormationFollowRuntime
         }
 
         if (revealVisual)
-            _allyContext?.Visibility?.Appear();
+            _executionVisibility?.Appear();
     }
 
     void SubscribeToWarpAnimation(CharacterAnimBrain animBrain)
@@ -406,6 +429,8 @@ internal sealed class PartyFormationFollowRuntime
         if (animBrain == null)
             return;
 
+        UnsubscribeFromWarpAnimation(_subscribedBrain);
+        _subscribedBrain = animBrain;
         animBrain.ChainCastMomentReached += OnWarpCastMomentReached;
         animBrain.ChainPlaybackInterrupted += OnWarpPlaybackInterrupted;
         animBrain.ChainPlaybackCompleted += OnWarpPlaybackCompleted;
@@ -419,6 +444,7 @@ internal sealed class PartyFormationFollowRuntime
         animBrain.ChainCastMomentReached -= OnWarpCastMomentReached;
         animBrain.ChainPlaybackInterrupted -= OnWarpPlaybackInterrupted;
         animBrain.ChainPlaybackCompleted -= OnWarpPlaybackCompleted;
+        if (_subscribedBrain == animBrain) _subscribedBrain = null;
     }
 
     bool HasBlockingStateDuringFormationWarp()
@@ -447,43 +473,32 @@ internal sealed class PartyFormationFollowRuntime
         return _nextFormationWarpRequestId++;
     }
 
-    void CacheReferences(GameObject ownerObject, GameObject playerObject)
+    void CacheReferences(CharacteContext context, GameObject playerObject, SharedVariable<bool> inCombat)
     {
-        if (ownerObject == null)
-            return;
-
-        if (_allyContext == null)
-            _allyContext = ownerObject.GetComponentInParent<AllyContext>();
-        if (_allyContext == null)
-            _allyContext = ownerObject.GetComponentInChildren<AllyContext>(true);
-
-        _allyContext?.ResolveReferences();
-
-        if (_agent == null)
-            _agent = _allyContext != null ? _allyContext.agent : ownerObject.GetComponentInParent<NavMeshAgent>();
-        if (_partyLoader == null)
-            _partyLoader = _allyContext != null ? _allyContext.CharacterLoad : ownerObject.GetComponentInParent<CharacterContextPartyLoader>();
-        if (_fieldMember == null)
-            _fieldMember = ownerObject.GetComponentInParent<FieldAllyMember>();
-        if (_interruptionController == null)
-            _interruptionController = ownerObject.GetComponentInParent<AllyInterruptionController>();
-        if (_behaviorTree == null)
-            _behaviorTree = _allyContext != null ? _allyContext.BehaviorTree : ownerObject.GetComponentInParent<BehaviorTree>();
-
-        if (_inCombat == null && _behaviorTree != null)
+        var ally = context as AllyContext;
+        if (_allyContext != ally || (_allyContext != null && _generation != _allyContext.LifeGeneration) ||
+            (ally != null && (_agent != ally.NavigationAgent || _fieldMember != ally.FieldAllyMember ||
+             _partyLoader != ally.CharacterLoad || _interruptionController != ally.InterruptionController ||
+             _executionBrain != ally.AnimBrain || _executionDriver != ally.AnimDriver || _executionVisibility != ally.Visibility)))
         {
-            _inCombat = _behaviorTree.GetVariable<bool>(
-                "InCombat",
-                SharedVariable.SharingScope.GameObject);
+            End();
+            _formation = null;
+            _allyContext = ally;
+            _generation = ally != null ? ally.LifeGeneration : 0;
+            _agent = ally != null ? ally.NavigationAgent : null;
+            _partyLoader = ally != null ? ally.CharacterLoad : null;
+            _fieldMember = ally != null ? ally.FieldAllyMember : null;
+            _interruptionController = ally != null ? ally.InterruptionController : null;
+            _executionBrain = ally != null ? ally.AnimBrain : null;
+            _executionDriver = ally != null ? ally.AnimDriver : null;
+            _executionVisibility = ally != null ? ally.Visibility : null;
         }
-
-        if (_formation == null && _allyContext != null && playerObject != null)
+        _inCombat = inCombat;
+        if (_formation == null && ally != null && playerObject != null)
         {
+            // Player discovery is target lookup; owner references are supplied by the Task.
             PlayerContext playerContext = playerObject.GetComponentInParent<PlayerContext>();
-            if (playerContext == null)
-                playerContext = playerObject.GetComponentInChildren<PlayerContext>(true);
-
-            playerContext?.ResolveReferences();
+            if (playerContext == null) playerContext = playerObject.GetComponentInChildren<PlayerContext>(true);
             _formation = playerContext != null ? playerContext.partyFormation : null;
         }
     }
@@ -502,6 +517,8 @@ internal sealed class PartyFormationFollowRuntime
     bool IsExternallyControlled()
     {
         if (_allyContext == null)
+            return true;
+        if (_allyContext.MovementMotor != null && _allyContext.MovementMotor.IsAgentTransformSuspended)
             return true;
 
         StateHub stateHub = _allyContext.stateHub;

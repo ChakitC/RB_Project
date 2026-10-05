@@ -13,6 +13,9 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         public PrefabHitboxSkillPayloadDef.HitboxStep Definition;
         public readonly List<SkillHitboxGroup> Groups = new List<SkillHitboxGroup>();
         public readonly HashSet<int> HitTargetIds = new HashSet<int>();
+        public float PassiveAttackMultiplier = 1f;
+        public string AttackId;
+        public ulong ChainId;
         public bool IsActive;
         public bool HasSpawnedImpactThisActivation;
     }
@@ -164,9 +167,9 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             kb = new KnockbackSettings(2f, .4f, null, ImpactReactionKind.MiniStun, true);
         if (kb.progressCurve != null)
             kb.progressCurve = new AnimationCurve(kb.progressCurve.keys) { preWrapMode = kb.progressCurve.preWrapMode, postWrapMode = kb.progressCurve.postWrapMode };
-        snapshot = new CooperativeBlockDamageSnapshot(actor, Mathf.Max(0f, baseDamage * step.Definition.DamageMultiplier),
-            chance, multiplier, BuildStaggerPayload(step).ResolvedAmount, kb, _damageSourceId, _attackId,
-            _chainId, IsBasicMelee ? 0 : _depth + 1, _attribution, IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill, _followUpProvenance);
+        snapshot = new CooperativeBlockDamageSnapshot(actor, Mathf.Max(0f, baseDamage * step.Definition.DamageMultiplier * (IsBasicMelee ? step.PassiveAttackMultiplier : 1f)),
+            chance, multiplier, BuildStaggerPayload(step).ResolvedAmount, kb, _damageSourceId, IsBasicMelee ? step.AttackId : _attackId,
+            IsBasicMelee ? step.ChainId : _chainId, IsBasicMelee ? 0 : _depth + 1, _attribution, IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill, _followUpProvenance);
         return true;
     }
     public bool SuppressSteps(int requestId, int casterLife, int[] steps)
@@ -548,7 +551,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (step == null || _suppressedBlockSteps.Contains(step.StepIndex))
             return;
 
-        if (IsBasicMelee)
+        if (IsBasicMelee && !step.IsActive)
         {
             var actor = _context.CasterContext;
             var weapons = actor != null ? actor.WeaponSystem : null;
@@ -556,8 +559,12 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             var weapon = weapons != null ? weapons.CurrentWeapon : actor != null ? actor.currentWeapon : null;
             _damageSourceId = !string.IsNullOrWhiteSpace(instanceId)
                 ? $"weapon:{instanceId}:melee" : $"melee:{(weapon != null ? weapon.name : "unarmed")}";
-            _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_damageSourceId}:melee") : null;
+            _attackId = _combatEventBus != null ? _combatEventBus.CreateAttackId($"{_damageSourceId}:melee") : "attack:" + CombatEventBus.NextAttackExecutionId();
+            using var passiveReservation = actor?.PassiveController?.ReserveNextAttack(_attackId);
+            step.PassiveAttackMultiplier = passiveReservation?.Multiplier ?? 1f;
+            passiveReservation?.Commit();
             _chainId = _combatEventBus != null ? CombatEventBus.NextChainId() : 0;
+            step.AttackId = _attackId; step.ChainId = _chainId;
         }
         bool wasInactive = !step.IsActive;
         if (wasInactive)
@@ -786,7 +793,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             var weapons = actor != null ? actor.WeaponSystem : null;
             var weapon = weapons != null ? weapons.CurrentWeapon : actor != null ? actor.currentWeapon : null;
             var stats = actor != null ? actor.StatsHub : null;
-            scaledDamage = (stats != null ? stats.GetSkillBaseDamage() : 0f) * step.Definition.DamageMultiplier;
+            scaledDamage = (stats != null ? stats.GetSkillBaseDamage() : 0f) * step.Definition.DamageMultiplier * step.PassiveAttackMultiplier;
             critChance = stats != null ? stats.GetCritRatePercent(weapon) : 0f;
             critMultiplier = stats != null ? stats.GetCritMultiplier(weapon) : 1f;
             distance = other != null ? Vector3.Distance(transform.position, other.ClosestPoint(transform.position)) : 0f;
@@ -830,8 +837,8 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             finalDamage,
             attacker,
             _damageSourceId,
-            _attackId,
-            _chainId == 0 ? CombatEventBus.NextChainId() : _chainId,
+            IsBasicMelee ? step.AttackId : _attackId,
+            IsBasicMelee ? step.ChainId : (_chainId == 0 ? CombatEventBus.NextChainId() : _chainId),
             IsBasicMelee ? 0 : _depth + 1,
             PassiveEventOrigin.External,
             knockback: knockback,
@@ -849,7 +856,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         if (_payload != null && _payload.ShowDamageNumbers && VfxSpawner.Instance != null)
             VfxSpawner.Instance.SpawnDamageNumber(hitPoint, result.AppliedDamage, target);
 
-        NotifyOwnerCombatTriggers(target, result, wasAliveBeforeDamage, wasCritical);
+        NotifyOwnerCombatTriggers(step, target, result, wasAliveBeforeDamage, wasCritical);
         return result;
     }
 
@@ -870,7 +877,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
         return new StaggerPayload(staggerPower, 1f, _damageSourceId);
     }
 
-    void NotifyOwnerCombatTriggers(IDamageable target, in DamageResult result, bool wasAliveBeforeDamage, bool wasCritical)
+    void NotifyOwnerCombatTriggers(StepRuntimeState step, IDamageable target, in DamageResult result, bool wasAliveBeforeDamage, bool wasCritical)
     {
         if (target == null || !wasAliveBeforeDamage)
             return;
@@ -882,7 +889,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
         if (_combatEventBus != null)
         {
-            PassiveEventContext hitContext = CreateOwnerEventContext(PassiveEventType.Hit, targetObject, result.AppliedDamage, result, wasCritical);
+            PassiveEventContext hitContext = CreateOwnerEventContext(step, PassiveEventType.Hit, targetObject, result.AppliedDamage, result, wasCritical);
             _combatEventBus.Publish(hitContext);
         }
 
@@ -892,13 +899,13 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
 
             if (_combatEventBus != null)
             {
-                PassiveEventContext killContext = CreateOwnerEventContext(PassiveEventType.Kill, targetObject, result.AppliedDamage, result, wasCritical);
+                PassiveEventContext killContext = CreateOwnerEventContext(step, PassiveEventType.Kill, targetObject, result.AppliedDamage, result, wasCritical);
                 _combatEventBus.Publish(killContext);
             }
         }
     }
 
-    PassiveEventContext CreateOwnerEventContext(PassiveEventType type, GameObject targetObject, float value, in DamageResult result, bool wasCritical)
+    PassiveEventContext CreateOwnerEventContext(StepRuntimeState step, PassiveEventType type, GameObject targetObject, float value, in DamageResult result, bool wasCritical)
     {
         GameObject source = _sourceObject != null ? _sourceObject : gameObject;
         var metadata = new CombatEventMetadata(
@@ -907,7 +914,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             staggerApplied: result.StaggerApplied, enteredChainReady: result.EnteredChainReady,
             sourceKind: IsBasicMelee ? CombatSourceKind.Melee : CombatSourceKind.Skill);
 
-        if (_chainId != 0)
+        if ((IsBasicMelee ? step.ChainId : _chainId) != 0)
         {
             var parent = new PassiveEventContext(
                 PassiveEventType.None,
@@ -915,10 +922,10 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 source,
                 targetObject,
                 _damageSourceId,
-                _attackId,
+                (IsBasicMelee ? step.AttackId : _attackId),
                 value,
                 Time.timeAsDouble,
-                _chainId,
+                (IsBasicMelee ? step.ChainId : _chainId),
                 _depth,
                 PassiveEventOrigin.External,
                 null,
@@ -933,7 +940,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
                 source,
                 targetObject,
                 _damageSourceId,
-                _attackId,
+                (IsBasicMelee ? step.AttackId : _attackId),
                 value,
                 PassiveEventOrigin.External,
                 metadata: metadata,
@@ -945,7 +952,7 @@ public sealed class SkillHitboxSequenceRuntime : MonoBehaviour
             source,
             targetObject,
             _damageSourceId,
-            _attackId,
+            (IsBasicMelee ? step.AttackId : _attackId),
             value,
             PassiveEventOrigin.External,
             metadata: metadata,

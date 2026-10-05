@@ -8,6 +8,7 @@ using Opsive.GraphDesigner.Runtime.Variables;    // SharedVariable<T>
 [Opsive.Shared.Utility.Description("Success ถ้า Ally อยู่ไกลจาก Player มากกว่า followMax")]
 public class IsTooFarFromPlayer : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     [Tooltip("ตัวแปร Player ที่แชร์ใน Behavior Tree")]
     public SharedVariable<GameObject> player;
 
@@ -16,11 +17,13 @@ public class IsTooFarFromPlayer : Conditional
 
     public override TaskStatus OnUpdate()
     {
+        var ctx = AIContextBinding.Read(context);
+        if (ctx == null) return TaskStatus.Failure;
         if (player == null || player.Value == null) {
             return TaskStatus.Failure;
         }
 
-        var myPos      = transform.position;
+        var myPos      = ctx.transform.position;
         var playerPos  = player.Value.transform.position;
 
         // ไม่อยากให้แกน Y มีผลมากนัก ตัดเป็นระนาบพื้น

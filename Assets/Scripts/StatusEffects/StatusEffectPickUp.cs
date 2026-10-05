@@ -29,7 +29,7 @@ public class StatusEffectPickUp : MonoBehaviour
         if (!other.CompareTag("Player"))
             return;
         
-        var controller = other.GetComponentInParent<StatusEffectController>();
+        var controller = CharacterContextModuleLookup.ResolveStatusEffects(other.gameObject);
         if (controller == null || effect == null)
             return;
 

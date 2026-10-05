@@ -1,5 +1,24 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7897921191472677738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977e63054233f2041b66a0125929398e, type: 3}
+  m_Name: Echo Chamber Passive
+  m_EditorClassIdentifier: 
+  passiveId: weapon.main.echo_chamber.v1
+  icon: {fileID: 0}
+  description: Every tenth shot fires an ammo-free echo projectile.
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: 3224779565685997617}
+  hudPrefab: {fileID: 0}
+  definitionId: d1acb9c67be94b3b8b8e4035fc15ea42
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20,6 +39,24 @@ MonoBehaviour:
   weight: 1
   allowedWeaponTypes: 030000000400000005000000
   rootBehavior: {fileID: 317094192003166773}
+  passiveDefinition: {fileID: -7897921191472677738}
+  rollSpec:
+    valueKind: 0
+    minimum: 0
+    maximum: 0
+    displayPrecision: 0
+    lowerIsBetter: 0
+  tooltip:
+    trigger: Every 10 consumed-ammo shots
+    effect: Fires the configured bonus projectile
+    restriction: 
+    duration: 4
+    cap: 0
+  hasTimedEffect: 0
+  rolledValueIsStat: 0
+  rolledValueOperation: 0
+  minimumBaseMagazine: 0
+  passiveSchemaVersion: 2
   feedbackProfile: {fileID: 0}
   minRollValue: 0
   maxRollValue: 0
@@ -68,3 +105,295 @@ MonoBehaviour:
   procChance: 1
   projectileConfig: {fileID: 0}
   projectilePrefab: {fileID: 0}
+--- !u!114 &3224779565685997617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive recipe
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: roll
+    kind: 0
+    number: 0
+    status: {fileID: 0}
+  variables:
+  - id: progress
+    persistent: 1
+    initial: 0
+    maximum: 1000000
+  rules:
+  - id: rule-0
+    trigger: 5
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 17
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957196
+    - rid: 3342399495413957197
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957196
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        variable: progress
+        operation: 0
+        amount:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957197
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 14
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 10
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 5
+            value: 0
+            reference: progress
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          children: []
+        whenTrue:
+        - rid: 3342399495413957198
+        - rid: 3342399495413957199
+        whenFalse: []
+    - rid: 3342399495413957198
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1-yes-0
+        successSignal: 
+        successValueVariable: 
+        variable: progress
+        operation: 2
+        amount:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957199
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1-yes-1
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 22
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 1
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          children: []
+        whenTrue:
+        - rid: 3342399495413957200
+        whenFalse: []
+    - rid: 3342399495413957200
+      type: {class: PassiveProjectileStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1-yes-1-yes-0
+        successSignal: 
+        successValueVariable: 
+        config: {fileID: 0}
+        prefab: {fileID: 0}
+        damageMultiplier:
+          source: 0
+          value: 0.7
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        speedMultiplier:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []

@@ -453,17 +453,33 @@ MonoBehaviour:
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
         UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-      m_ValuePositions: 000000000d0000000d0000000e000000
-      m_Values: 43757272656e7454617267657402ffffffff
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 000000000d0000000d0000000e0000000e000000160000001e0000001f000000
+      m_Values: 43757272656e74546172676574020000000000000000000000000000000000ffffffff
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
         mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
-      m_ValuePositions: 00000000080000000800000009000000
-      m_Values: 496e436f6d6261740200
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d4886ea0b921c56fa
+      m_ValuePositions: 000000000800000008000000090000000900000011000000190000001a000000
+      m_Values: 496e436f6d62617402000000000000000000000000000000000000
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[AICombatState,
+        Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d06e9212de34be052
+      m_ValuePositions: 000000000b0000000b0000000c0000000c000000140000001c0000001d000000
+      m_Values: 436f6d6261745374617465020000000000000000000000000000000000
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[CharacteContext,
+        Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1df7508283c4d1f37e
+      m_ValuePositions: 00000000030000000300000004000000040000000c0000001400000015000000
+      m_Values: 437478020000000000000000000000000000000000ffffffff
       m_UnityObjects: []
       m_Version: 3.4
     m_DisabledEventNodesData: []

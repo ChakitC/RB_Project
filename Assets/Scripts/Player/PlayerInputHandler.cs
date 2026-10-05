@@ -11,6 +11,9 @@ public class PlayerInputHandler : MonoBehaviour
 
     bool _chainConsumedInteractPress;
     bool _blockPressed;
+    bool _dashNeedsRelease;
+    InputAction _dashAction;
+    InputAction _crouchAction;
 
     /// <summary>
     /// The chain the ChainReady [F] press would run. Exposed so the on-enemy prompt can ask whether
@@ -23,8 +26,13 @@ public class PlayerInputHandler : MonoBehaviour
         ResolveReferences();
     }
 
+    void OnEnable() => ResolveReferences();
+
     void OnDisable()
     {
+        ctx?.movement?.CancelSprint();
+        ctx?.movement?.ResetCrouchInput();
+        _dashNeedsRelease = true;
         _chainConsumedInteractPress = false;
         _blockPressed = false;
     }
@@ -35,6 +43,30 @@ public class PlayerInputHandler : MonoBehaviour
             ctx = GetComponentInParent<PlayerContext>();
 
         ctx?.ResolveReferences();
+        if (_dashAction == null)
+        {
+            var input = GetComponentInParent<PlayerInput>();
+            if (input != null && input.actions != null)
+                _dashAction = input.actions.FindAction("Dash", false);
+        }
+        if (_crouchAction == null)
+        {
+            var input = GetComponentInParent<PlayerInput>();
+            if (input != null && input.actions != null)
+                _crouchAction = input.actions.FindAction("Crouch", false);
+        }
+    }
+
+    void Update()
+    {
+        if (_crouchAction != null && _crouchAction.enabled && !_crouchAction.IsPressed())
+            ctx?.movement?.SetCrouchHeld(false);
+        // The key may have been released while this input component was disabled.
+        if (_dashNeedsRelease && _dashAction != null && _dashAction.enabled && !_dashAction.IsPressed())
+        {
+            _dashNeedsRelease = false;
+            ctx?.movement?.SetDashHeld(false);
+        }
     }
    
     public void OnMove(InputAction.CallbackContext c)
@@ -52,17 +84,32 @@ public class PlayerInputHandler : MonoBehaviour
     }
     public void OnDash(InputAction.CallbackContext c)
     {
-        if (!c.performed) return;
         ResolveReferences();
-        ctx?.stateHub?.RequestOnDash();
+        _dashAction = c.action;
+        if (c.canceled)
+        {
+            _dashNeedsRelease = false;
+            ctx?.movement?.SetDashHeld(false);
+        }
+        if (!c.performed || !c.ReadValueAsButton() || _dashNeedsRelease) return;
+        if (ctx?.movement != null) ctx.movement.SetDashHeld(true);
+        else ctx?.stateHub?.RequestOnDash();
     }
 
     public void OnAim(InputAction.CallbackContext c)
     {
         ResolveReferences();
-        if (c.performed) ctx?.WeaponSystem?.OnAim(true);
+        if (c.performed) { ctx?.CancelSprint(); ctx?.WeaponSystem?.OnAim(true); }
         if (c.canceled) ctx?.WeaponSystem?.OnAim(false);
         
+    }
+
+    public void OnCrouch(InputAction.CallbackContext c)
+    {
+        ResolveReferences();
+        _crouchAction = c.action;
+        if (c.canceled) ctx?.movement?.SetCrouchHeld(false);
+        else if (c.performed && c.ReadValueAsButton()) ctx?.movement?.SetCrouchHeld(true);
     }
 
     public void OnMelee(InputAction.CallbackContext c)
@@ -221,6 +268,8 @@ public class PlayerInputHandler : MonoBehaviour
             return;
 
         ResolveReferences();
+        ctx?.CancelSprint();
+        ctx?.CancelSlide();
         ctx?.SkillManager?.TryStartCastSlot(slotIndex);
     }
 
@@ -233,6 +282,8 @@ public class PlayerInputHandler : MonoBehaviour
         if (ctx?.interruptionCommand != null)
             ctx.interruptionCommand.BlockBindingLabel = c.action.GetBindingDisplayString();
         if (GlobalTimeScaleManager.Instance.IsPaused) return;
+        ctx?.CancelSprint();
+        ctx?.CancelSlide();
         ctx?.interruptionCommand?.TryExecuteBlockInput(c.time);
     }
 
@@ -252,6 +303,8 @@ public class PlayerInputHandler : MonoBehaviour
             return;
 
         bool isOpen = ctx.playerUIContext.inventoryUI.activeSelf;
+        ctx.CancelSprint();
+        ctx.movement?.ResetCrouchInput();
         ctx.playerUIContext.inventoryUI.SetActive(!isOpen);
 
      
@@ -267,6 +320,8 @@ public class PlayerInputHandler : MonoBehaviour
         if (ctx?.partyCommand == null)
             return;
 
+        ctx.CancelSprint();
+        ctx.CancelSlide();
         ctx.partyCommand.TryExecuteChainAttack(chainAttackDefinition);
     }
 }

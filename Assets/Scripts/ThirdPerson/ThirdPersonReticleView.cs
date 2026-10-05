@@ -150,7 +150,7 @@ public sealed class ThirdPersonReticleView : MonoBehaviour
             playerContext = PlayerContext.Instance;
 
         if (playerContext != null && aimController == null)
-            aimController = playerContext.GetComponent<ThirdPersonAimController>();
+            aimController = playerContext.thirdPersonAim;
 
         CombatEventBus nextBus = playerContext != null ? playerContext.CombatEventBus : null;
         SubscribeToBus(nextBus);

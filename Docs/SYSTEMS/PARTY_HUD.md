@@ -1,5 +1,24 @@
 # Separate Party HUD
 
+## Character passive HUD (2026-10-05)
+
+The current `PlayerUIRuntimeBinder` instantiates `Assets/Spain/UI/GameplayHUD.prefab`
+under the UI canvas and hides the replaced legacy displays. Its
+`GameplayHudPresenter.Bind` binds `PassiveHudHost` under
+`GameplayHUD/PassiveHUD` to the controlled actor. This direct child is the editable
+spawn position; its RectTransform stays independent of the moving HP panel.
+A horizontal layout separates multiple
+installed grant views. The host itself has no Update loop.
+
+The production Roma passive supplies `RomaPassiveHUD.prefab`: inner Stamina ring,
+five-segment Momentum ring, current Momentum, next normal-attack bonus, low-Stamina
+damage bonus and short actual-refund/attack-phase feedback. Changes are event-driven;
+only feedback expiry schedules a short coroutine. PassiveDefinition holds the
+optional prefab, and the HUD owns all instances. See `PASSIVES.md` for the contract.
+
+The layout below documents the retained PartyHUD layout; its replaced displays
+are hidden when GameplayHUD is installed.
+
 `Assets/Prefab/User Interface/PlayerUI_PartyHud.prefab` is an independent copy of
 PlayerUI. `DefaultPartySpawnConfig.asset` now loads this new prefab in the game.
 The original PlayerHUD child remains inactive in the copy to retain serialized

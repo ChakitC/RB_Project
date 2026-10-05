@@ -1,0 +1,6 @@
+{
+    "name": "PassiveComposition.PlayMode.Tests",
+    "references": [],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

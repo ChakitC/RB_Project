@@ -59,7 +59,7 @@ public sealed class UpgradeGatedStatusOnHitModule : ProjectileModule
         if (target is not Component targetComponent)
             return;
 
-        StatusEffectController controller = targetComponent.GetComponentInParent<StatusEffectController>();
+        StatusEffectController controller = CharacterContextModuleLookup.ResolveStatusEffects(targetComponent.gameObject);
         if (controller == null)
             return;
 

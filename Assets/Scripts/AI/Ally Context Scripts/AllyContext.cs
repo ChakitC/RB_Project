@@ -8,15 +8,14 @@ public class AllyContext : CharacteContext
 {
     [Header("NavMeshAgent")]
     
-    public AITargetSensor AITargetSensor;
     
     public NavMeshAgent  agent;
 
-    public AgentMoveDriver AgentMoveDriver;
 
     public BehaviorTree BehaviorTree;
 
     public AIAimTargetDriver AimTargetDriver;
+    public AllyInterruptionController InterruptionController;
 
     public override AITargetIdentity TargetIdentity => AITargetIdentity.Companion;
 
@@ -29,15 +28,12 @@ public class AllyContext : CharacteContext
     public override void ResolveReferences()
     {
         base.ResolveReferences();
+        InterruptionController = ResolveActorComponent(InterruptionController);
 
-        if (AITargetSensor == null)
-            AITargetSensor = global::AITargetSensor.ResolveFor(this);
 
         if (agent == null)
             agent = ResolveActorComponent(agent);
 
-        if (AgentMoveDriver == null)
-            AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
 
         if (BehaviorTree == null)
             BehaviorTree = ResolveActorComponent(BehaviorTree);

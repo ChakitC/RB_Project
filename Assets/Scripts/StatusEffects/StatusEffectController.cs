@@ -919,7 +919,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
         StatusEffectInstance instance,
         int newStacks)
     {
-        if (!PartyFollowUpFeatureGate.PublishersEnabled || instance == null || instance.Definition == null)
+        if (instance == null || instance.Definition == null)
             return;
 
         PassiveEventType factType;

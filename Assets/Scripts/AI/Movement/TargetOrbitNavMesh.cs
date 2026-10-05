@@ -15,6 +15,13 @@ public enum TargetOrbitDirection
 [Opsive.Shared.Utility.Description("Moves around a target inside a configurable radial band using NavMeshAgent.")]
 public class TargetOrbitNavMesh : Action
 {
+    public SharedVariable<CharacteContext> context;
+    [Tooltip("Optional graph-local P0 watchdog. Leave unbound for existing graphs.")]
+    public SharedVariable<AICombatState> combatState;
+    AICombatNavigation p0Navigation;
+    AITargetSensor p0Sensor;
+    AITargetHandle p0Target;
+    int rotationToken;
     const int PathProbeAttempts = 4;
     const float MinimumProbeAngle = 1f;
 
@@ -47,6 +54,8 @@ public class TargetOrbitNavMesh : Action
     NavMeshAgent _agent;
     AgentMoveDriver _moveDriver;
     CharacteContext _ctx;
+    int executionGeneration;
+    CharacterMovementMotor executionMotor;
     StateHub _stateHub;
     CharacterAnimBrain _animBrain;
     Transform _actorTransform;
@@ -73,6 +82,18 @@ public class TargetOrbitNavMesh : Action
         _configurationValid = ValidateConfiguration();
         if (!_configurationValid)
             return;
+
+        if (combatState != null && combatState.Value != null)
+        {
+            p0Sensor = _ctx.AITargetSensor;
+            p0Target = p0Sensor != null ? p0Sensor.ReadSnapshot.Target : default;
+            combatState.Value.ObserveTarget(p0Target);
+            combatState.Value.BeginNavigation("Orbit", p0Target, _actorTransform.position);
+            p0Navigation = new AICombatNavigation(_ctx, combatState.Value);
+            if (!AICombatTaskUtility.CanAct(_ctx)) { _configurationValid = false; return; }
+            if (faceTarget && _ctx.MovementMotor != null)
+                rotationToken = _ctx.MovementMotor.AcquireAgentSuspension(_agent, false, true);
+        }
 
         _cachedUpdateRotation = _agent.updateRotation;
         _cachedStoppingDistance = _agent.stoppingDistance;
@@ -104,11 +125,32 @@ public class TargetOrbitNavMesh : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, _ctx, executionGeneration) || _ctx.NavigationAgent != _agent) return TaskStatus.Failure;
         if (!_configurationValid)
             return TaskStatus.Failure;
 
         if (!CanUseAgent() || target == null || target.Value == null)
             return TaskStatus.Failure;
+
+        if (p0Navigation != null)
+        {
+            AITargetSnapshot s = p0Sensor != null ? p0Sensor.ReadSnapshot : AITargetSnapshot.Empty;
+            if (s.Target != p0Target || !s.IsCurrentVisible || !AICombatTaskUtility.IsEligible(_ctx, p0Target))
+                return TaskStatus.Failure;
+            if (!AICombatTaskUtility.CanAct(_ctx)) return TaskStatus.Failure;
+            if (AICombatTaskUtility.IsPaused || !AICombatTaskUtility.CanMove(_ctx))
+            {
+                p0Navigation.Tick(combatState.Value.Destination, .1f, false);
+                return TaskStatus.Running;
+            }
+            if (combatState.Value.NavigationFailure != null) return TaskStatus.Failure;
+            if (_agent.hasPath)
+            {
+                p0Navigation.TrackExisting(_agent.destination);
+                if (p0Navigation.Tick(_agent.destination, .1f, false) == TaskStatus.Failure)
+                    return TaskStatus.Failure;
+            }
+        }
 
         float deltaTime = GetActorDeltaTime();
         if (!CanControlMovement())
@@ -122,7 +164,10 @@ public class TargetOrbitNavMesh : Action
             PauseAgent();
             _pathFailureElapsed += deltaTime;
             if (_pathFailureElapsed >= pathFailureTimeout.Value)
+            {
+                combatState?.Value?.FailNavigation("Orbit path timeout");
                 return TaskStatus.Failure;
+            }
         }
         else
         {
@@ -139,12 +184,13 @@ public class TargetOrbitNavMesh : Action
         RotateTowardTarget(deltaTime);
 
         _repathElapsed += deltaTime;
+        float effectiveRepathInterval = p0Navigation != null ? Mathf.Max(.25f, repathInterval.Value) : repathInterval.Value;
         bool needsPath = !_agent.hasPath ||
                          _agent.pathStatus == NavMeshPathStatus.PathInvalid ||
-                         _repathElapsed >= repathInterval.Value;
+                         _repathElapsed >= effectiveRepathInterval;
 
         if (!needsPath ||
-            (_pathFailureActive && _repathElapsed < repathInterval.Value))
+            (_pathFailureActive && _repathElapsed < effectiveRepathInterval))
         {
             return TaskStatus.Running;
         }
@@ -177,6 +223,22 @@ public class TargetOrbitNavMesh : Action
 
     public override void OnEnd()
     {
+        if (_ctx == null || _ctx.LifeGeneration != executionGeneration) return;
+        if (p0Navigation != null)
+        {
+            p0Navigation.Cleanup();
+            if (rotationToken != 0 && executionMotor != null)
+                executionMotor.ReleaseAgentSuspension(rotationToken);
+            rotationToken = 0;
+            if (_agent != null && _agentStateCaptured && AICombatTaskUtility.CanAct(_ctx))
+                _agent.stoppingDistance = _cachedStoppingDistance;
+            if (_moveDriver != null && _speedOverrideToken != 0)
+                _moveDriver.ReleaseMoveSpeedOverride(_speedOverrideToken);
+            _speedOverrideToken = 0;
+            _agentStateCaptured = false;
+            p0Navigation = null;
+            return;
+        }
         if (_moveDriver != null && _speedOverrideToken != 0)
             _moveDriver.ReleaseMoveSpeedOverride(_speedOverrideToken);
 
@@ -218,33 +280,20 @@ public class TargetOrbitNavMesh : Action
 
     void CacheReferences()
     {
-        _ctx = gameObject.GetComponent<CharacteContext>();
-        if (_ctx == null)
-            _ctx = gameObject.GetComponentInParent<CharacteContext>();
-
-        _ctx?.ResolveReferences();
-
+        _ctx = AIContextBinding.Read(context);
+        executionGeneration = _ctx != null ? _ctx.LifeGeneration : 0;
+        executionMotor = _ctx != null ? _ctx.MovementMotor : null;
         _actorTransform = _ctx != null ? _ctx.transform : transform;
-
-        _agent = gameObject.GetComponent<NavMeshAgent>();
-        if (_agent == null)
-            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
-
-        _moveDriver = gameObject.GetComponent<AgentMoveDriver>();
-        if (_moveDriver == null)
-            _moveDriver = gameObject.GetComponentInParent<AgentMoveDriver>();
-
+        _agent = _ctx != null ? _ctx.NavigationAgent : null;
+        _moveDriver = _ctx != null ? _ctx.AgentMoveDriver : null;
         _stateHub = _ctx != null ? _ctx.stateHub : null;
-        if (_stateHub == null)
-            _stateHub = gameObject.GetComponentInParent<StateHub>();
-
         _animBrain = _ctx != null ? _ctx.AnimBrain : null;
-        if (_animBrain == null)
-            _animBrain = gameObject.GetComponentInParent<CharacterAnimBrain>();
     }
 
     void ResetRuntimeState()
     {
+        p0Navigation = null;
+        rotationToken = 0;
         _configurationValid = false;
         _agentStateCaptured = false;
         _pathFailureActive = false;
@@ -381,7 +430,7 @@ public class TargetOrbitNavMesh : Action
                     candidate,
                     out NavMeshHit hit,
                     sampleRadius,
-                    _agent.areaMask))
+                    new NavMeshQueryFilter { agentTypeID = _agent.agentTypeID, areaMask = _agent.areaMask }))
             {
                 continue;
             }
@@ -393,8 +442,14 @@ public class TargetOrbitNavMesh : Action
                 continue;
             }
 
+            if (p0Navigation != null && NavMesh.FindClosestEdge(hit.position, out NavMeshHit edge,
+                    new NavMeshQueryFilter { agentTypeID = _agent.agentTypeID, areaMask = _agent.areaMask }) && edge.distance < _agent.radius)
+                continue;
             if (_agent.SetPath(_probePath))
+            {
+                p0Navigation?.TrackExisting(hit.position);
                 return true;
+            }
         }
 
         return false;
@@ -425,12 +480,16 @@ public class TargetOrbitNavMesh : Action
 
     float GetActorDeltaTime()
     {
+        if (p0Navigation != null && AICombatTaskUtility.IsPaused) return 0f;
         bool usesWorldSlow = _ctx == null || _ctx.UsesWorldSlow;
         if (usesWorldSlow && TimeSlowManager.Instance != null)
             return TimeSlowManager.Instance.WorldDeltaTime;
 
         return Time.deltaTime;
     }
+
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
 
     void ApplyDirectSpeedOverride(float configuredMoveSpeed)
     {

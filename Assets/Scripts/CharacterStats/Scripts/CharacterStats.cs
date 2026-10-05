@@ -310,6 +310,11 @@ public class CharacterStats : ScriptableObject
     [PropertyOrder(-113)]
     [FoldoutGroup("Base Stats", Expanded = true), HorizontalGroup("Base Stats/Row 04"), LabelText("Move Speed")]
     public float speed = 4.5f;
+
+    [PropertyOrder(-112)]
+    [FoldoutGroup("Base Stats", Expanded = true), LabelText("Slide Stamina / Unit"), Min(0f)]
+    [Tooltip("Stamina spent per world unit of actual planar Slide movement. Zero makes Slide free.")]
+    public float slideStaminaPerUnit = 2f;
     
     [PropertyOrder(-100)]
     [FoldoutGroup("Base Stats Down", Expanded = false), LabelText("Down Move Speed")]

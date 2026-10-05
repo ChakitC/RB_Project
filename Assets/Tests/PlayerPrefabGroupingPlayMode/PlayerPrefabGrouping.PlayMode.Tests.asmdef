@@ -1,0 +1,6 @@
+{
+    "name": "PlayerPrefabGrouping.PlayMode.Tests",
+    "references": [],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

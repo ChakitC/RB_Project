@@ -6,6 +6,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 
 public class AiFaceTarget : Action
 {
+    public SharedVariable<CharacteContext> context;
     [Header("Target")]
     public SharedVariable<GameObject> target;
     [Tooltip("Optional model/pivot to rotate. Defaults to the task transform.")]
@@ -22,6 +23,9 @@ public class AiFaceTarget : Action
     public bool disableAgentAutoRotation = true;
 
     private CharacteContext _ctx;
+    int executionGeneration;
+    CharacterMovementMotor executionMotor;
+    int rotationToken;
     private NavMeshAgent _agent;
     private Transform _rotateTransform;
     private bool _cachedUpdateRotation;
@@ -31,37 +35,24 @@ public class AiFaceTarget : Action
 
     public override void OnStart()
     {
-        _ctx = CharacterContextModuleLookup.ResolveContext(gameObject);
-        if (_ctx != null && _ctx.stateHub == null)
-            _ctx.ResolveReferences();
+        _ctx = AIContextBinding.Read(context);
+        executionGeneration = _ctx != null ? _ctx.LifeGeneration : 0;
+        executionMotor = _ctx != null ? _ctx.MovementMotor : null;
+        rotationToken = 0;
 
         _rotateTransform = rotateRoot != null && rotateRoot.Value != null
             ? rotateRoot.Value.transform : transform;
 
-        _agent = null;
-        if (_ctx is AllyContext ally)
-            _agent = ally.agent;
-        else if (_ctx is EnemyContext enemy)
-            _agent = enemy.Agent;
-        else if (_ctx is SummonContext summon)
-            _agent = summon.Agent;
-
-        if (_agent == null)
-        {
-            GameObject owner = _ctx != null ? _ctx.gameObject : gameObject;
-            _agent = owner.GetComponent<NavMeshAgent>();
-            if (_agent == null)
-                _agent = owner.GetComponentInParent<NavMeshAgent>();
-            if (_agent == null)
-                _agent = owner.GetComponentInChildren<NavMeshAgent>(true);
-        }
+        _agent = _ctx != null ? _ctx.NavigationAgent : null;
 
         _changedUpdateRotation = false;
         _changedIsStopped = false;
-        if (_agent == null)
+        if (_agent == null || _ctx == null || _ctx.stateHub == null)
             return;
 
-        if (disableAgentAutoRotation)
+        if (disableAgentAutoRotation && executionMotor != null)
+            rotationToken = executionMotor.AcquireAgentSuspension(_agent, false, true);
+        else if (disableAgentAutoRotation)
         {
             _cachedUpdateRotation = _agent.updateRotation;
             _agent.updateRotation = false;
@@ -78,7 +69,7 @@ public class AiFaceTarget : Action
 
     public override TaskStatus OnUpdate()
     {
-        if (target == null || target.Value == null || _rotateTransform == null)
+        if (!AIContextBinding.IsCurrent(context, _ctx, executionGeneration) || target == null || target.Value == null || _rotateTransform == null)
             return TaskStatus.Failure;
 
         if (_ctx == null || _ctx.stateHub == null || !_ctx.stateHub.CanRotate())
@@ -111,6 +102,9 @@ public class AiFaceTarget : Action
 
     public override void OnEnd()
     {
+        if (_ctx == null || _ctx.LifeGeneration != executionGeneration) return;
+        if (rotationToken != 0 && executionMotor != null) executionMotor.ReleaseAgentSuspension(rotationToken);
+        rotationToken = 0;
         if (_agent != null)
         {
             if (_changedUpdateRotation)
@@ -121,6 +115,9 @@ public class AiFaceTarget : Action
         _changedUpdateRotation = false;
         _changedIsStopped = false;
     }
+
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
 
     public override void Reset()
     {

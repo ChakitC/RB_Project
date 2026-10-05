@@ -43,6 +43,8 @@ public sealed class CombatEventBus : MonoBehaviour
         return unchecked((ulong)Interlocked.Increment(ref _nextFactId));
     }
 
+    public static ulong NextAttackExecutionId() => unchecked((ulong)Interlocked.Increment(ref _nextAttackId));
+
     public string CreateAttackId(string prefix = null)
     {
         long id = Interlocked.Increment(ref _nextAttackId);

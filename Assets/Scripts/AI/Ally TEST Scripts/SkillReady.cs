@@ -1,3 +1,4 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
 using UnityEngine;
@@ -7,20 +8,18 @@ using UnityEngine;
 /// </summary>
 public class SkillReady : ConditionalNode
 {
+    public SharedVariable<CharacteContext> context;
     [SerializeField, Min(0)] int SlotIndex;
 
     private CharacteContext ctx;
 
     public override TaskStatus OnUpdate()
     {
-        if (ctx == null)
-            ctx = gameObject.GetComponentInParent<CharacteContext>();
+        ctx = AIContextBinding.Read(context);
 
         if (ctx == null)
             return TaskStatus.Failure;
 
-        if (ctx.SkillManager == null)
-            ctx.ResolveReferences();
 
         return ctx.SkillManager != null && ctx.SkillManager.CanStartCastSlot(SlotIndex)
             ? TaskStatus.Success

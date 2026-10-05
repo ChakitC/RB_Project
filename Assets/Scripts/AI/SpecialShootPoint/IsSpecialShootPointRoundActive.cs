@@ -1,3 +1,4 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
 
@@ -13,6 +14,7 @@ using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
     "cooldown, disabled, or when this enemy has no Special Shoot Point controller.")]
 public class IsSpecialShootPointRoundActive : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     private SpecialShootPointController controller;
 
     public override void OnStart()
@@ -42,10 +44,7 @@ public class IsSpecialShootPointRoundActive : Conditional
 
     void CacheReferences()
     {
-        if (controller != null)
-            return;
-
-        controller = SpecialShootPointTaskUtility.Resolve(gameObject);
+        controller = SpecialShootPointTaskUtility.Resolve(AIContextBinding.Read(context));
     }
 
     public override void Reset()

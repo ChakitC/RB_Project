@@ -1,0 +1,640 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8060093984466642607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 147aa88ef4e8d6448a827dc4dd272d15, type: 3}
+  m_Name: Regen To Maximum
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: ratio
+    kind: 0
+    number: 4
+    status: {fileID: 0}
+  variables: []
+  steps:
+  - rid: 3342399495413957127
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957127
+      type: {class: PassiveConversionStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: convert
+        source: 20
+        destination: 12
+        fraction:
+          source: 0
+          value: 1
+          reference: 
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        ratio:
+          source: 1
+          value: 0
+          reference: ratio
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+--- !u!114 &-729455128634228935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Roma Recipe
+  m_EditorClassIdentifier: 
+  variables:
+  - id: momentum
+    initial: 0
+    maximum: 100
+  rules:
+  - id: perfect-dash
+    trigger: 0
+    eventType: 6
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 2
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957128
+  - id: conversion
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957129
+  - id: missing-stamina
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957130
+  - id: momentum-ready
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957131
+  - id: momentum-spent
+    trigger: 2
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957132
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957128
+      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: restore
+        fragment: {fileID: 6556558672849175701}
+        overrides: []
+        bindings: []
+    - rid: 3342399495413957129
+      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: conversion
+        fragment: {fileID: -8060093984466642607}
+        overrides: []
+        bindings: []
+    - rid: 3342399495413957130
+      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: damage
+        fragment: {fileID: 5402757226293991048}
+        overrides: []
+        bindings: []
+    - rid: 3342399495413957131
+      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: register
+        fragment: {fileID: 1618523407950004941}
+        overrides: []
+        bindings:
+        - local: charge
+          parent: momentum
+    - rid: 3342399495413957132
+      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: accumulate
+        fragment: {fileID: 1618523407950004941}
+        overrides: []
+        bindings:
+        - local: charge
+          parent: momentum
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977e63054233f2041b66a0125929398e, type: 3}
+  m_Name: RomaStaminaMomentum
+  m_EditorClassIdentifier: 
+  passiveId: test.roma.stamina-momentum
+  icon: {fileID: 0}
+  description: Test parameters, not a production loadout.
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: -729455128634228935}
+  definitionId: 46055af563ea58c46ac6b2cc51200348
+--- !u!114 &1618523407950004941
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 147aa88ef4e8d6448a827dc4dd272d15, type: 3}
+  m_Name: Spent Stamina Momentum
+  m_EditorClassIdentifier: 
+  parameters: []
+  variables:
+  - id: charge
+    initial: 0
+    maximum: 100
+  steps:
+  - rid: 3342399495413957133
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957133
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: mode
+        condition:
+          kind: 11
+          eventTarget: 0
+          eventType: 14
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          status: {fileID: 0}
+          minimumStacks: 1
+          children: []
+        whenTrue:
+        - rid: 3342399495413957134
+        whenFalse:
+        - rid: 3342399495413957135
+    - rid: 3342399495413957134
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: add
+        variable: charge
+        operation: 0
+        amount:
+          source: 2
+          value: 0
+          reference: 
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957135
+      type: {class: PassiveNextAttackStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: next-attack
+        variable: charge
+        damagePercentPerUnit:
+          source: 0
+          value: 2
+          reference: 
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+--- !u!114 &5402757226293991048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 147aa88ef4e8d6448a827dc4dd272d15, type: 3}
+  m_Name: Missing Stamina Damage
+  m_EditorClassIdentifier: 
+  parameters: []
+  variables: []
+  steps:
+  - rid: 3342399495413957136
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957136
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: damage
+        condition:
+          kind: 5
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          status: {fileID: 0}
+          minimumStacks: 1
+          children: []
+        stat: 0
+        operation: 1
+        value:
+          source: 4
+          value: 0
+          reference: 
+          multiply: 50
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+--- !u!114 &6556558672849175701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 147aa88ef4e8d6448a827dc4dd272d15, type: 3}
+  m_Name: Perfect Dash Restore
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: amount
+    kind: 0
+    number: 10
+    status: {fileID: 0}
+  variables: []
+  steps:
+  - rid: 3342399495413957137
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957137
+      type: {class: PassiveResourceStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: restore
+        operation: 0
+        target:
+          mode: 0
+          filter: 0
+          radius: 5
+        amount:
+          source: 1
+          value: 0
+          reference: amount
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        percentOfMaximum: 0

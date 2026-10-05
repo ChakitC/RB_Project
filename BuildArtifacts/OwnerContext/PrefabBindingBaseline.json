@@ -1,0 +1,248 @@
+[
+  {
+    "path": "Assets/Prefab/AI Ally/Ally.prefab",
+    "expectedBefore": {
+      "driver": null,
+      "sensor": null,
+      "path": "Assets/Prefab/AI Ally/Ally.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/AI Ally/Ally.prefab",
+      "owner": "Ally",
+      "type": "AllyContext",
+      "sensor": null,
+      "driver": null,
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        0,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab",
+    "expectedBefore": {
+      "driver": "Movement_System",
+      "path": "Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab",
+      "owner": "Enemy_B_GR_01 Variant",
+      "type": "EnemyContext",
+      "sensor": null,
+      "driver": "Movement_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_Base.prefab",
+    "expectedBefore": {
+      "driver": "Movement_System",
+      "path": "Assets/Prefab/GameEnemy/Enemy_Base.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/GameEnemy/Enemy_Base.prefab",
+      "owner": "Enemy_Base",
+      "type": "EnemyContext",
+      "sensor": null,
+      "driver": "Movement_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab",
+    "expectedBefore": {
+      "driver": "Movement_System",
+      "path": "Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab",
+      "owner": "Enemy_E_GR_01 Variant",
+      "type": "EnemyContext",
+      "sensor": null,
+      "driver": "Movement_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_01 Variant.prefab",
+    "expectedBefore": {
+      "driver": "Movement_System",
+      "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_01 Variant.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_01 Variant.prefab",
+      "owner": "Enemy_M_GR_01 Variant",
+      "type": "EnemyContext",
+      "sensor": null,
+      "driver": "Movement_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_02 Variant.prefab",
+    "expectedBefore": {
+      "driver": "Movement_System",
+      "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_02 Variant.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/GameEnemy/Enemy_M_GR_02 Variant.prefab",
+      "owner": "Enemy_M_GR_02 Variant",
+      "type": "EnemyContext",
+      "sensor": null,
+      "driver": "Movement_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/Player/Ally_Helper.prefab",
+    "expectedBefore": {
+      "driver": "MoveMent_System",
+      "sensor": "AI System",
+      "path": "Assets/Prefab/Player/Ally_Helper.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/Player/Ally_Helper.prefab",
+      "owner": "Ally_Helper",
+      "type": "AllyContext",
+      "sensor": "AI System",
+      "driver": "MoveMent_System",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/Player/Ally_Stryker.prefab",
+    "expectedBefore": {
+      "driver": "MoveMent_System ",
+      "sensor": "AI System",
+      "path": "Assets/Prefab/Player/Ally_Stryker.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/Player/Ally_Stryker.prefab",
+      "owner": "Ally_Stryker",
+      "type": "AllyContext",
+      "sensor": "AI System",
+      "driver": "MoveMent_System ",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/Player/MinigunTerret_Summon.prefab",
+    "expectedBefore": {
+      "driver": "MoveMent_System ",
+      "sensor": "AI System",
+      "path": "Assets/Prefab/Player/MinigunTerret_Summon.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/Player/MinigunTerret_Summon.prefab",
+      "owner": "MinigunTerret_Summon",
+      "type": "SummonContext",
+      "sensor": "AI System",
+      "driver": "MoveMent_System ",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        1
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/Player/Player.prefab",
+    "expectedBefore": {
+      "path": "Assets/Prefab/Player/Player.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/Player/Player.prefab",
+      "owner": "Player",
+      "type": "PlayerContext",
+      "sensor": null,
+      "driver": null,
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        0,
+        0,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  },
+  {
+    "path": "Assets/Prefab/Player/SummonBase.prefab",
+    "expectedBefore": {
+      "driver": "MoveMent_System ",
+      "sensor": "AI System",
+      "path": "Assets/Prefab/Player/SummonBase.prefab"
+    },
+    "after": {
+      "path": "Assets/Prefab/Player/SummonBase.prefab",
+      "owner": "SummonBase",
+      "type": "SummonContext",
+      "sensor": "AI System",
+      "driver": "MoveMent_System ",
+      "aim": null,
+      "declared": "CharacteContext",
+      "ambiguous": [
+        1,
+        1,
+        0
+      ]
+    },
+    "bindingsMatch": true
+  }
+]

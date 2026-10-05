@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -25,9 +25,13 @@ public class DashSystem : MonoBehaviour
     int _dashInvincibilityToken;
     int _perfectDodgeSlowHandle;
     bool _perfectDodgeTriggeredThisDash;
+    public ulong ExecutionId { get; private set; }
     readonly HashSet<string> _consumedPerfectDodgeAttackIds = new();
     readonly Collider[] _perfectDodgeThreatHits = new Collider[24];
     Vector3 _lastDashDirection = Vector3.forward;
+    Vector3 _planarVelocity;
+    Vector3 _velocityPosition;
+    int _velocityFrame = -10;
 
     Coroutine _dashRoutine;
     Coroutine _invincibleRoutine;
@@ -35,11 +39,20 @@ public class DashSystem : MonoBehaviour
     int _nextExternalCollisionIgnoreToken = 1;
 
     public bool IsDashing => isDashing;
+    public bool TryGetPlanarVelocity(out Vector3 velocity)
+    {
+        velocity = _planarVelocity;
+        return isDashing && Time.frameCount - _velocityFrame <= 1 &&
+            Vector3.ProjectOnPlane(ActorRoot.position - _velocityPosition, Vector3.up).sqrMagnitude <= 0.01f;
+    }
     public event Action ActivityChanged;
+    public event Action<Vector3> DashCompleted;
+    public event Action DashCanceled;
     void SetDashing(bool value)
     {
         if (isDashing == value) return;
         isDashing = value;
+        if (!value) { _planarVelocity = Vector3.zero; _velocityFrame = -10; }
         ActivityChanged?.Invoke();
     }
     public bool IsPerfectDodgeWindowActive =>
@@ -91,6 +104,7 @@ public class DashSystem : MonoBehaviour
 
     void OnDisable()
     {
+        DashCanceled?.Invoke();
         if (_dashRoutine != null)
         {
             StopCoroutine(_dashRoutine);
@@ -153,6 +167,7 @@ public class DashSystem : MonoBehaviour
 
     public void CancelDash()
     {
+        DashCanceled?.Invoke();
         if (_dashRoutine != null)
         {
             StopCoroutine(_dashRoutine);
@@ -177,6 +192,8 @@ public class DashSystem : MonoBehaviour
     {
         if (ctx == null || ctx.stateHub == null || ctx.cc == null || ctx.StaminaSystem == null || isDashing || ctx.stateHub.Isdown)
             return false;
+
+        if (!ctx.CanStandForDash()) return false;
 
         if (dashSetting == null)
         {
@@ -235,14 +252,19 @@ public class DashSystem : MonoBehaviour
         if (!ctx.StaminaSystem.Spend(dashSetting.dashCost))
             return false;
 
+        ctx.PrepareForAcceptedDash();
+
         if (!ShouldUseBackwardDashAnimation(dashDirLocalBeforeTurn))
             FaceDashDirection(dashDir);
         StartDashIframe();
         _consumedPerfectDodgeAttackIds.Clear();
         _perfectDodgeTriggeredThisDash = false;
+        ExecutionId = CombatEventBus.NextAttackExecutionId();
         _perfectDodgeWindowRemaining = ResolvePerfectDodgeWindow();
 
         isDashing = true;
+        _planarVelocity = Vector3.zero;
+        _velocityFrame = -10;
         _dashRoutine = StartCoroutine(DashRoutine(dashDir, maxDist));
         ActivityChanged?.Invoke();
         ctx.stateHub?.ReportDashStarted(dashSetting.dashDuration, dashDir);
@@ -275,7 +297,8 @@ public class DashSystem : MonoBehaviour
                 preventedContext.Value,
                 preventedContext.Origin,
                 preventedContext.OriginPassiveId,
-                preventedContext.OriginRuleId);
+                preventedContext.OriginRuleId,
+                metadata: preventedContext.Metadata.WithDashExecution(ExecutionId));
 
             combatEventBus.Publish(dodgeContext);
         }
@@ -299,7 +322,10 @@ public class DashSystem : MonoBehaviour
             if (_perfectDodgeWindowRemaining > 0f)
                 _perfectDodgeWindowRemaining = Mathf.Max(0f, _perfectDodgeWindowRemaining - dt);
 
-            ctx.MovementMotor.Move(dir * speed * dt, CharacterMovementSettings.Default);
+            Vector3 applied = ctx.MovementMotor.Move(dir * speed * dt, CharacterMovementSettings.Default);
+            _planarVelocity = dt > 0f ? Vector3.ProjectOnPlane(applied, Vector3.up) / dt : Vector3.zero;
+            _velocityFrame = Time.frameCount;
+            _velocityPosition = ActorRoot.position;
             t += dt;
             yield return null;
         }
@@ -309,6 +335,7 @@ public class DashSystem : MonoBehaviour
         _dashRoutine = null;
         SetDashing(false);
         PublishDashEvent(PassiveEventType.DashEnded, 0f);
+        DashCompleted?.Invoke(dir);
     }
 
     IEnumerator InvincibleTimer(float time)

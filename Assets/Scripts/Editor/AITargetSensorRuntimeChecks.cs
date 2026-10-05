@@ -1,3 +1,4 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -82,6 +83,7 @@ public sealed class AITargetSensorRuntimeChecks
 
         var blackboard = new HasEnemyFromSensor
         {
+            context = new SharedVariable<CharacteContext> { Name = "Ctx", Scope = SharedVariable.SharingScope.Graph, Value = enemy },
             currentEnemy = new Opsive.GraphDesigner.Runtime.Variables.SharedVariable<GameObject>(),
             InCombat = new Opsive.GraphDesigner.Runtime.Variables.SharedVariable<bool>()
         };

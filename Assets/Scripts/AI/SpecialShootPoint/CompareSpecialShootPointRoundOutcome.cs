@@ -1,3 +1,4 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
 
@@ -19,6 +20,7 @@ using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
     "from an earlier activation never reports Success.")]
 public class CompareSpecialShootPointRoundOutcome : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     [UnityEngine.Tooltip("Outcome this task reports Success for.")]
     public SpecialShootPointOutcome expectedOutcome = SpecialShootPointOutcome.Succeeded;
 
@@ -69,10 +71,7 @@ public class CompareSpecialShootPointRoundOutcome : Conditional
 
     void CacheReferences()
     {
-        if (controller != null)
-            return;
-
-        controller = SpecialShootPointTaskUtility.Resolve(gameObject);
+        controller = SpecialShootPointTaskUtility.Resolve(AIContextBinding.Read(context));
     }
 
     public override void Reset()

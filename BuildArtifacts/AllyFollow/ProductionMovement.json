@@ -1,0 +1,108 @@
+{
+  "start": {
+    "playerBefore": "(-0.02, 0.07, -0.30)",
+    "playerAfter": "(4.39, 0.07, 1.19)",
+    "sampled": true,
+    "time": 60.8699646,
+    "allies": [
+      {
+        "name": "Ally 2",
+        "index": 2,
+        "position": "(0.90, 0.01, 1.50)",
+        "tree": "AllyAI",
+        "ctx": "Ally 2",
+        "playerTarget": "Player",
+        "stopped": false,
+        "inCombat": false,
+        "velocity": "(0.00, 0.00, 0.00)"
+      },
+      {
+        "name": "Ally 1",
+        "index": 1,
+        "position": "(-0.90, 0.01, 1.50)",
+        "tree": "Aires_Behavior",
+        "ctx": "Ally 1",
+        "playerTarget": "Player",
+        "stopped": false,
+        "inCombat": false,
+        "velocity": "(0.00, 0.00, 0.00)"
+      }
+    ]
+  },
+  "distant": {
+    "player": "(8.61, 0.07, 1.17)",
+    "time": 108.696938,
+    "allies": [
+      {
+        "name": "Ally 2",
+        "position": "(5.71, -0.79, 1.18)",
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(5.71, -0.79, 1.18)",
+        "stopped": true,
+        "path": "PathComplete",
+        "hasPath": false,
+        "remaining": 0,
+        "ctx": "Ally 2",
+        "inCombat": false
+      },
+      {
+        "name": "Ally 1",
+        "position": "(6.81, -0.79, 1.18)",
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(6.81, -0.79, 1.18)",
+        "stopped": true,
+        "path": "PathComplete",
+        "hasPath": false,
+        "remaining": 0,
+        "ctx": "Ally 1",
+        "inCombat": false
+      }
+    ]
+  },
+  "returnStart": {
+    "player": "(-0.02, 0.07, -0.30)",
+    "time": 138.890121,
+    "allies": [
+      {
+        "name": "Ally 2",
+        "position": "(5.71, -0.79, 1.18)",
+        "ctx": "Ally 2"
+      },
+      {
+        "name": "Ally 1",
+        "position": "(6.81, -0.79, 1.18)",
+        "ctx": "Ally 1"
+      }
+    ]
+  },
+  "returnEnd": {
+    "scene": "MapRun",
+    "config": "Test Stage 03 Map Run Config",
+    "playing": true,
+    "paused": false,
+    "player": "(-0.02, 0.07, -0.30)",
+    "time": 164.398926,
+    "allies": [
+      {
+        "name": "Ally 2",
+        "position": "(1.50, 0.01, 1.48)",
+        "ctx": "Ally 2",
+        "playerTarget": "Player",
+        "tree": "AllyAI",
+        "inCombat": false,
+        "stopped": true,
+        "velocity": "(0.00, 0.00, 0.00)"
+      },
+      {
+        "name": "Ally 1",
+        "position": "(2.01, 0.01, -1.48)",
+        "ctx": "Ally 1",
+        "playerTarget": "Player",
+        "tree": "Aires_Behavior",
+        "inCombat": false,
+        "stopped": true,
+        "velocity": "(0.00, 0.00, 0.00)"
+      }
+    ]
+  }
+}

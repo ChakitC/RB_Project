@@ -9,27 +9,8 @@ using UnityEngine;
 /// </summary>
 public static class SpecialShootPointTaskUtility
 {
-    public static SpecialShootPointController Resolve(GameObject taskOwner)
+    public static SpecialShootPointController Resolve(CharacteContext context)
     {
-        if (taskOwner == null)
-            return null;
-
-        EnemyContext ctx = taskOwner.GetComponent<EnemyContext>();
-        if (ctx == null)
-            ctx = taskOwner.GetComponentInParent<EnemyContext>();
-
-        if (ctx != null)
-        {
-            ctx.ResolveReferences();
-            if (ctx.SpecialShootPoints != null)
-                return ctx.SpecialShootPoints;
-        }
-
-        // Compatibility fallback only, for a tree placed on an object with no resolvable context.
-        SpecialShootPointController controller = taskOwner.GetComponent<SpecialShootPointController>();
-        if (controller == null)
-            controller = taskOwner.GetComponentInParent<SpecialShootPointController>();
-
-        return controller;
+        return (context as EnemyContext)?.SpecialShootPoints;
     }
 }

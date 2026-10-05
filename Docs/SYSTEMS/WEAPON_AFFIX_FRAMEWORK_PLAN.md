@@ -1,6 +1,21 @@
 # Weapon Affix Framework Implementation Plan
 
-Last updated: 2026-08-03
+Last updated: 2026-10-05
+
+## Shared passive engine revision
+
+The separate runtime architecture below is historical. Weapon affixes now grant
+composed PassiveDefinition recipes to the same PassiveController used by character
+and accessory passives. All 27 definitions were migrated in place. Equipment still
+owns rolling/equip/ammo/save, while recipes own effects, gates and grant-local state.
+Only explicitly persistent variables use the weapon-instance store. The former
+configured runtime evaluator is removed; its ScriptableObject is retained as
+serialized migration data. See PASSIVES.md and WEAPON_SYSTEM.md for current APIs.
+
+The initial proof covered static Damage, Reload Damage, Fresh Chamber and Echo
+before production migration. Primary-spawn confirmation now controls charge and
+counter consumption. Current validation and remaining runtime/performance limits
+are recorded in Docs/VALIDATION.md; the older counts below are historical.
 
 ## Progress Tracker
 

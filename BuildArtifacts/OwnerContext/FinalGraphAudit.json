@@ -1,0 +1,121 @@
+{
+  "graphs": [
+    {
+      "path": "Assets/Character/Rector/RectorAI.asset",
+      "assetGuid": "6069d4533fb9e3e4d8d77755dafe7f8b",
+      "nodes": 14,
+      "consumers": 6,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/Aires_Behavior.asset",
+      "assetGuid": "224b81e7f00d0194ab44ec4f269ccaa1",
+      "nodes": 20,
+      "consumers": 10,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/AllyAI.asset",
+      "assetGuid": "20d97805b04b36542b00ff18b8250283",
+      "nodes": 16,
+      "consumers": 8,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/Enemy_M_GR_01_PatrolOrbitShoot.asset",
+      "assetGuid": "00121cc81c970b148a4f454934ec4db0",
+      "nodes": 36,
+      "consumers": 24,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/EnemyAI.asset",
+      "assetGuid": "e16086bacfc17814bab94f3575e1e92e",
+      "nodes": 19,
+      "consumers": 7,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/MineAllyAI.asset",
+      "assetGuid": "a68aeee518397c34db65a1ae8815f1da",
+      "nodes": 27,
+      "consumers": 8,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Scripts/AI/MinigunTerretAI.asset",
+      "assetGuid": "c9e793a309a06d948a131c8d96e333e4",
+      "nodes": 10,
+      "consumers": 5,
+      "ctxDeclared": true,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    }
+  ],
+  "inline": [
+    {
+      "path": "Assets/Prefab/AI Ally/Ally.prefab",
+      "nodes": 27,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab",
+      "nodes": 50,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab",
+      "nodes": 29,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    },
+    {
+      "path": "Assets/Tests/DefensiveBlock/Rector.Test.prefab",
+      "nodes": 37,
+      "scope": "Graph",
+      "defaultNull": true,
+      "exposed": true,
+      "errors": []
+    }
+  ],
+  "scenePreviewValidationPassed": true,
+  "scenes": 96,
+  "compiling": false,
+  "scriptCompilationFailed": false,
+  "activeScene": "Assets/Tests/DefensiveBlock/RectorDefensiveBlock.unity",
+  "tempFixtureExists": false
+}

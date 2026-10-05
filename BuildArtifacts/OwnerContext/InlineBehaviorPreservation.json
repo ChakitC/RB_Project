@@ -1,0 +1,30 @@
+[
+  {
+    "path": "Assets/Prefab/AI Ally/Ally.prefab",
+    "original": 25,
+    "current": 27,
+    "issues": [],
+    "validation": []
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_B_GR_01 Variant.prefab",
+    "original": 48,
+    "current": 50,
+    "issues": [],
+    "validation": []
+  },
+  {
+    "path": "Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab",
+    "original": 27,
+    "current": 29,
+    "issues": [],
+    "validation": []
+  },
+  {
+    "path": "Assets/Tests/DefensiveBlock/Rector.Test.prefab",
+    "original": 35,
+    "current": 37,
+    "issues": [],
+    "validation": []
+  }
+]

@@ -9,6 +9,8 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [Opsive.Shared.Utility.Description("เดินสุ่มรอบ ๆ Player ด้วย NavMeshAgent ถ้า Player หนีไกลเกิน followMax จะหยุดและ Fail")]
 public class RandomMoveAroundPlayerNavMesh : Action
 {
+    public SharedVariable<CharacteContext> context;
+    public SharedVariable<bool> InCombat;
     [Tooltip("ตัวแปร Taget ที่แชร์ใน Behavior Tree")]
     public SharedVariable<GameObject> Taget;
 
@@ -25,6 +27,8 @@ public class RandomMoveAroundPlayerNavMesh : Action
     public SharedVariable<float> waitTime;
 
     private NavMeshAgent _agent;
+    CharacteContext executionContext;
+    int executionGeneration;
     private Vector3 _currentTarget;
     private readonly PartyFormationFollowRuntime _formationRuntime = new();
 
@@ -34,18 +38,11 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override void OnStart()
     {
-        if (_formationRuntime.TryBegin(gameObject, Taget != null ? Taget.Value : null))
+        executionContext = AIContextBinding.Read(context);
+        executionGeneration = executionContext != null ? executionContext.LifeGeneration : 0;
+        _agent = executionContext != null ? executionContext.NavigationAgent : null;
+        if (_formationRuntime.TryBegin(AIContextBinding.Read(context), Taget != null ? Taget.Value : null, InCombat))
             return;
-
-        if (_agent == null)
-        {
-            _agent = GetComponent<NavMeshAgent>();
-            
-            if (_agent == null)
-            {
-                _agent = gameObject.GetComponentInParent<NavMeshAgent>();
-            }
-        }
 
         if (_agent != null && stopDistance != null)
         {
@@ -61,10 +58,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     private void PickNewDestination()
     {
-        if (Taget == null || Taget.Value == null || _agent == null)
-        {
-            
-        }
+        if (Taget == null || Taget.Value == null || _agent == null || !_agent.isActiveAndEnabled || !_agent.isOnNavMesh) return;
         
         Transform playerTransform = Taget.Value.transform;
         Vector3 playerPos = playerTransform.position;
@@ -92,9 +86,10 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, executionContext, executionGeneration) || executionContext.NavigationAgent != _agent) return TaskStatus.Failure;
         if (_formationRuntime.TryTick(
-                gameObject,
-                Taget != null ? Taget.Value : null,
+                AIContextBinding.Read(context),
+                Taget != null ? Taget.Value : null, InCombat,
                 out TaskStatus formationStatus))
         {
             return formationStatus;
@@ -171,6 +166,7 @@ public class RandomMoveAroundPlayerNavMesh : Action
 
     public override void OnEnd()
     {
+        if (executionContext == null || executionContext.LifeGeneration != executionGeneration) { _formationRuntime.End(); return; }
         if (_formationRuntime.IsAvailable)
         {
             _formationRuntime.End();

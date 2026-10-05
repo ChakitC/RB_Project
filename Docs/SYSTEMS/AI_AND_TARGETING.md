@@ -1,4 +1,64 @@
 # AI And Targeting
+## Owner Context in Behavior Trees
+
+Declare a Graph-scoped `SharedVariable<CharacteContext>` named `Ctx`, default null.
+Bind every owner-consuming custom Task's `context` field to this variable, including
+Tasks nested in Stacked Action/Conditional. A repeating graph begins with:
+
+```text
+Repeater
+  Sequence
+    InitializeAIContext -> Ctx
+    Existing AI behavior
+```
+
+`InitializeAIContext` alone discovers the owner through
+`CharacterContextModuleLookup.ResolveContext` and prepares its common references.
+It caches the owner and `LifeGeneration`: ordinary repeats and pause/resume keep
+the prepared owner; full restart and a pooled new life prepare it again. Missing
+owner or invalid binding clears the output, fails the branch, and logs one error
+per initializer instance. Initialization does not require navigation, shooting,
+or skill modules that a particular actor does not use.
+
+Consumers validate with `AIContextBinding.Read` without owner hierarchy lookup.
+Missing Ctx or a required module returns Failure. Target/player/point lookups keep
+their separate meanings. Common owner peers come from `ctx.stateHub`,
+`NavigationAgent`, `MovementMotor`, `WeaponSystem`, `SkillManager`, `AITargetSensor`,
+`AgentMoveDriver` and `AimAxisDriver`; Enemy SpecialShootPoints and Ally
+InterruptionController remain subtype references. Formation Tasks also bind their
+`InCombat` field directly, rather than finding a BehaviorTree/container at runtime.
+
+Consumer Awake/tree-start callbacks tolerate an unset Ctx. Sensor and life-state
+events attach after Ctx is available and rebind without duplicates when peers
+change. Actions retain their execution context, modules and generation for cleanup;
+a previous pooled lifetime cannot stop fire or restore navigation on a new one.
+`CanAct` creates/reset CombatState on first valid activation after tree start or
+life change; ordinary conditional evaluation does not replace the state.
+
+Use exposed Graph variables for nested Subtree references. Add the native variable
+override from the child's `Ctx` to the parent's Graph `Ctx`; do not move Ctx to
+GameObject/Scene/Project scope. Each actor referencing one Subtree asset still has
+its own runtime context. See [Opsive scope](https://opsive.com/support/documentation/behavior-designer-pro/variables/scope/)
+and [Subtree overrides](https://opsive.com/support/documentation/behavior-designer-pro/subtrees/).
+
+**Tools > RB > AI > Migrate Owner Context** explicitly migrates Subtrees, inline
+prefab trees and scene trees, preserving existing nodes/GUIDs and behavior settings.
+**Validate Owner Context** checks declaration type/scope, consumer bindings and
+paths that can run consumers before initialization. Reopen after saving and verify
+the same node count, GUIDs and bindings; the installed Opsive IGraph setter needs
+an array whose runtime type is `ITreeLogicNode[]`.
+
+Keep the initializer to the **left** of its sibling behavior. Graph Designer uses
+horizontal placement to update sibling execution order during editing/saving; an
+initializer to the right can run after CanAct, leaving Ctx null and failing the
+autonomy branch. Migration now repairs an existing initialization Sequence without
+rebuilding its behavior nodes, and validation rejects unsafe horizontal placement.
+
+This order also applies to the legacy `Aires_Behavior` and `AllyAI` graphs. Their
+non-combat follow branch starts when the planar player distance exceeds the Graph
+`followMax` (currently 5), then follows the party formation slot. A nearby idle ally
+is expected; a distant ally with null Ctx must have its initialization order
+repaired and saved outside Play Mode before restarting the runtime tree.
 
 Defensive Block can expose several authored windows per skill request. Incoming
 threat selection still uses the current attack direction/range and safe placement;
@@ -587,15 +647,17 @@ ends or is aborted.
 ### Enemy M_GR_01 Patrol-Orbit-Shoot Tree
 
 `Assets\Scripts\AI\Enemy_M_GR_01_PatrolOrbitShoot.asset` is assigned to the
-`BehaviorTree` on `Assets\Prefab\Enemy\Enemy_M_GR_01 Variant.prefab`.
-Its repeating selector gives combat higher priority than patrol:
+`BehaviorTree` on `Assets\Prefab\GameEnemy\Enemy_M_GR_01 Variant.prefab`.
+The P0 graph retains its existing asset GUID and repeats these priorities:
 
 1. `HasEnemyFromSensor` writes the sensor's retained target to the graph-scoped
    `CurrentTarget` variable. Brief line-of-sight interruptions use the targeting
    profile's grace period instead of dropping combat immediately. This
    variant's sensor scans the `Player` and `Ally` layers, so companions are
    valid targets and compete with the player through normal scoring.
-2. `TargetOrbitNavMesh` moves into a 5-7 m radial band and orbits for 2.5
+2. `MoveToCombatRange` approaches or retreats into 5-7 m with 0.5 m hysteresis;
+   `IsCurrentTargetVisible` permits `TargetOrbitNavMesh` only while the selected
+   actor is actually visible. It orbits for 2.5
    active-world seconds while facing the target. It replans every 0.25 seconds,
    keeps a valid current path when a periodic probe misses, and uses a 3-second
    path-failure timeout so the orbit phase can still finish before firing.
@@ -603,14 +665,58 @@ Its repeating selector gives combat higher priority than patrol:
    fires for 1.5 seconds, and waits for 0.75 seconds before the combat cycle
    reevaluates. It temporarily disables `NavMeshAgent` automatic rotation and
    restores the previous setting when the task ends.
-4. When there is no visible target, `Patrol` selects random NavMesh points
+4. Lost sight first permits repositioning using `Snapshot.AimPosition` during
+   grace. After selection expires, a fresh last-seen observation is investigated
+   and searched once. When search is complete, `Patrol` selects random NavMesh points
    within 6 m of the locked spawn-area center and waits 1 second at each point.
 
-The selector uses a lower-priority conditional abort, so acquiring a visible
-target interrupts patrol immediately. Losing sight keeps the current combat
-branch active during the sensor grace period; invalid targets or expired target
-memory return the actor to patrol. Movement speed remains owned by the character
-movement system because the orbit action's `moveSpeed` is zero.
+`CanAct` guards the complete autonomy branch with Both aborts. Recovery precedes
+Combat; Combat uses Both aborts for target validity and admission, and the visible
+orbit branch uses Self aborts for sight loss. Shooting readiness is not a branch
+abort condition: the reload cycle can finish. Search yields to higher-priority
+Combat. A 0.5 s actor-clock wait limits repeated failed position probes. Movement
+speed stays with `AgentMoveDriver`; the example's `moveSpeed` remains zero.
+
+### P0 task contracts
+
+Each task is authored separately under `Assets/Scripts/AI/CombatP0`. Enemy and
+Ally share context-based references and the existing Sensor; no Tactical Pack or
+`IAttackAgent` integration is introduced.
+
+| Task | Contract |
+| --- | --- |
+| `CanAct` | Initialized, alive, no stun/knockback/skill/root-motion/external control or sequence reservation. Reload alone stays eligible. |
+| `CanShootTarget` | Pure current-handle/generation, eligibility, LOS, planar range, weapon and shoot-admission query. Reload entry requires `allowReloadCycle` (default false). Optional aim check defaults off. |
+| `MoveToCombatRange` | Approach/retreat into the band; Running while moving, Failure for invalid paths or 6 s timeout. |
+| `FindFiringPosition` | At most 12 deterministic probes at 5/7 m; complete path, agent type/areas/edge clearance, perceived-point LOS. Shortest route wins; candidate order breaks ties. Does not move. |
+| `MoveToFiringPosition` | Move to the chosen target-life-bound point; recheck range/LOS during travel; invalidated points fail. |
+| `HasLastSeenPosition` | Pure eligible last-seen life, observation age <=10 s and unconsumed observation key. Used when Combat has no retained target. |
+| `InvestigateLastSeenPosition` | Freeze the observation's position/time/life at entry; never follow the unseen Transform. |
+| `SearchArea` | Up to 3 points in a 3 m radius, 0.5 s look at each; Investigate + Search + search Recovery share an 8 s budget. |
+| `IsNavigationStuck` | Pure read of a related navigation failure; includes path failure/timeouts so Recovery can handle them. Never orders movement. |
+| `RecoverNavigation` | At most 2 attempts per logical goal; recompute, try a nearby nudge, then return to the original destination. Failure cooldown 0.5 s; no Warp or enabling an off-mesh agent. |
+| `IsCurrentTargetVisible` | Pure `ReadSnapshot.IsCurrentVisible` plus selected handle validation. |
+
+`ReadSnapshot` reads the committed Sensor snapshot without its legacy invalidation
+scan. `ObservationClock` exposes the Sensor clock; `HasLineOfSightFrom` uses the
+authored origin offset, obstacle mask, trigger policy and owner exclusion without
+scanning, retargeting or changing memory.
+
+Graph variables are `Ctx`, `CurrentTarget`, `InCombat` and `CombatState`.
+`SharedVariable<AICombatState>` groups target handles, destinations, failure/retry
+data and observation search keys. Its fields are runtime-only; `CanAct` replaces
+the value at actual tree start and actor-life changes, not at every Repeater pass.
+Tasks hold their own navigation tracker and release only their path/rotation
+ownership; cleanup validates the owning life and respects a new sequence or
+root-motion owner. Target changes invalidate prior destinations and firing data.
+
+`AICombatNavigation` admits only complete routes. Repath interval is >=0.25 s;
+stuck means <0.2 m progress for 1.5 active seconds, and path pending is capped at
+2 s. Pause and movement/control handoffs do not accrue stuck time. P0 orbit and
+patrol enable this helper only when `combatState` is graph-bound. Action clocks
+respect `ctx.UsesWorldSlow` and pause; observation age uses the Sensor clock.
+Completed/timed-out/exhausted searches consume their identity/generation/time key
+without deleting Sensor threat or memory.
 
 ## Guaranteed Interruption Command
 

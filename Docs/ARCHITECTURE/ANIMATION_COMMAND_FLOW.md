@@ -1,5 +1,41 @@
 # Animation Command Flow
 
+## Crouch / Slide locomotion
+
+StateHub projects the movement owner's Crouch/Slide flags through CharacterAnimDriver
+into CharacterAnimBrain. Live locomotion selects optional `slide`, `crouchMove`, or
+`crouchIdle` transitions before Sprint/ordinary locomotion. Missing clips fall back
+to the existing directional mixer. These are in-place layer-0 transitions and do not
+acquire exclusive locomotion, movement locks, or root motion; upper-body aim/fire
+continues through the existing action layers. Repeated frames retain the same clip
+state rather than restarting it. Down/death and exclusive states retain precedence.
+Slide intent also exits active Dash playback immediately through the guarded Dash
+end path. This handles Ctrl during Dash without waiting for the dash animation timer;
+other locomotion states are not forced out by this check.
+
+## Sprint presentation
+
+CharacterAnimDriver passes StateHub.IsSprinting to Brain with the existing move
+speed/direction inputs. Live locomotion plays the optional profile `sprint`
+ClipTransition throughout Sprint, regardless of facing or local movement direction.
+Turning does not select the directional mixer or restart the run clip. A missing
+sprint clip falls back to the normal mixer. Exiting Sprint blends back
+without replaying Dash or claiming root motion. Gameplay speed stays in the
+movement module. Roma uses the looping, in-place `Roma_Run` clip for all directions.
+
+Roma's updated forward Dash export (0.6 seconds, with both arm/forearm `twist_2`
+bones) is authored to hand off to the start of Run. Its Sprint transition starts
+at normalized time 0 and crossfades for 0.15 seconds; Dash fades out while Run
+fades in on the locomotion layer. Keep this entry pose when replacing either
+clip. The older forward Dash export produced a 91.7-degree upper-arm flip during
+the fade even without aiming or pair offsets. Changing offset profiles cannot
+repair that underlying pose blend. The backward Dash still uses its older
+skeleton export and must be checked independently when reauthored.
+
+`RomaDashRunAnimationTests` evaluates the production model/profile through Brain
+at 30, 60 and 120 Hz in both directions, asserting an overlapping fade and bounded
+arm rotation through the handoff and subsequent Run loop.
+
 ## Animancer package
 
 The project embeds Animancer **8.4.0** at `Packages/com.kybernetik.animancer`.
@@ -43,11 +79,35 @@ target weight are zero, then are destroyed. Replaying a state through the centra
 entry point cancels its old cleanup. Disable clears pending cleanup and action
 weights; rebind/destruction also release the owned mask.
 
+`CharacterAnimationContributions` collects evaluated layer/state weights for all
+registered locomotion states, including outgoing states until their weight is
+zero. Directional mixer contributions use actual child weights and thresholds;
+Slide, Sprint, CrouchIdle and CrouchMove carry their own keys. Unknown/exclusive
+states contribute no correction and do not cause remaining weights to be
+renormalized. Raw clip/temporary-state playback clears stale metadata if it
+reuses a previously registered state. Binding cleanup clears registrations.
+
 `TryGetPairOffsetContributions` reports each upper-body state's action and weight,
 multiplied by its layer weight and attenuated by full-body action coverage. The
-outgoing locomotion pose description remains available during exclusive takeover
-so corrections fade with the old action. Single-action query APIs remain available
-for compatibility; the runtime offset applier uses the per-state contributions.
+outgoing locomotion state remains available during exclusive takeover, weighted
+by its actual fade. Contributions carry the actual clips for legacy SO fallback.
+Single-action query APIs remain available for compatibility; their base poses
+also come from the evaluated graph. The runtime applier uses all contributions.
+
+`PairOffsetEvaluator` combines the base/action cross product per authored bone.
+It blends shortest rotation vectors around identity and applies their quaternion
+result once per bone, so profile enumeration order does not change the result.
+Unconfigured pairs/bones contribute identity, not extra weight for other pairs.
+Profile and bone weights remain multiplicative. Upper-action weights include
+their layer weight and full-body layer attenuation exactly once. Explicit
+authored bone paths determine which bones receive correction; the existing
+animation masks continue to control clip coverage. Correction should normally
+stay well below 180 degrees; shortest-rotation selection has a branch at 180.
+
+Both runtime and `SoloRootMotionPreview` use this evaluator. Runtime restores
+the previous correction before graph evaluation and applies once afterwards;
+it does not run a separate fade clock. Preview supplies manual Base/Upper fade
+weights and the upper-layer weight, and protects capture during a transition.
 
 ## Playback flow
 

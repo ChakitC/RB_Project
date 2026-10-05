@@ -101,6 +101,21 @@ public class AITargetSensor : MonoBehaviour
     int publicationVersion;
 
     public AITargetingProfileDef TargetingProfile => targetingProfile;
+    /// <summary>Pure committed read for Behavior Designer conditional reevaluation.</summary>
+    public AITargetSnapshot ReadSnapshot => snapshot;
+    public float ObservationClock => clock;
+    readonly RaycastHit[] hypotheticalSightHits = new RaycastHit[64];
+
+    /// <summary>Checks geometry at a proposed actor position without scanning or updating memory.</summary>
+    public bool HasLineOfSightFrom(Vector3 actorPosition, AITargetHandle target, Vector3 perceivedAim)
+    {
+        if (!target.IsLive || ownerContext == null) return false;
+        Vector3 offset = sensorOrigin != null
+            ? sensorOrigin.position - ownerContext.transform.position : Vector3.zero;
+        return ThirdPersonTargetingUtility.HasLineOfSightNonAlloc(
+            actorPosition + offset + Vector3.up * originHeightOffset, perceivedAim,
+            target.Context.transform, obstacleLayers, hypotheticalSightHits, triggerInteraction, ownerContext.transform);
+    }
     public AITargetSnapshot Snapshot
     {
         get
@@ -134,15 +149,15 @@ public class AITargetSensor : MonoBehaviour
     {
         CharacteContext ctx = CharacterContextModuleLookup.ResolveContext(module);
         if (ctx == null) return null;
-        if (ctx is AllyContext ally && ally.AITargetSensor != null)
-            return CharacterContextModuleLookup.ResolveContext(ally.AITargetSensor) == ctx ? ally.AITargetSensor : null;
-        if (ctx is SummonContext summon && summon.AITargetSensor != null)
-            return CharacterContextModuleLookup.ResolveContext(summon.AITargetSensor) == ctx ? summon.AITargetSensor : null;
+        // Read the common binding first; never call ResolveReferences here (sensor Awake can
+        // precede context Awake). Bootstrap discovery remains ownership-scoped and unambiguous.
+        if (ctx.AITargetSensor != null)
+            return CharacterContextModuleLookup.ResolveContext(ctx.AITargetSensor) == ctx ? ctx.AITargetSensor : null;
         AITargetSensor found = null;
-        foreach (AITargetSensor candidate in ctx.GetComponentsInChildren<AITargetSensor>(true))
+        foreach (var candidate in ctx.GetComponentsInChildren<AITargetSensor>(true))
         {
             if (CharacterContextModuleLookup.ResolveContext(candidate) != ctx) continue;
-            if (found != null) return null; // Ambiguous authoring must not pick the first actor module.
+            if (found != null) return null;
             found = candidate;
         }
         return found;

@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 [DefaultExecutionOrder(-145)]
 [DisallowMultipleComponent]
-public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPassiveDefinitionProvider
+public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPassiveDefinitionProvider, IPassiveGrantProvider
 {
     [Header("Refs")]
     [SerializeField] private CharacteContext ctx;
@@ -278,6 +278,31 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
         return entry != null ? Mathf.Max(DefaultSlotCount, entry.slotCount) : DefaultSlotCount;
     }
 
+    public void AppendPassiveGrants(List<PassiveGrant> buffer)
+    {
+        if (!isActiveAndEnabled || buffer == null || equippedAccessories == null) return;
+        foreach (var instance in equippedAccessories)
+        {
+            var definition = ResolveAccessoryDefinition(instance);
+            if (definition == null || instance == null) continue;
+            Add(definition.passives, "base");
+            var modifier = definition.GetModifierById(instance.modifierId);
+            if (modifier != null) Add(modifier.passives, "modifier:" + instance.modifierId);
+            void Add(List<PassiveDefinition> passives, string group)
+            {
+                if (passives == null) return;
+                var occurrences = new Dictionary<PassiveDefinition, int>();
+                foreach (var passive in passives)
+                {
+                    if (passive == null) continue;
+                    occurrences.TryGetValue(passive, out int occurrence);
+                    occurrences[passive] = occurrence + 1;
+                    buffer.Add(new PassiveGrant(passive, "accessory:" + instance.instanceId,
+                        group + "/" + passive.DefinitionId + "/" + occurrence));
+                }
+            }
+        }
+    }
     public void AppendPassiveDefinitions(List<PassiveDefinition> buffer)
     {
         if (!isActiveAndEnabled || buffer == null || equippedAccessories == null)

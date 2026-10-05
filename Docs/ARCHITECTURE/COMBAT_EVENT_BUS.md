@@ -2,6 +2,14 @@
 
 ## Typed combat metadata
 
+Weapon affixes now consume this bus through PassiveController's shared event
+index, filtered by their frozen WeaponInstanceId and generated-affix provenance.
+WeaponAffixRuntimeController has no separate combat subscription. BeforeShot,
+ShotCommitted and BeforeDamage are recipe phases rather than new bus event enum
+values. Inline phase execution defers child passive work until the current phase
+finishes; other bus subscribers remain synchronous. Extra projectiles and area
+damage publish actual Hit/Kill facts with Passive origin and WeaponAffix metadata.
+
 `PassiveEventContext.Metadata` carries optional structured combat facts while
 `Value` keeps its existing meaning. Weapon events can identify the weapon
 instance and ammo transition; resolved Hit/Kill events can carry requested,
@@ -163,3 +171,26 @@ normal-actor call sites retain their current behavior. Weapon projectile
 contexts carry the snapshot through child/split projectiles, and enemy kill
 credit resolves as `CreditedActor ?? Attacker` so XP and Kill events remain
 owned by the caster after the summon is destroyed.
+
+## Composed passive consumers (2026-10-04)
+
+PassiveController now feeds indexed recipe rules through PassiveDispatch. Only
+passive work is queued FIFO; bus delivery to other subscribers remains synchronous.
+Default recipe origin is External. Passive/StatusEffect input must be opted into.
+The queue retains FactId, ChainId, provenance and metadata, bounds depth at 8 and
+work at 1,024 steps, and rejects repeated facts/rule-target claims within a chain.
+
+ResourceSpent, ResourceChanged and PassiveSignal are appended enum values.
+Resource triggers are adapted directly from StaminaSystem only when an installed
+recipe needs them. Resource effects inside a passive preserve their parent chain.
+PassiveSignal is the only synthetic signal effect; it cannot masquerade as Hit,
+Kill or StatusApplied.
+
+PerfectDodge metadata includes DashExecutionId, shared across incoming threats
+avoided during one Dash. Incoming AttackId still identifies the avoided attack.
+The two identities must not be substituted for each other.
+
+StatusEffectController publishes successful StatusApplied facts regardless of
+FollowUpFeatureGate. Follow-Up consumers check their own switch. Do not add a
+second publisher for the same fact. Next-attack passive multipliers are captured
+in normal weapon/melee preparation, not resolved by Hit listeners.

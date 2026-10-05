@@ -6,6 +6,7 @@ public struct WeaponShotBuildContext
     public GameObject ProjectilePrefab;
     public Transform FirePoint;
     public float Damage;
+    public float UnmodifiedDamage;
     public float Speed;
     public float CritRate;
     public float CritMultiplier;

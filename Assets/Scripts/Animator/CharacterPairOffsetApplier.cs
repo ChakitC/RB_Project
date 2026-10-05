@@ -29,6 +29,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
     private readonly List<PairOffsetBasePoseWeight> basePoseWeights = new List<PairOffsetBasePoseWeight>(3);
     private readonly List<PairOffsetActionWeight> actionWeights = new List<PairOffsetActionWeight>(3);
     private readonly Dictionary<string, Transform> boneCache = new Dictionary<string, Transform>();
+    private readonly PairOffsetEvaluator evaluator = new();
     int IUpdatable.UpdatableIndex { get; set; } = -1;
     private AnimancerGraph hookedGraph;
     private CharacterAnimBrain subscribedBrain;
@@ -53,6 +54,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
         RestoreAppliedOffsets();
         boneCache.Clear();
         evaluationGeneration = appliedGeneration = 0;
+        evaluator.Clear();
     }
     void IUpdatable.Update()
     {
@@ -124,17 +126,24 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
         }
 
         RestoreAppliedOffsets();
+        evaluator.Clear();
         int appliedProfileCount = 0;
         int appliedBoneCount = 0;
         int missingBoneCount = 0;
         string firstMissingBonePath = null;
         foreach (PairOffsetActionWeight action in actionWeights)
         {
-            appliedProfileCount += ApplyProfiles(basePoseWeights, action.Action, action.Weight,
+            appliedProfileCount += ApplyProfiles(basePoseWeights, profiles, action,
                 out int applied, out int missing, out string missingPath);
             appliedBoneCount += applied;
             missingBoneCount += missing;
             firstMissingBonePath ??= missingPath;
+        }
+
+        foreach (Transform bone in evaluator.Bones)
+        {
+            appliedRotations.Add(new AppliedBoneRotation(bone));
+            bone.localRotation *= evaluator.GetRotation(bone);
         }
 
         if (appliedBoneCount > 0)
@@ -142,7 +151,13 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
             string missingSuffix = missingBoneCount > 0
                 ? $" Missing {missingBoneCount} bone path(s), first: {firstMissingBonePath}."
                 : string.Empty;
-            SetDebugState($"Applying {appliedProfileCount} profile(s), {appliedBoneCount} bone(s) across {actionWeights.Count} action state(s).{missingSuffix}");
+            if (showDebugState)
+            {
+                var details = new System.Text.StringBuilder();
+                foreach (var pose in basePoseWeights) details.Append($" {pose.Pose}:{pose.Weight:F3}");
+                foreach (var action in actionWeights) details.Append($" {action.Action}:{action.Weight:F3}");
+                SetDebugState($"Applying {appliedProfileCount} profile(s), {appliedBoneCount} bone contribution(s).{details}{missingSuffix}");
+            }
         }
         else if (appliedProfileCount > 0 && missingBoneCount > 0)
         {
@@ -208,8 +223,8 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
 
     private int ApplyProfiles(
         IReadOnlyList<PairOffsetBasePoseWeight> poseWeights,
-        PairOffsetUpperAction upperAction,
-        float actionWeight,
+        PairOffsetProfilesSO profiles,
+        PairOffsetActionWeight action,
         out int appliedBoneCount,
         out int missingBoneCount,
         out string firstMissingBonePath)
@@ -225,17 +240,17 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
         for (int i = 0; i < poseWeights.Count; i++)
         {
             PairOffsetBasePoseWeight poseWeight = poseWeights[i];
-            if (poseWeight.Pose == PairOffsetBasePose.None || poseWeight.Weight <= 0.001f)
+            if (poseWeight.Pose == PairOffsetBasePose.None || poseWeight.Weight <= 0f)
                 continue;
 
             PairOffsetProfilesSO.PairOffsetProfile profile =
-                brain.FindPairOffsetProfile(poseWeight.Pose, upperAction, false);
+                PairOffsetEvaluator.FindProfile(profiles, poseWeight.Pose, action.Action, poseWeight.Clip, action.Clip);
             if (profile == null)
                 continue;
 
             int profileAppliedBoneCount = ApplyProfile(
                 profile,
-                actionWeight * Mathf.Clamp01(poseWeight.Weight),
+                action.Weight * Mathf.Clamp01(poseWeight.Weight),
                 out int profileMissingBoneCount,
                 out string profileFirstMissingBonePath);
 
@@ -284,13 +299,7 @@ public sealed class CharacterPairOffsetApplier : MonoBehaviour, IUpdatable
             if (weight <= 0f)
                 continue;
 
-            appliedRotations.Add(new AppliedBoneRotation(bone));
-
-            Quaternion offsetRotation = Quaternion.Euler(offset.LocalEulerOffset);
-            if (weight < 1f)
-                offsetRotation = Quaternion.Slerp(Quaternion.identity, offsetRotation, weight);
-
-            bone.localRotation *= offsetRotation;
+            evaluator.Add(bone, offset.LocalEulerOffset, weight);
             appliedBoneCount++;
         }
 

@@ -224,3 +224,10 @@ Life and state-view notifications isolate subscriber exceptions: each failure is
 logged and remaining listeners still run. A missing animation clip therefore
 cannot abort the committed death, its cleanup, or the summon despawn request.
 The missing clip remains an authoring error to fix on the animation profile.
+
+## Actual healing quantity
+
+HealthSystem.HealActual(amount) returns the clamped amount applied by that operation,
+captured before health-change/Healed callbacks run. Heal(amount) remains the bool
+wrapper for existing consumers. Composed passive effects use HealActual to report
+truthful effect quantities even when a callback subsequently changes health.

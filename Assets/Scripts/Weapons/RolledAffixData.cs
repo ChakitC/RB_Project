@@ -4,6 +4,7 @@ using System;
 public class RolledAffixData
 {
     public string affixId;
+    public string grantId;
     public bool hasPrimaryValue;
     public float primaryValue;
     public bool hasSecondaryValue;
@@ -16,6 +17,7 @@ public class RolledAffixData
         return new RolledAffixData
         {
             affixId = affixId,
+            grantId = grantId,
             hasPrimaryValue = hasPrimaryValue,
             primaryValue = primaryValue,
             hasSecondaryValue = hasSecondaryValue,

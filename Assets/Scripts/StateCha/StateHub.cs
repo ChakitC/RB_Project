@@ -49,6 +49,9 @@ public sealed class StateHub : MonoBehaviour
     CharacterKnockbackMotor boundKnockback;
 
     public float MoveSpeed01 { get; private set; }
+    public bool IsSprinting => ctx != null && ctx.IsSprinting;
+    public bool IsCrouching => ctx != null && ctx.IsCrouching;
+    public bool IsSliding => ctx != null && ctx.IsSliding;
     public Vector2 MoveDirLocal { get; private set; }
     public bool DesiredFireHeld { get; private set; }
     public bool FireHeld { get; private set; }
@@ -112,6 +115,8 @@ public sealed class StateHub : MonoBehaviour
         if (ctx != null)
         {
             ctx.moveInput = Vector2.zero;
+            ctx.CancelSprint();
+            ctx.CancelSlide();
             ctx.WeaponSystem?.CancelReload();
             ctx.MeleeController?.InterruptMelee();
             ctx.DashSystem?.CancelDash();
@@ -222,7 +227,9 @@ public sealed class StateHub : MonoBehaviour
                 life.Set(facts.Life);
                 ui.Set(facts.UI);
                 move.Set(facts.Knockback ? MoveStateId.Knockback : facts.Stunned ? MoveStateId.Stunned :
-                    facts.Dashing ? MoveStateId.Dash : CanMove() && ctx != null && ctx.ShouldBeInMoveState() ? MoveStateId.Moveing : MoveStateId.Stand);
+                    facts.Dashing ? MoveStateId.Dash : CanMove() && IsSliding ? MoveStateId.Slide :
+                    CanMove() && IsCrouching ? MoveStateId.Crouch : CanMove() && IsSprinting ? MoveStateId.Sprint :
+                    CanMove() && ctx != null && ctx.ShouldBeInMoveState() ? MoveStateId.Moveing : MoveStateId.Stand);
                 var ws = ctx != null ? ctx.WeaponSystem : null;
                 weapon.Set(facts.Melee ? WeaponStateId.Melee : facts.Reloading ? WeaponStateId.Reloading :
                     facts.EmptyMagazine ? WeaponStateId.NoBullet : ws != null && ws.IsFiringActivity ? WeaponStateId.Firing : WeaponStateId.Ready);
@@ -299,12 +306,19 @@ public sealed class StateHub : MonoBehaviour
         ws.SetFiring(true);
         SetFireHeld(ws.IsFiringHeld && CanShoot());
     }
-    public void RequestReload() { if (GetAdmission(CharacterAction.Reload).Allowed) ctx.WeaponSystem.TryReload(); }
-    public void RequestOnFire() { DesiredFireHeld = true; TryStartHeldFire(true); }
+    public void RequestReload() { ctx?.CancelSprint(); ctx?.CancelSlide(); if (GetAdmission(CharacterAction.Reload).Allowed) ctx.WeaponSystem.TryReload(); }
+    public void RequestOnFire() { ctx?.CancelSprint(); DesiredFireHeld = true; TryStartHeldFire(true); }
     public void RequestCanceledFire() { DesiredFireHeld = false; ctx?.WeaponSystem?.SetFiring(false); SetFireHeld(false); }
-    public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy) => CanStartMelee() && ctx.MeleeController.TryStartMelee(meleeType);
+    public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy)
+    {
+        ctx?.CancelSprint();
+        ctx?.CancelSlide();
+        return CanStartMelee() && ctx.MeleeController.TryStartMelee(meleeType);
+    }
     public void RequestMeleePress(MeleeType meleeType = MeleeType.Heavy)
     {
+        ctx?.CancelSprint();
+        ctx?.CancelSlide();
         if (!CanStartMelee()) return;
         ctx.MeleeController.PressMelee(meleeType);
     }

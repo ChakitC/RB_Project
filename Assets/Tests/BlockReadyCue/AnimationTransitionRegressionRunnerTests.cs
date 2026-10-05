@@ -12,6 +12,7 @@ public sealed class AnimationTransitionRegressionRunnerTests
         foreach (string fixtureName in new[]
         {
             "CharacterAnimBrainSmokeTests",
+            "RomaDashRunAnimationTests",
             "CharacterAnimationTransitionPolicyTests",
             "RootMotionCollisionTests",
             "MeleeSkillIntegrationTests",

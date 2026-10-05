@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 
@@ -32,6 +32,8 @@ public class StaminaSystem : MonoBehaviour
     public float Current => currentStamina;
     internal float ResolvedRegenerationRate => ResolveRegenerationRate();
 
+    public float BaseRegenerationRate => regenerationRate;
+    public event Action<ResourceSpentEvent> ResourceSpent;
     public event Action<float, float> OnStaminaChanged; // (current,max)
 
     void Awake()
@@ -80,6 +82,7 @@ public class StaminaSystem : MonoBehaviour
             }
         }
 
+        if (characterContext != null && characterContext.IsSliding) return;
         if (Time.time < unblockRegenerationAtTime) return;
         if (currentStamina >= maximumStamina) return;
 
@@ -137,20 +140,30 @@ public class StaminaSystem : MonoBehaviour
         return currentStamina + 0.0001f >= cost;
     }
 
-    public bool Spend(float cost)
+    public float Restore(float amount)
+    {
+        if (!float.IsFinite(amount) || amount <= 0) return 0;
+        float restored = Mathf.Min(amount, Mathf.Max(0, maximumStamina - currentStamina));
+        SetCurrent(currentStamina + restored);
+        return restored;
+    }
+    public bool Spend(float cost) => Spend(cost, "stamina");
+    public bool Spend(float cost, string reason)
     {
         if (!CanSpend(cost)) return false;
         if (!float.IsFinite(cost) || cost <= 0f) return true;
 
+        float spent = Mathf.Min(currentStamina, cost);
         SetCurrent(currentStamina - cost);
         unblockRegenerationAtTime = Time.time + regenerationDelay;
+        if (spent > 0 && ResourceSpent != null) ResourceSpent.Invoke(new ResourceSpentEvent(spent, reason, CombatEventBus.NextFactId()));
         return true;
     }
 
     void SetCurrent(float value)
     {
         float clamped = Mathf.Clamp(value, 0f, maximumStamina);
-        if (Mathf.Abs(clamped - currentStamina) < 0.0005f) return;
+        if (clamped == currentStamina) return;
 
         currentStamina = clamped;
         Notify();

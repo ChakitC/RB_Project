@@ -1,9 +1,11 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using UnityEngine;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Conditionals;
 
 public class DeadConditional : Conditional
 {
+    public SharedVariable<CharacteContext> context;
     private const string UnavailableState = "Unavailable";
 
     private CharacteContext ctx;
@@ -18,6 +20,7 @@ public class DeadConditional : Conditional
 
     public override TaskStatus OnUpdate()
     {
+        SubscribeToLifeStateChanges();
         if (!TryGetLifeState(out var life))
             return TaskStatus.Failure;
 
@@ -38,8 +41,7 @@ public class DeadConditional : Conditional
 
     private bool TryGetLifeState(out LifeStateId life)
     {
-        if (ctx == null)
-            ctx = gameObject.GetComponent<CharacteContext>();
+        ctx = AIContextBinding.Read(context);
 
         if (ctx == null || ctx.stateHub == null || ctx.stateHub.LifeSM == null)
         {
@@ -60,10 +62,12 @@ public class DeadConditional : Conditional
 
     private void SubscribeToLifeStateChanges()
     {
-        if (!TryGetStateHub(out var stateHub) || subscribedStateHub == stateHub)
+        TryGetStateHub(out var stateHub);
+        if (subscribedStateHub == stateHub)
             return;
 
         UnsubscribeFromLifeStateChanges();
+        if (stateHub == null) return;
         subscribedStateHub = stateHub;
         subscribedStateHub.LifeSM.OnChanged += HandleLifeStateChanged;
     }
@@ -82,12 +86,15 @@ public class DeadConditional : Conditional
 
     private bool TryGetStateHub(out StateHub stateHub)
     {
-        if (ctx == null)
-            ctx = gameObject.GetComponent<CharacteContext>();
+        ctx = AIContextBinding.Read(context);
 
         stateHub = ctx != null ? ctx.stateHub : null;
         return stateHub != null && stateHub.LifeSM != null;
     }
+
+    public override TaskStatus OnReevaluateUpdate() => OnUpdate();
+    public override void OnBehaviorTreeStopped(bool paused) => UnsubscribeFromLifeStateChanges();
+    public override void OnDestroy() => UnsubscribeFromLifeStateChanges();
 
     private void HandleLifeStateChanged(LifeStateId _, LifeStateId to)
     {

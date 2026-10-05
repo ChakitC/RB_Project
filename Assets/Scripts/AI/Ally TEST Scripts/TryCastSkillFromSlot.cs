@@ -1,12 +1,15 @@
+using Opsive.GraphDesigner.Runtime.Variables;
 using Opsive.BehaviorDesigner.Runtime.Tasks;
 using Opsive.BehaviorDesigner.Runtime.Tasks.Actions;
 using UnityEngine;
 
 public class TryCastSkillFromSlot : ActionNode
 {
+    public SharedVariable<CharacteContext> context;
     [SerializeField] int SlotIndex;
 
     private CharacteContext CTX;
+    int executionGeneration;
     private CharacterAnimBrain animBrain;
     private CharacterSkillManager observedSkillManager;
     private int activeRequestId;
@@ -15,6 +18,7 @@ public class TryCastSkillFromSlot : ActionNode
 
     public override void OnStart()
     {
+        UnsubscribePlaybackEvent();
         currentStatus = TaskStatus.Failure;
         waitingForAnimation = false;
         activeRequestId = 0;
@@ -47,6 +51,12 @@ public class TryCastSkillFromSlot : ActionNode
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, CTX, executionGeneration) ||
+            CTX.SkillManager != observedSkillManager || CTX.AnimBrain != animBrain)
+        {
+            UnsubscribePlaybackEvent();
+            currentStatus = TaskStatus.Failure;
+        }
         return currentStatus;
     }
 
@@ -57,36 +67,20 @@ public class TryCastSkillFromSlot : ActionNode
         activeRequestId = 0;
     }
 
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
+
     private bool TryCacheReferences()
     {
-        if (CTX == null)
-            CTX = gameObject.GetComponentInParent<CharacteContext>();
-
-        if (CTX == null)
-            return false;
-
-        if (CTX.SkillManager == null)
-            CTX.SkillManager = gameObject.GetComponentInParent<CharacterSkillManager>();
-
-        var resolvedAnimBrain = CTX.AnimBrain != null
-            ? CTX.AnimBrain
-            : gameObject.GetComponentInParent<CharacterAnimBrain>();
-
-        if (CTX.AnimBrain == null)
-            CTX.AnimBrain = resolvedAnimBrain;
-
-        if (animBrain != resolvedAnimBrain)
-        {
-            UnsubscribePlaybackEvent();
-            animBrain = resolvedAnimBrain;
-        }
-
-        return CTX.SkillManager != null;
+        CTX = AIContextBinding.Read(context);
+        executionGeneration = CTX != null ? CTX.LifeGeneration : 0;
+        animBrain = CTX != null ? CTX.AnimBrain : null;
+        return CTX != null && CTX.SkillManager != null;
     }
 
     private void OnPlaybackEvent(CharacterAnimBrain.PlaybackSignal signal)
     {
-        if (!waitingForAnimation || signal.RequestId != activeRequestId)
+        if (!AIContextBinding.IsCurrent(context, CTX, executionGeneration) || !waitingForAnimation || signal.RequestId != activeRequestId)
             return;
 
         if (signal.Kind != CharacterAnimBrain.PlaybackKind.Skill)
@@ -119,9 +113,10 @@ public class TryCastSkillFromSlot : ActionNode
 
     private void OnCastCancelled(ActiveSkillCastInfo castInfo, SkillCastCancelReason reason)
     {
-        if (!waitingForAnimation || castInfo.RequestId != activeRequestId)
+        if (!AIContextBinding.IsCurrent(context, CTX, executionGeneration) || !waitingForAnimation || castInfo.RequestId != activeRequestId)
             return;
 
+        UnsubscribePlaybackEvent();
         currentStatus = TaskStatus.Failure;
         waitingForAnimation = false;
         UnsubscribePlaybackEvent();

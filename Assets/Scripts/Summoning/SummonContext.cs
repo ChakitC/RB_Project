@@ -11,9 +11,7 @@ public sealed class SummonContext : CharacteContext
     [SerializeField] private SummonedEntityRuntime summonedRuntime;
 
     [Header("AI")]
-    public AITargetSensor AITargetSensor;
     public NavMeshAgent Agent;
-    public AgentMoveDriver AgentMoveDriver;
     public BehaviorTree BehaviorTree;
 
     [Header("Summon Ammo")]
@@ -43,12 +41,8 @@ public sealed class SummonContext : CharacteContext
 
         if (summonedRuntime == null)
             summonedRuntime = ResolveActorComponent(summonedRuntime);
-        if (AITargetSensor == null)
-            AITargetSensor = global::AITargetSensor.ResolveFor(this);
         if (Agent == null)
             Agent = ResolveActorComponent(Agent);
-        if (AgentMoveDriver == null)
-            AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
         if (BehaviorTree == null)
             BehaviorTree = ResolveActorComponent(BehaviorTree);
     }

@@ -1,5 +1,144 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6950135887433540460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive.Feno_ForgottenBulletBag Recipe
+  m_EditorClassIdentifier: 
+  variables: []
+  rules:
+  - id: behavior-0
+    trigger: 0
+    eventType: 1
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 1
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 1.5
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades:
+      - upgradeId: passive.feno.bulletbag.main
+        operation: 0
+        value: -0.5
+    chance:
+      source: 0
+      value: 0.08
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades:
+      - upgradeId: passive.feno.bulletbag.drop_chance
+        operation: 0
+        value: 0.05
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957118
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957118
+      type: {class: PassivePickupStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: pickup
+        pickupPrefab: {fileID: 3692556497259945272, guid: ba49bcb09baf7524fa3af49b0ad4bcaa, type: 3}
+        overrideCollectorRule: 1
+        collectorRule: 5
+        dropCount: 1
+        backOffset: 0.35
+        verticalOffset: 0.65
+        scatterRadius: 0.45
+        useDropArcMotion: 1
+        dropArcSettings:
+          enabled: 1
+          startHeight: 0.35
+          minRadius: 0.8
+          maxRadius: 1.45
+          duration: 0.5
+          arcHeight: 1.15
+          staggerDelay: 0.03
+          angleJitterDegrees: 18
+          landingAttempts: 8
+          landingHeightOffset: 0.06
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 524287
+          groundProbeHeight: 3
+          groundProbeDistance: 8
+          terrainClearanceMask:
+            serializedVersion: 2
+            m_Bits: 131072
+          terrainClearanceRadius: 0.28
+        applyRigidbodyImpulse: 0
+        horizontalImpulse: 1.6
+        upwardImpulse: 2.2
+        extraDropUpgradeId: passive.feno.bulletbag.extra_drop
+        procChanceBoostUpgradeId: passive.feno.bulletbag.drop_chance
+        procChanceBonus: 0.05
+        cooldownReductionUpgradeId: passive.feno.bulletbag.main
+        cooldownReductionSeconds: 0.5
+        upgradeEffects:
+        - requiredUpgradeId: passive.feno.bulletbag.reserve_ammo
+          effect: {fileID: 11400000, guid: 3845f472fe2b4407a7a70ddc3775036b, type: 2}
+        - requiredUpgradeId: passive.feno.bulletbag.atk_up
+          effect: {fileID: 11400000, guid: 8817929fda691d247a20a6d6cb4b6a56, type: 2}
+        - requiredUpgradeId: passive.feno.bulletbag.speed_up
+          effect: {fileID: 11400000, guid: debd93cb2d634db4964546a80fabc276, type: 2}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17,5 +156,7 @@ MonoBehaviour:
   description: Feno forgot to close her trusted bag. During combat, shots can shake
     loose ammo pickups for allies to collect.
   upgradeTree: {fileID: 11400000, guid: 97515d464df3c904080f767838307f30, type: 2}
+  recipe: {fileID: -6950135887433540460}
+  definitionId: 8d2b0f0e7a7a4f3c9ad6cfe8bd48c181
   behaviors:
   - {fileID: 11400000, guid: b2b3aa66b8c34fdc8b851d8b85a42a12, type: 2}

@@ -1,8 +1,52 @@
 # Character Context Architecture
 
+## Crouch and Slide locomotion queries
+
+`CharacteContext.IsCrouching`, `IsSliding`, `CancelSlide()`, `CanStandForDash()` and
+`PrepareForAcceptedDash()` default to false/no-op/allowed for non-player actors.
+PlayerContext delegates to its existing movement binding. PlayerMovementCC owns
+input, shape snapshots and momentum; no new peer component is required. Dash checks
+standing clearance before spending stamina and prepares locomotion after success.
+`CancelSprint()` deliberately does not cancel Slide, so aim/fire preserve it.
+StateHub projects appended Crouch/Slide move IDs and passes read-only flags through
+CharacterAnimDriver to the Brain. Reference resolution and actor ownership remain unchanged.
+
+## Sprint locomotion query
+
+`CharacteContext.IsSprinting` and `CancelSprint()` provide the shared locomotion
+query/cancellation contract. Their defaults are false/no-op. PlayerContext
+delegates to its existing `movement` binding; PlayerMovementCC owns all Sprint
+state. StateHub projects `MoveStateId.Sprint` (appended to preserve existing enum
+values) and exposes the read-only query to CharacterAnimDriver. Combat requests
+cancel Sprint before normal action admission. No extra peer lookup or prefab
+component is required. See `CHARACTER_MOVEMENT_REFACTOR_PLAN.md` for controls.
+
 `CharacteContext` is the shared base reference hub for character actors. The
 class name is intentionally spelled `CharacteContext`; keep using that name
 until there is a dedicated rename task.
+
+
+## Shared AI owner binding
+
+BehaviorTree custom Tasks receive the owner through Graph variable `Ctx`
+(`SharedVariable<CharacteContext>`, default null). `InitializeAIContext` prepares
+references before behavior, once per real tree start/enabled lifetime; consumers
+only read the shared binding with `AIContextBinding`. No consumer resolves owner
+or peer components through the hierarchy. Each actor owns its graph runtime value.
+
+`AITargetSensor` and `AgentMoveDriver` are declared on this base, with their existing
+serialized names/types preserved from Ally/Enemy/Summon. `AimAxisDriver` is a common
+optional reference. `ResolveReferences` resolves these peers within owner boundaries
+and refuses ambiguous candidates unless an explicit binding is supplied. Sensor
+bootstrap lookup reads the common binding without recursive reference resolution.
+Missing optional peers are valid at initialization; Tasks fail only when their own
+required module is missing. Ally interruption and Enemy SpecialShootPoints remain
+subtype-specific and are read by casting Ctx.
+
+Replacing a module requires updating its context binding. Event consumers compare
+that binding and detach the old module before attaching the replacement. Active
+Actions capture their execution generation and do not clean up a newer pooled life.
+See `SYSTEMS/AI_AND_TARGETING.md` and `PREFABS_AND_AUTHORING.md` for authoring.
 
 ## Animation binding
 
@@ -24,8 +68,7 @@ are candidates, assign the actor's component explicitly on Brain.
 - `CharacteContext`: shared base for player, ally, and enemy characters.
 - `PlayerContext`: player-only references such as input, inventory, helper
   manager, field ally manager, chain attack coordinator, party command, and UI.
-- `AllyContext`: ally-only references such as `AITargetSensor`, `NavMeshAgent`,
-  and `AgentMoveDriver`.
+- `AllyContext`: ally-only BehaviorTree, AimTargetDriver and InterruptionController references.
 - `EnemyContext`: enemy-only references such as enemy `NavMeshAgent`,
   `StaggerMeter`, collider, dropper, animator, and forced infinite reserve ammo
   setting.
@@ -91,7 +134,8 @@ back to `ctx.cc`, never the reverse, and never search the hierarchy for "some
 
 ### `Visibility` Is Rebound Per Model
 
-`ctx.Visibility` (`CharacterVisibilityController`) lives on the character root and
+`ctx.Visibility` (`CharacterVisibilityController`) lives within the character's
+context subtree (Player uses `CharacterVisual_System`) and
 owns "is this character visible right now". Gameplay asks in gameplay words —
 `ConcealForTeleport` / `RevealAfterTeleport`, `Appear` / `Disappear`,
 `SetHiddenImmediate` / `SetVisibleImmediate` — and the controller animates the
@@ -294,6 +338,12 @@ It is safe to read every frame; null-check before use.
 `PlayerContext.Targeting` is a player-only reference to `PlayerTargetingController`. Common
 character modules do not own or depend on it. Aim-derived player commands read this reference;
 AI actors continue to use `AllyContext.AITargetSensor` or their graph-provided explicit target.
+
+`PlayerContext.inputHandler` and `interruptionController` resolve the player's
+input and interruption modules across child groups. Chain autonomy reads the
+handler and movement through this hub; party commands read the interruption
+binding. They must not depend on sharing a GameObject or ancestor with those
+modules. See `PREFABS_AND_AUTHORING.md` for the six Player system groups.
 
 **When to use `PlayerContext.Instance`:**
 

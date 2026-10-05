@@ -16,6 +16,8 @@ MonoBehaviour:
   icon: {fileID: 0}
   description: 
   upgradeTree: {fileID: 0}
+  recipe: {fileID: 2305844439734519192}
+  definitionId: 2ac31fcd519b6a942897779070251ec0
   rules:
   - ruleId: rule
     requiredUpgradeId: 
@@ -48,13 +50,139 @@ MonoBehaviour:
       maxStacks: 100
       durationSeconds: 10
       stackPolicy: 2
-      statusEffect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
-      statusInitialStacks: 10
       statusSpec:
         effect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
         stacks: 10
         modifiers: []
+        modifiersOverrideEnabled: 0
         durationOverride: 0
+        durationOverrideEnabled: 0
         tickDamageOverride: 0
+        tickDamageOverrideEnabled: 0
+        tickIntervalOverride: 0
+        tickIntervalOverrideEnabled: 0
       emittedEventType: 1
       emittedValue: 1
+--- !u!114 &2305844439734519192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Test Passive Shot ++ MaxHp Recipe
+  m_EditorClassIdentifier: 
+  variables: []
+  rules:
+  - id: rule
+    trigger: 0
+    eventType: 1
+    originFilter: 3
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      status: {fileID: 0}
+      minimumStacks: 1
+      children: []
+    steps:
+    - rid: 3342399495413957125
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957125
+      type: {class: PassiveModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: action
+        target:
+          mode: 0
+          filter: 0
+          radius: 5
+        modifier:
+          actionId: action
+          actionType: 0
+          targetSelector: 0
+          modifierKeyOverride: 
+          appliedByIdOverride: 
+          emittedEventSourceIdOverride: 
+          modifiers:
+          - statType: 11
+            operation: 0
+            value: 10
+          grantedStacks: 1
+          maxStacks: 100
+          durationSeconds: 10
+          stackPolicy: 2
+          statusSpec:
+            effect: {fileID: 11400000, guid: 2aa450eaf970ef7499f587bee7a8936a, type: 2}
+            stacks: 10
+            modifiers: []
+            modifiersOverrideEnabled: 0
+            durationOverride: 0
+            durationOverrideEnabled: 0
+            tickDamageOverride: 0
+            tickDamageOverrideEnabled: 0
+            tickIntervalOverride: 0
+            tickIntervalOverrideEnabled: 0
+          emittedEventType: 1
+          emittedValue: 1
+        whileEquipped: 0

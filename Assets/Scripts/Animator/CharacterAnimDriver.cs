@@ -145,6 +145,9 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         if (hub == null || brain == null) return;
 
         brain.MoveSpeed01 = hub.MoveSpeed01;
+        brain.IsSprinting = hub.IsSprinting;
+        brain.IsCrouching = hub.IsCrouching;
+        brain.IsSliding = hub.IsSliding;
         brain.MoveDirLocal = hub.MoveDirLocal;
         brain.SetFireHoldContext(hub.DesiredFireHeld, hub.CanShoot());
     }

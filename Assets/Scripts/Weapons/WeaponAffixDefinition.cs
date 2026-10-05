@@ -16,6 +16,14 @@ public class WeaponAffixDefinition : ScriptableObject
     [Min(0.01f)] public float weight = 1f;
     public List<WeaponType> allowedWeaponTypes = new();
     public WeaponAffixBehavior rootBehavior;
+    public ComposedPassiveDef passiveDefinition;
+    public WeaponAffixRollSpec rollSpec;
+    public WeaponAffixTooltipData tooltip;
+    public bool hasTimedEffect;
+    public bool rolledValueIsStat;
+    public ModifierOp rolledValueOperation;
+    public int minimumBaseMagazine;
+    [HideInInspector] public int passiveSchemaVersion;
     public WeaponAffixFeedbackProfile feedbackProfile;
 
     [Header("Roll")]
@@ -48,15 +56,12 @@ public class WeaponAffixDefinition : ScriptableObject
     public bool SupportsWeapon(GunConfig weapon)
     {
         return weapon != null && SupportsWeaponType(weapon.WeaponType) &&
-               (rootBehavior == null || rootBehavior.IsEligible(weapon));
+               (minimumBaseMagazine <= 0 || Mathf.Max(weapon.magazine, weapon.maxMagazine) >= minimumBaseMagazine);
     }
 
     public float RollPrimaryValue()
     {
-        if (Mathf.Approximately(minRollValue, maxRollValue))
-            return minRollValue;
-
-        return Random.Range(minRollValue, maxRollValue);
+        return rollSpec.Roll();
     }
 
     public float ResolvePrimaryValue(RolledAffixData rolledAffix)

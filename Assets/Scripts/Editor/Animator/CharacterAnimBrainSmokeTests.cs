@@ -52,6 +52,72 @@ public sealed class CharacterAnimBrainSmokeTests
     }
 
     [Test]
+    public void SprintUsesRomaLoopAndReturnsToDirectionalLocomotion()
+    {
+        var roma = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterAnimProfileSO>(
+            "Assets/Data/Animation/Roma/Roma_AnimProfile.asset");
+        Assert.That(roma.sprint, Is.Not.Null);
+        Assert.That(roma.sprint.Clip.name, Is.EqualTo("Roma_Run"));
+        Assert.That(roma.sprint.Clip.isLooping, Is.True);
+        Rig rig = CreateRig(profile => profile.sprint = roma.sprint);
+        rig.Brain.IsSprinting = true;
+        rig.Brain.MoveSpeed01 = 1f;
+        rig.Brain.MoveDirLocal = Vector2.up;
+        rig.Tick();
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        Assert.That(graph.Layers[0].CurrentState.Clip, Is.EqualTo(roma.sprint.Clip));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+        var runState = graph.Layers[0].CurrentState;
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * Mathf.PI / 4f;
+            rig.Brain.MoveDirLocal = new Vector2(Mathf.Sin(angle), Mathf.Cos(angle));
+            rig.Tick();
+            Assert.That(graph.Layers[0].CurrentState, Is.SameAs(runState),
+                "Turning during Sprint must neither select directional locomotion nor restart the run.");
+        }
+        rig.Brain.IsSprinting = false;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState, Is.InstanceOf<Vector2MixerState>());
+    }
+
+    [Test]
+    public void CrouchSlideClipsAndFallbackRetainLocomotionOwnership()
+    {
+        Rig rig = CreateRig();
+        // Preserve a complete locomotion profile; only add the optional in-place transitions.
+        var roma = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterAnimProfileSO>(
+            "Assets/Data/Animation/Roma/Roma_AnimProfile.asset");
+        var profile = Object.Instantiate(roma);
+        createdObjects.Add(profile);
+        profile.crouchIdle = rig.CutsceneA;
+        profile.crouchMove = rig.CutsceneB;
+        profile.slide = roma.sprint;
+        rig.Brain.SetAnimProfileOverride(profile);
+        var graph = rig.Brain.GetComponent<AnimancerComponent>();
+        rig.Brain.IsCrouching = true;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState.Clip, Is.EqualTo(profile.crouchIdle.Clip));
+        rig.Brain.MoveSpeed01 = 1f;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState.Clip, Is.EqualTo(profile.crouchMove.Clip));
+        rig.Brain.IsSliding = true;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState.Clip, Is.EqualTo(profile.slide.Clip));
+        var slideState = graph.Layers[0].CurrentState;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState, Is.SameAs(slideState));
+        Assert.That(rig.Brain.RootMotionActive, Is.False);
+        profile.slide = null;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState, Is.InstanceOf<Vector2MixerState>());
+        rig.Brain.IsSliding = false;
+        rig.Brain.IsCrouching = false;
+        rig.Tick();
+        Assert.That(graph.Layers[0].CurrentState, Is.InstanceOf<Vector2MixerState>());
+    }
+
+    [Test]
     public void CutscenePhaseKeepsRequestAndRejectsOldCallbacks()
     {
         Rig rig = CreateRig(); var definition = CreateSkillDefinition(rig);

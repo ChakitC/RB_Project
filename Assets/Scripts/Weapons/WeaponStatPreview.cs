@@ -103,17 +103,10 @@ public static class WeaponStatPreview
             ? affixDatabase.GetById(rolledAffix.affixId)
             : WeaponAffixDatabase.GetLoadedAffixById(rolledAffix.affixId);
 
-        if (definition == null || definition.rootBehavior is not ConfiguredWeaponAffixBehavior behavior)
+        if (definition == null || definition.passiveDefinition == null)
             return;
-
-        if (behavior.kind != WeaponAffixRuntimeKind.StaticStat &&
-            behavior.kind != WeaponAffixRuntimeKind.ImpactCore)
-        {
-            return;
-        }
-
         float roll = rolledAffix.hasPrimaryValue ? rolledAffix.primaryValue : 0f;
-        string modifierKey = $"weapon:{instance.instanceId}:affix:{definition.affixId}";
-        buffer.Add(new RuntimeStatModifier(behavior.statType, behavior.modifierOp, roll, modifierKey));
+        PassiveStatPreview.Append(new PassiveGrant(definition.passiveDefinition, "weapon:" + instance.instanceId,
+            rolledAffix.grantId ?? definition.affixId, options: new PassiveGrantOptions(parameters: new Dictionary<string, float> { ["roll"] = roll })), buffer);
     }
 }

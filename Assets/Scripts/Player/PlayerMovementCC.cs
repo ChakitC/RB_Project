@@ -1,10 +1,10 @@
 using UnityEngine;
 
-public class PlayerMovementCC : MonoBehaviour
+public partial class PlayerMovementCC : MonoBehaviour
 {
     readonly System.Collections.Generic.HashSet<int> suspensionTokens = new();
     int nextSuspensionToken;
-    public int AcquireSuspensionToken() { int token = ++nextSuspensionToken; suspensionTokens.Add(token); return token; }
+    public int AcquireSuspensionToken() { CancelSprint(); CancelSlide(); int token = ++nextSuspensionToken; suspensionTokens.Add(token); return token; }
     public void ReleaseSuspensionToken(int token) => suspensionTokens.Remove(token);
     [Header("Ref")]
     [SerializeField] Transform actorRoot;
@@ -104,6 +104,9 @@ public class PlayerMovementCC : MonoBehaviour
 
     void Update()
     {
+        RefreshDashBinding();
+        UpdateCrouchAndSlide();
+        ValidateSprint();
         if (suspensionTokens.Count > 0) return;
         Move();
         ResolveCharacterOverlaps();
@@ -173,6 +176,12 @@ public class PlayerMovementCC : MonoBehaviour
             return;
 
         Transform rotateRoot = actorRoot ? actorRoot : transform;
+        if (IsSprinting)
+        {
+            // Travel already turns smoothly toward the camera; facing shares that heading.
+            rotateRoot.rotation = Quaternion.LookRotation(SprintDirectionWorld, Vector3.up);
+            return;
+        }
         Vector3 facingDirection = movementDirection;
         GameplayCameraController gameplayCamera = GameplayCameraController.Instance;
         bool combatAligned = gameplayCamera != null && gameplayCamera.HasCombatAlignment;
@@ -198,6 +207,7 @@ public class PlayerMovementCC : MonoBehaviour
 
         if (!stateHub.CanMove())
         {
+            CancelSlide();
             _move01 = 0f;
             stateHub.SetMoveSpeed01(0f);
             return;
@@ -205,9 +215,22 @@ public class PlayerMovementCC : MonoBehaviour
 
         if (_brain != null && _brain.RootMotionActive)
         {
+            CancelSlide();
             _move01 = 0f;
             stateHub.SetMoveSpeed01(0f);
             HandleFacing(Vector3.zero);
+            return;
+        }
+
+        if (IsSliding)
+        {
+            MoveSlide();
+            return;
+        }
+
+        if (IsSprinting)
+        {
+            MoveSprint();
             return;
         }
 
@@ -250,6 +273,7 @@ public class PlayerMovementCC : MonoBehaviour
         }
 
         targetSpeed *= directionalSpeedMult;
+        if (IsCrouching) targetSpeed *= crouchSpeedMultiplier;
 
         if (_characteContext.WeaponSystem != null)
         {
@@ -259,15 +283,24 @@ public class PlayerMovementCC : MonoBehaviour
                 targetSpeed *= fireSpeedMult;
         }
 
+        bool releasingSprint = sprintSpeedBonus > 0f;
+        sprintSpeedBonus = Mathf.MoveTowards(sprintSpeedBonus, 0f,
+            Mathf.Max(0.01f, baseMoveSpeed * (sprintSpeedMultiplier - 1f)) * SprintDeltaTime /
+            Mathf.Max(0.01f, sprintReleaseSeconds));
+        targetSpeed += sprintSpeedBonus;
+
         float t = 1f - Mathf.Exp(-speedLerp * Time.deltaTime);
-        currentSpeed = Mathf.Lerp(currentSpeed, targetSpeed, t);
-        if (stateHub.Isdown && currentSpeed > targetSpeed)
+        currentSpeed = releasingSprint ? targetSpeed : Mathf.Lerp(currentSpeed, targetSpeed, t);
+        if ((stateHub.Isdown || IsCrouching) && currentSpeed > targetSpeed)
             currentSpeed = targetSpeed;
 
         // Planar only. Vertical motion is owned by CharacterVerticalMotor, so this must not use
         // SimpleMove: SimpleMove applies its own gravity, and this call sits behind early-returns
         // that would silently disable gravity while stunned, dashing, or dead.
-        ApplyMovement(moveWorld * (currentSpeed * Time.deltaTime));
+        float dt = SprintDeltaTime;
+        Vector3 velocity = BlendSlideRelease(moveWorld * currentSpeed, dt);
+        Vector3 applied = _characteContext.MovementMotor.Move(velocity * dt, CharacterMovementSettings.Default);
+        RecordLocomotionDisplacement(applied, dt);
 
         float input01 = Mathf.Clamp01(moveInput.magnitude);
         float target01 = input01;

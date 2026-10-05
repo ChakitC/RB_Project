@@ -1,0 +1,312 @@
+{
+  "before": {
+    "scene": "Assets/Scenes/MapPlayMode GR_01 Prototy/MapRun.unity",
+    "paused": false,
+    "time": 131.756989,
+    "run": "MapRunSystem",
+    "node": "MapNode",
+    "room": "Sewer_Cross(Clone)",
+    "trees": [
+      {
+        "id": -6789562,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": null,
+        "ctx": "Enemy_E_GR_01 Variant(Clone)",
+        "contextInstance": -6789168,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(-7.43, 0.02, 1.90)",
+        "onMesh": true,
+        "velocity": "(3.43, 0.00, 0.00)",
+        "destination": "(-6.94, 0.02, 1.90)",
+        "fire": false
+      },
+      {
+        "id": -6787380,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_01 Variant(Clone)",
+        "contextInstance": -6786888,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(-0.27, 0.02, 9.50)",
+        "onMesh": true,
+        "velocity": "(-0.19, 0.00, -4.50)",
+        "destination": "(-0.34, 0.02, 7.93)",
+        "fire": false
+      },
+      {
+        "id": -6760062,
+        "name": "AI System",
+        "enabled": true,
+        "graph": "Aires_Behavior",
+        "ctx": "Ally 1",
+        "contextInstance": -6759926,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(0.92, 0.02, 34.07)",
+        "onMesh": true,
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(0.92, 0.02, 34.07)",
+        "fire": false
+      },
+      {
+        "id": -6788160,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_02 Variant(Clone)",
+        "contextInstance": -6787702,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(15.84, 0.02, -0.92)",
+        "onMesh": true,
+        "velocity": "(-4.50, 0.00, -0.14)",
+        "destination": "(10.78, 0.02, -1.08)",
+        "fire": false
+      },
+      {
+        "id": -6788932,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_02 Variant(Clone)",
+        "contextInstance": -6788474,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(-0.20, 0.02, -14.56)",
+        "onMesh": true,
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(-0.20, 0.02, -14.56)",
+        "fire": false
+      },
+      {
+        "id": -6760224,
+        "name": "AI System",
+        "enabled": true,
+        "graph": "AllyAI",
+        "ctx": "Ally 2",
+        "contextInstance": -6760088,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(-0.88, 0.02, 34.07)",
+        "onMesh": true,
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(-0.88, 0.02, 34.07)",
+        "fire": false
+      }
+    ],
+    "actors": [
+      {
+        "name": "Enemy_M_GR_01 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(-0.27, 0.02, 9.50)"
+      },
+      {
+        "name": "Enemy_M_GR_02 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(-0.20, 0.02, -14.56)"
+      },
+      {
+        "name": "Player",
+        "type": "PlayerContext",
+        "position": "(0.02, 0.06, 35.57)"
+      },
+      {
+        "name": "Enemy_E_GR_01 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(-7.43, 0.02, 1.90)"
+      },
+      {
+        "name": "Ally 2",
+        "type": "AllyContext",
+        "position": "(-0.88, 0.02, 34.07)"
+      },
+      {
+        "name": "Enemy_M_GR_02 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(15.84, 0.02, -0.92)"
+      },
+      {
+        "name": "Ally 1",
+        "type": "AllyContext",
+        "position": "(0.92, 0.02, 34.07)"
+      }
+    ]
+  },
+  "after": {
+    "scene": "Assets/Scenes/MapPlayMode GR_01 Prototy/MapRun.unity",
+    "paused": false,
+    "time": 173.123611,
+    "run": "MapRunSystem",
+    "node": "MapNode",
+    "room": "Sewer_Cross(Clone)",
+    "trees": [
+      {
+        "id": -6789562,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": null,
+        "ctx": "Enemy_E_GR_01 Variant(Clone)",
+        "contextInstance": -6789168,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(-9.33, 0.02, 0.82)",
+        "onMesh": true,
+        "velocity": "(4.45, 0.00, 0.67)",
+        "destination": "(-2.00, 0.02, 4.74)",
+        "fire": false
+      },
+      {
+        "id": -6787380,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_01 Variant(Clone)",
+        "contextInstance": -6786888,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(-0.68, 0.02, 10.83)",
+        "onMesh": true,
+        "velocity": "(0.69, 0.00, 4.45)",
+        "destination": "(-0.03, 0.02, 15.03)",
+        "fire": false
+      },
+      {
+        "id": -6760062,
+        "name": "AI System",
+        "enabled": true,
+        "graph": "Aires_Behavior",
+        "ctx": "Ally 1",
+        "contextInstance": -6759926,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(0.92, 0.02, 34.07)",
+        "onMesh": true,
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(0.92, 0.02, 34.07)",
+        "fire": false
+      },
+      {
+        "id": -6788160,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_02 Variant(Clone)",
+        "contextInstance": -6787702,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(14.04, 0.02, -0.30)",
+        "onMesh": true,
+        "velocity": "(-0.19, 0.00, -2.46)",
+        "destination": "(14.02, 0.02, -0.60)",
+        "fire": false
+      },
+      {
+        "id": -6788932,
+        "name": "AI_System",
+        "enabled": true,
+        "graph": "Enemy_M_GR_01_PatrolOrbitShoot",
+        "ctx": "Enemy_M_GR_02 Variant(Clone)",
+        "contextInstance": -6788474,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": true,
+        "goal": "Patrol",
+        "failure": null,
+        "position": "(1.05, 0.02, -13.52)",
+        "onMesh": true,
+        "velocity": "(0.22, 0.00, 4.49)",
+        "destination": "(1.17, 0.02, -11.02)",
+        "fire": false
+      },
+      {
+        "id": -6760224,
+        "name": "AI System",
+        "enabled": true,
+        "graph": "AllyAI",
+        "ctx": "Ally 2",
+        "contextInstance": -6760088,
+        "life": 1,
+        "canAct": true,
+        "ownerMatches": false,
+        "goal": null,
+        "failure": null,
+        "position": "(-0.88, 0.02, 34.07)",
+        "onMesh": true,
+        "velocity": "(0.00, 0.00, 0.00)",
+        "destination": "(-0.88, 0.02, 34.07)",
+        "fire": false
+      }
+    ],
+    "actors": [
+      {
+        "name": "Enemy_M_GR_01 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(-0.68, 0.02, 10.83)"
+      },
+      {
+        "name": "Enemy_M_GR_02 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(1.05, 0.02, -13.52)"
+      },
+      {
+        "name": "Player",
+        "type": "PlayerContext",
+        "position": "(0.02, 0.06, 35.57)"
+      },
+      {
+        "name": "Enemy_E_GR_01 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(-9.33, 0.02, 0.82)"
+      },
+      {
+        "name": "Ally 2",
+        "type": "AllyContext",
+        "position": "(-0.88, 0.02, 34.07)"
+      },
+      {
+        "name": "Enemy_M_GR_02 Variant(Clone)",
+        "type": "EnemyContext",
+        "position": "(14.04, 0.02, -0.30)"
+      },
+      {
+        "name": "Ally 1",
+        "type": "AllyContext",
+        "position": "(0.92, 0.02, 34.07)"
+      }
+    ]
+  }
+}

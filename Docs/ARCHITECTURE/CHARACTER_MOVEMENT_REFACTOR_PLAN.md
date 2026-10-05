@@ -1,5 +1,93 @@
 # Character movement consolidation
 
+## Held Crouch and momentum Slide (2026-10-04)
+
+`PlayerMovementCC.Crouch.cs` and `.Slide.cs` own crouch and slide. The production
+Player action map binds `Crouch` to `<Keyboard>/ctrl` (either Ctrl), routed through
+the Player prefab's `OnCrouch` UnityEvent. Hold while slow to crouch; press grounded
+above 1.15 times base walk speed to slide. Ctrl can also interrupt an active grounded
+Dash immediately, using its actual planar displacement velocity; it need not wait
+for Sprint. One slide per press; airborne/blocked presses never queue a later slide.
+
+Entry captures actual planar locomotion displacement before canceling Sprint.
+Gravity, separation, teleports and other motion owners do not contribute; Dash is
+an explicit handoff through `DashSystem.TryGetPlanarVelocity`. Camera
+rotation alone cannot steer. Camera-relative WASD supplies perpendicular steering
+and opposing braking; diagonal input is clamped and steering never adds speed.
+Defaults: lateral acceleration 0.8 times base speed per second, 45 degrees/second
+maximum turn, friction 0.75 times base speed per second, opposing brake 1.0 times
+base speed per second, exit at 0.6 times base speed. Full Sprint slides for about
+1.3 seconds on flat ground without braking.
+
+Slide spends stamina continuously: actual planar distance returned by
+`ctx.MovementMotor.Move` each frame multiplied by the current character's
+`CharacterStats.slideStaminaPerUnit` (default 2 stamina/world unit; 0 is free).
+There is no entry fee. Vertical motion, separation, requested-but-blocked distance,
+walking/crouching and release blending do not count. The final requested step is
+limited by affordable distance. Empty stamina ends Slide in crouch while Ctrl is
+held; paid Slide cannot start without stamina or its context-bound StaminaSystem.
+Holding Ctrl through regeneration does not restart Slide. StaminaSystem pauses
+regeneration during Slide and retains its normal delay after each spend. Small
+per-frame costs are retained instead of discarded by the previous value tolerance.
+
+Aim/fire keep Slide without walking speed penalties. Release blends back to walk
+over 0.15 seconds. Slowdown/wall contact becomes crouch while held. Crouch speed is
+0.45 times walk; height is 60%, clamped to capsule diameter, preserving foot height.
+Standing requires clear space and retries later when blocked. Restore only a shape
+still owned by crouch. Model transforms and hit zones are not resized.
+
+Dash requires standing clearance; failure preserves Slide. Holding Ctrl through
+successful Dash ends in crouch, never Sprint. Reload, melee, skill, Block, locks,
+stun, knockback, down/death and exclusive motion cancel Slide. UI/pause, disable
+and focus loss clear momentum and require release before a new slide. Leaving
+ground ends Slide; the vertical motor remains authoritative. No Jump, slope
+acceleration or slide invulnerability is added. Sprint still ignores
+WASD: held A/D starts steering only after the initial Slide velocity capture.
+
+Dash-to-Slide cancels the Dash coroutine, pending Sprint and dash invulnerability
+after capturing its collision-constrained velocity. It does not charge another Dash
+fee or refund the accepted Dash; subsequent Slide distance has its own cost.
+A stationary/blocked or stale Dash velocity cannot
+start Slide. The animation Brain leaves Dash playback as soon as Slide intent arrives,
+so the old dash clip duration cannot hide the Slide animation or later restart Sprint.
+
+Optional in-place `crouchIdle`, `crouchMove` and `slide` transitions use layer 0
+without root motion. Missing clips use ordinary locomotion. Roma now uses its
+looping `Roma_Slide` clip at speed 1 and 0.1-second fade; crouch idle/move still use
+fallback until authored. Visual/hit-zone pose matching remains an authoring task.
+
+## Held Dash to Sprint (2026-10-03)
+
+`PlayerMovementCC` owns Sprint in its `PlayerMovementCC.Sprint.cs` partial.
+Press Shift to dash immediately; keep it held through successful completion to
+sprint initially along the captured Dash direction. Releasing Shift restores directional
+walking immediately and removes the speed bonus over `sprintReleaseSeconds`.
+Camera yaw now steers Sprint (2026-10-04). The movement direction smoothly turns
+toward the camera's planar forward using `sprintTurnSmoothTime` (0.25 seconds)
+and `sprintMaxTurnSpeed` (360 degrees/second). Facing shares this smoothed heading
+so the body and travel turn together. Movement keys do not steer Sprint. Camera
+pitch does not add vertical movement; a missing/vertical camera or rotation lock
+retains the previous direction. Turn velocity resets on cancellation and entry.
+
+Defaults are 1.6 times the actor's walk speed, 0.2 seconds to accelerate, and
+0.12 seconds to remove the bonus. Sprint spends no extra stamina and grants no
+invincibility. Dash retains its stamina, i-frame, perfect-dodge and passive rules.
+`DashCompleted(Vector3)` fires only on natural completion; `DashCanceled` clears
+pending Sprint on interruption/disable. Failed dashes do not arm Sprint.
+
+Combat input, movement suspension, UI/pause, stun, knockback, down/death, disable,
+focus loss, and exclusive playback cancel the pending/active sprint. Holding the
+same press cannot restart an interrupted sprint. `PlayerInputHandler` forwards
+both performed and canceled Dash callbacks; disable cancels Sprint and requires
+a release before the next press. A release while disabled is reconciled on enable.
+
+Sprint uses `ctx.MovementMotor.Move`; gravity stays with CharacterVerticalMotor.
+A capsule sweep clips travel before walls, including oblique contact, instead of
+letting controller wall sliding steer the run. Walkable normals and steps remain
+available. The motor's actual displacement also detects a blocked run.
+The actor clock follows `ctx.UsesWorldSlow`. Root/nested controller layouts use
+the same context bindings as walking and dash.
+
 Status: implemented after approval, 2026-09-29. Both migration phases are integrated.
 The required C# build passed with 93 existing warnings and no errors. Unity passed
 16 root-motion collision tests, 17 movement integration tests (including four
@@ -116,3 +204,18 @@ Incorrect handoff can freeze navigation or restore it during another movement.
 Changing collision settings can alter dash/knockback distance or character
 separation. Incorrect Y ownership can suppress gravity or apply vertical movement
 twice. The staged migration and lifecycle tests above are completion requirements.
+
+## Passive stamina notifications (2026-10-04)
+
+StaminaSystem.Spend(float) is retained. Spend(float, reason) additionally identifies
+a successful payment; ResourceSpent reports only the clamped amount actually paid
+and a unique FactId. Gradual Slide payments therefore accumulate their real total.
+Failed/zero/invalid payments, regen, restoration and max changes do not emit Spent.
+
+Restore(amount) returns the actual restored quantity and preserves the existing
+regen delay. OnStaminaChanged still informs HUD and dynamic passive modifiers.
+A passive conversion may change Max; the existing ratio-preserving policy remains.
+
+DashSystem.ExecutionId identifies one Dash execution. PerfectDodge metadata carries
+that identity, so multiple threats avoided by the same Dash can grant stamina once.
+No extra movement polling is introduced for Stamina/Momentum recipes.

@@ -83,6 +83,11 @@ public class ItemPickup : MonoBehaviour
         if (other == null)
             return null;
 
+        var context = CharacterContextModuleLookup.ResolveContext(other) as PlayerContext;
+        context?.ResolveReferences();
+        if (context != null && context.inventory != null)
+            return context.inventory;
+
         var inventory = other.GetComponent<PlayerInventory>();
         if (inventory != null)
             return inventory;

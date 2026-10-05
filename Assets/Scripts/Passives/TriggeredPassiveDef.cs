@@ -12,6 +12,7 @@ public sealed class TriggeredPassiveDef : PassiveDefinition
 
     public override void CollectUpgradeIds(List<string> ids)
     {
+        if (recipe != null) { base.CollectUpgradeIds(ids); return; }
         if (ids == null || rules == null)
             return;
 

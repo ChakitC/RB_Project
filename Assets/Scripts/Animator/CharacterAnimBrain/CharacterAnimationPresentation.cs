@@ -11,6 +11,7 @@ internal sealed class CharacterAnimationPresentation
     private readonly List<AnimancerState> retiredTemporaryStates = new();
     private readonly Dictionary<AnimancerState, PairOffsetUpperAction> actionOffsetStates = new();
     private readonly List<AnimancerState> finishedOffsetStates = new();
+    private readonly CharacterAnimationContributions baseContributions = new();
 
     private AnimancerComponent animancer;
     private CharacterAnimProfileSO profile;
@@ -58,17 +59,32 @@ internal sealed class CharacterAnimationPresentation
     }
 
     internal AnimancerState PlayLocomotionTransition(ITransition transition)
-        => PrepareTransitionState(LocoLayer.Play(transition), transition);
+        => RegisterLocomotion(PrepareTransitionState(LocoLayer.Play(transition), transition), transition);
 
     internal AnimancerState PlayLocomotionTransition(ITransition transition, float fadeDuration,
         FadeMode mode = FadeMode.FixedSpeed)
-        => PrepareTransitionState(LocoLayer.Play(transition, fadeDuration, mode), transition);
+        => RegisterLocomotion(PrepareTransitionState(LocoLayer.Play(transition, fadeDuration, mode), transition), transition);
+
+    private AnimancerState RegisterLocomotion(AnimancerState state, ITransition transition)
+    {
+        baseContributions.Register(state, transition, profile);
+        return state;
+    }
+
+    internal void GetBaseContributions(List<PairOffsetBasePoseWeight> output)
+        => baseContributions.Collect(LocoLayer, output);
 
     internal AnimancerState PlayLocomotionTransition(AnimationClip clip, float fadeDuration)
-        => TrackPlayedState(LocoLayer.Play(clip, fadeDuration));
+        => UnregisteredLocomotion(TrackPlayedState(LocoLayer.Play(clip, fadeDuration)));
 
     internal AnimancerState PlayLocomotionTransition(AnimancerState state, float fadeDuration)
-        => TrackPlayedState(LocoLayer.Play(state, fadeDuration));
+        => UnregisteredLocomotion(TrackPlayedState(LocoLayer.Play(state, fadeDuration)));
+
+    private AnimancerState UnregisteredLocomotion(AnimancerState state)
+    {
+        baseContributions.Forget(state);
+        return state;
+    }
 
     private AnimancerState PrepareTransitionState(AnimancerState state, ITransition transition)
     {
@@ -168,7 +184,7 @@ internal sealed class CharacterAnimationPresentation
         {
             if (pair.Value == PairOffsetUpperAction.None || !pair.Key.Playable.IsValid()) continue;
             float contribution = weight * Mathf.Clamp01(pair.Key.Weight);
-            if (contribution > 0.001f) actions.Add(new PairOffsetActionWeight(pair.Value, contribution));
+            if (contribution > 0f) actions.Add(new PairOffsetActionWeight(pair.Value, contribution, pair.Key.Clip));
         }
     }
 
@@ -179,6 +195,7 @@ internal sealed class CharacterAnimationPresentation
                 state.Destroy();
         retiredTemporaryStates.Clear();
         actionOffsetStates.Clear();
+        baseContributions.Clear();
         finishedOffsetStates.Clear();
         if (upperActionPresentationLayer != null && upperActionPresentationLayer.Playable.IsValid())
             upperActionPresentationLayer.Stop();

@@ -3,9 +3,7 @@ using UnityEngine;
 
 public static class WeaponAffixAreaDamage
 {
-    const int MaxColliders = 64;
-    static readonly Collider[] ColliderBuffer = new Collider[MaxColliders];
-    static readonly HashSet<int> SeenTargets = new();
+
 
     public static int Apply(
         CharacteContext owner,
@@ -19,34 +17,28 @@ public static class WeaponAffixAreaDamage
         ulong chainId,
         int depth)
     {
+        return ApplyResolved(owner, eventBus, center, radius, damage, weaponInstanceId, affixId, attackId, chainId, depth).SuccessfulTargets.Count;
+    }
+
+    public static PassiveResult ApplyResolved(CharacteContext owner, CombatEventBus eventBus, Vector3 center,
+        float radius, float damage, string weaponInstanceId, string affixId, string attackId, ulong chainId, int depth)
+    {
         if (owner == null || eventBus == null || radius <= 0f || damage <= 0f)
-            return 0;
+            return new PassiveResult(PassiveOutcome.Skipped);
 
-        int hitCount = Physics.OverlapSphereNonAlloc(
-            center,
-            radius,
-            ColliderBuffer,
-            ~0,
-            QueryTriggerInteraction.Collide);
-
-        SeenTargets.Clear();
-        int appliedCount = 0;
-        for (int i = 0; i < hitCount; i++)
+        // Snapshot identities/lifetimes because damage can pool actors and mutate the registry.
+        var candidates = new List<(CharacteContext actor, int life)>();
+        foreach (var actor in CharacterContextRegistry.ActiveContexts)
+            if (actor != null) candidates.Add((actor, actor.LifeGeneration));
+        float appliedDamage = 0; var successful = new List<CharacteContext>();
+        foreach (var candidate in candidates)
         {
-            Collider hit = ColliderBuffer[i];
-            if (hit == null || MeleeController.IsCombatOnlyHitbox(hit))
-                continue;
-
-            IDamageable target = DamageableResolver.ResolveFrom(hit);
-            if (target == null || !target.IsAlive || !IsHostile(owner, hit))
-                continue;
-
-            Component targetComponent = target as Component;
-            int targetId = targetComponent != null ? targetComponent.GetInstanceID() : hit.GetInstanceID();
-            if (!SeenTargets.Add(targetId))
-                continue;
-
-            GameObject targetObject = targetComponent != null ? targetComponent.gameObject : hit.gameObject;
+            var actor = candidate.actor;
+            if (actor == null || !actor.isActiveAndEnabled || actor.LifeGeneration != candidate.life ||
+                !IsHostile(owner, actor) || (actor.transform.position - center).sqrMagnitude > radius * radius) continue;
+            IDamageable target = actor.HealthSystem;
+            if (target == null || !target.IsAlive) continue;
+            GameObject targetObject = actor.gameObject;
             var damageContext = new DamageContext(
                 damage,
                 owner.gameObject,
@@ -54,12 +46,12 @@ public static class WeaponAffixAreaDamage
                 attackId,
                 chainId == 0 ? CombatEventBus.NextChainId() : chainId,
                 Mathf.Max(0, depth) + 1,
-                PassiveEventOrigin.External);
+                PassiveEventOrigin.Passive);
             DamageResult result = target.TakeDamage(in damageContext);
             if (!result.Applied)
                 continue;
 
-            appliedCount++;
+            appliedDamage += result.AppliedDamage; successful.Add(actor);
             Publish(eventBus, owner.gameObject, targetObject, result, weaponInstanceId,
                 affixId, attackId, damageContext.ChainId, damageContext.Depth, PassiveEventType.Hit);
             if (result.Killed)
@@ -67,7 +59,7 @@ public static class WeaponAffixAreaDamage
                     affixId, attackId, damageContext.ChainId, damageContext.Depth, PassiveEventType.Kill);
         }
 
-        return appliedCount;
+        return new PassiveResult(appliedDamage, successful);
     }
 
     static void Publish(
@@ -109,9 +101,8 @@ public static class WeaponAffixAreaDamage
         bus.Publish(context);
     }
 
-    static bool IsHostile(CharacteContext owner, Collider candidate)
+    static bool IsHostile(CharacteContext owner, CharacteContext target)
     {
-        CharacteContext target = candidate.GetComponentInParent<CharacteContext>();
         if (target == null || target == owner)
             return false;
 

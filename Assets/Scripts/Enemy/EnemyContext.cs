@@ -5,7 +5,6 @@ using UnityEngine.AI;
 [DefaultExecutionOrder(-200)]
 public class EnemyContext : CharacteContext
 {
-    public AgentMoveDriver AgentMoveDriver;
     public StaggerMeter StaggerMeter;
     public EnemyLevelSystem EnemyLevelSystem;
 
@@ -72,8 +71,6 @@ public class EnemyContext : CharacteContext
         if (!Agent)
             Agent = ResolveActorComponent(Agent);
 
-        if (!AgentMoveDriver)
-            AgentMoveDriver = ResolveActorComponent(AgentMoveDriver);
 
         if (!StaggerMeter)
             StaggerMeter = ResolveActorComponent(StaggerMeter);

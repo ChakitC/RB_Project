@@ -1,305 +1,272 @@
 # Passive System
 
-The passive system is event-driven. Core gameplay systems publish combat events
-to `CombatEventBus`, and `PassiveController` evaluates equipped passive
-definitions.
-
-## Main Files
-
-- `Assets\Scripts\Passives\PassiveTypes.cs`
-- `Assets\Scripts\Passives\PassiveDefinition.cs`
-- `Assets\Scripts\Passives\TriggeredPassiveDef.cs`
-- `Assets\Scripts\Passives\CustomPassiveDef.cs`
-- `Assets\Scripts\Passives\PassiveController.cs`
-- `Assets\Scripts\Passives\CombatEventBus.cs`
-- `Assets\Scripts\Passives\PassiveEventContext.cs`
-- `Assets\Scripts\Passives\IStatModifierProvider.cs`
-- `Assets\Scripts\Passives\PassiveEventSource.cs`
-- `Assets\Scripts\Passives\PassiveEventSourceKind.cs`
-- `Assets\Scripts\Passives\PassiveEventSourceRequest.cs`
-- `Assets\Scripts\Passives\PassiveEventSourceRegistry.cs`
-- `Assets\Scripts\Passives\MovementDistanceEventSource.cs`
-
-## Passive Kinds
-
-Current passive kinds:
-
-- `AlwaysOn`: contributes stat modifiers while equipped.
-- `Triggered`: listens to events and executes configured actions.
-- `Custom`: runs custom behavior objects on equip and on passive events.
-
-## Passive Loadout Sources
-
-`PassiveController.RefreshPassiveLoadout()` gathers passives from:
-
-1. configured passive-kind options in `CharacterStats.skillSlots` (via
-   `CharacterSkillManager`)
-2. `runtimePassives`
-3. `IPassiveDefinitionProvider` components
-4. `extraPassives`
-
-`CharacterStats.passives` and the either/or fallback onto it were removed in
-Phase 2 (hard cut, no save-compat shim) now that every passive is authored as
-a skill slot — see "Passives Are Skills" below.
-
-After loadout refresh, the controller rebuilds stat modifier providers, raises
-`StatModifiersChanged`, and refreshes optional event sources.
-
-`RefreshPassiveLoadout()` also preserves state across a rebuild instead of
-wiping it: in-flight `_activeModifiers` are restored wholesale, and each
-`TriggeredPassiveRule`'s `Counter`/`WindowExpiresAt`/`CooldownReadyAt` are
-copied onto the matching rule in the new loadout by `(passiveId, ruleId)`.
-`OnEquipped`/`OnUnequipped` on `PassiveCustomBehavior` only fire for
-definitions that actually joined or left the loadout. This matters because
-unlocking a node in a passive's upgrade tree (see below) triggers a full
-refresh mid-combat.
-
-### Refresh Ordering Contract
-
-`PassiveController` runs at `[DefaultExecutionOrder(-112)]`, ahead of
-`CharacterSkillManager` (default order 0), so its first `RefreshPassiveLoadout()`
-in `OnEnable` can run before the skill manager has resolved its slots for the
-first time. `CharacterSkillManager` exposes `event Action PassiveLoadoutChanged`,
-raised at the end of `RebuildResolvedCommandSlots()` and again whenever a
-passive-kind slot's selected option or upgrade tree changes
-(`ApplySelectedSkillOption`, `HandleActiveSkillTreeChanged`).
-`PassiveController.ResolveReferences()` subscribes to whichever
-`CharacterSkillManager` it resolves through `ctx.SkillManager`, re-subscribing
-if that reference ever changes. Do not call `PassiveController.RefreshPassiveLoadout()`
-directly from `CharacterSkillManager` — publish through the event instead, so
-the skill manager does not own passive lifecycle.
-
-## Passives Are Skills (Passive Execution Mode)
-
-A passive **is** a skill that executes in passive form instead of cast form.
-`SkillGemDefinition` and `PassiveDefinition` both derive from the abstract
-`SkillDefinitionBase` (`Assets\Scripts\Player\Skill\SkillDefinitionBase.cs`),
-and `CharacterSkillLoadoutOption.skillAsset` is typed as `SkillDefinitionBase`.
-There is one `CharacterStats.skillSlots` list, one loadout option type, and one
-shared `skillPoints` point pool / upgrade-tree progress system
-(`CharacterActiveSkillProgress`) for both active gems and passives — a
-passive's upgrade tree unlocks and refunds exactly like an active skill's.
-
-- `CharacterSkillLoadoutOption.IsPassive` is true when `skillAsset` is a
-  `PassiveDefinition`; `ActiveSkillAsset` / `PassiveAsset` cast to the
-  concrete kind.
-- **A slot's kind is fixed**: every configured option in a slot must be the
-  same kind (all active or all passive). A slot carries a `hotkey` and cast
-  semantics, which are meaningless if the kind can vary per option.
-- **Passive-kind slots must be last** in `skillSlots`. `CharacterSkillManager`
-  resolves the runtime slot index 1:1 with the authored index, so a passive
-  slot ahead of an active one would shift every active slot's index.
-- **Passive-kind slots must use `hotkey: None`** — passives are never
-  castable; `CharacterSkillManager` clears the runtime slot instead of
-  building a `SkillInstance` for a passive option.
-- `SkillUpgradeTreeValidator` enforces all three rules as errors (a mixed
-  slot, or an active slot after a passive one), plus a warning if a passive
-  slot keeps a non-`None` hotkey.
-
-### Flag-Gated Rules
-
-Two mechanisms consume upgrade-id flags (`grantedUpgradeIds`) regardless of
-whether a node also carries numeric `statModifiers`:
-
-- `TriggeredPassiveRule.requiredUpgradeId` — the rule stays inert unless the
-  owning slot's upgrade snapshot grants that id. Checked through the shared
-  `PassiveUpgradeGate.IsRuleEnabled(rule, snapshot)` predicate, at both the
-  event-handling site and the optional-event-source request site.
-- Upgrade-id fields on `PassiveCustomBehavior` subclasses, e.g.
-  `DropAmmoOnShotPassiveBehavior.extraDropUpgradeId` — read from the
-  snapshot passed into `OnPassiveEvent` per call, not cached at equip, since
-  behaviors are shared assets across characters.
-
-Every `PassiveDefinition` subclass overrides `CollectUpgradeIds` so the
-validator can cross-check declared vs. granted ids: `TriggeredPassiveDef`
-collects its rules' `requiredUpgradeId`s and its rules' `upgradeOverrides[].upgradeId`s
-(see below), `CustomPassiveDef` forwards to its behaviors, and
-`AlwaysOnPassiveDef` collects nothing — it has no gate mechanism, so **an
-upgrade tree on an `AlwaysOnPassiveDef` is unsupported** and the validator
-errors on it.
-
-### Numeric Scaling (Phase 2)
-
-Passive nodes can carry numeric `statModifiers` like active-skill nodes.
-`SkillUpgradeStatSnapshot.AddNode` no longer filters by
-`SkillUpgradeStatSnapshot.Supports(StatType)` — every `StatType` on a node
-aggregates into the snapshot. `Supports()` still exists, scoped to exactly the
-stats `Apply(FinalSkillStats)` can write; only `SkillUpgradeTreeValidator`
-still uses it, and only to flag an out-of-whitelist stat as an error on an
-**active**-skill-owned tree (it's expected and untouched on a passive-owned
-tree, since custom behaviors and always-on/triggered modifiers read those
-stats through the mechanisms below, not through `Apply`).
-
-Two ways a passive reads an aggregated value:
-
-- `SkillUpgradeStatSnapshot.TryGetAggregate(StatType, out float add, out float multiply)`
-  — for a genuinely continuous knob when an existing `StatType` honestly means
-  that thing. `PassiveActionDefinition.modifiers` (`AppendStatModifiers`,
-  `AddAlwaysOnPassive`) scale this way: `(value + add) * multiply * stackCount`
-  — the snapshot aggregate scales the authored value first, stack count
-  multiplies the already-scaled result. Always-on modifiers scale once at
-  loadout-rebuild time (`AddAlwaysOnPassive`, static per loadout); active
-  triggered modifiers scale per call where `RuntimeStatModifier` is
-  constructed (`AppendStatModifiers`), since the snapshot travels with the
-  `ActivePassiveModifier`.
-- `SkillUpgradeStatSnapshot.HasUpgrade(id)` — for a discrete step, e.g.
-  `DropAmmoOnShotPassiveBehavior.procChanceBoostUpgradeId` /
-  `cooldownReductionUpgradeId` add a fixed bonus/reduction when granted. This
-  is the recommended default; reach for `TryGetAggregate` only when a
-  continuous stat genuinely applies. Never add passive-only entries to
-  `StatType` to make a custom behavior's knob work.
-
-`TriggeredPassiveRule.upgradeOverrides` (`List<PassiveRuleFieldOverride>`)
-gives `requiredCount`/`countWindowSeconds`/`cooldownSeconds` — none of which
-are `StatType`s — their own per-upgrade-id override list, keyed by
-`PassiveRuleField` and reusing `ModifierOp` (`Flat`/`AddPercent`/`Multiply`,
-same semantics as `CharacterStatFormula.ApplyModifiers`). These resolve once
-per loadout rebuild, not per event: `PassiveController`'s internal
-`TriggeredRuleState` caches `ResolvedRequiredCount` /
-`ResolvedCountWindowSeconds` / `ResolvedCooldownSeconds` from
-`(rule, runtime.Upgrades)` when the runtime is (re)built, and
-`RecordEvent`/`IsReady`/`Consume` read the cache. If a rebuild shortens
-`cooldownSeconds`, the carried-over `CooldownReadyAt` is re-clamped to
-`min(carried, now + newCooldownSeconds)` in `CopyStateFrom` — an upgrade must
-never leave the player worse off than it promises.
-
-### Known Limitation: Lobby Stat Preview
-
-`LobbyCharacterStatPreview` has no path into `skillSlots`, so a slotted
-passive does not contribute to the lobby stat preview (only equipped
-weapon/accessory bonuses and accessory-sourced passives do). This is invisible
-today because `ForgottenBulletBag` (Custom, below) contributes no stat
-modifiers, but it will be wrong the moment a stat-bearing passive is authored
-onto a skill slot. Not fixed in Phase 2.
-
-## Triggered Passive Rules
-
-`TriggeredPassiveRule` can filter and gate events by:
-
-- event type
-- event origin
-- required count
-- count window
-- cooldown
-- counter consume mode
-- target requirement
-- attack id requirement
-- once-per-target-per-chain behavior
-- optional event source kind and source id
-
-Matching rules execute action definitions.
-
-## Passive Actions
-
-Current passive action types:
-
-- `GrantModifier`: applies runtime stat modifiers through the target
-  `PassiveController`.
-- `ApplyStatusEffect`: applies a status effect through the target
-  `StatusEffectController`.
-- `EmitEvent`: publishes a child event on the same combat event chain.
-
-Child events carry passive origin metadata and increment event depth. Depth is
-bounded to avoid recursive passive loops.
-
-Each action type has its own optional identity override:
-
-- `modifierKeyOverride` affects only runtime modifier stacking and refresh.
-- `appliedByIdOverride` affects only status-effect application provenance.
-- `emittedEventSourceIdOverride` affects only child-event routing.
-
-Author the scoped override for the action type, or leave it empty to use
-`{passiveId}:{ruleId}:{actionId}`.
-
-## Ammo Drop On Shot
-
-`DropAmmoOnShotPassiveBehavior` listens for external `ShotFired` events and can
-spawn a configured `SkillPickup` behind the firing character. Proc chance,
-internal cooldown, collector rule, drop count, placement, and drop arc are
-authored per behavior asset, so character passives and accessory passives can
-reuse the behavior without sharing balance values.
-
-`Feno's Field Pack` uses its own behavior, pickup prefab, and pickup effect. It
-has a 6% proc chance with a 2-second internal cooldown and restores 4 magazine
-rounds to the collector and allies. Feno's character passive remains separate
-and keeps its stronger 8-round pickup.
-
-Feno's own `Passive.Feno_ForgottenBulletBag` (a `CustomPassiveDef`) is
-authored as the last, `hotkey: None` skill slot on `ChaDef.Feno` rather than
-in `passives:` — the first character migrated onto the passive-as-skill model.
-Its behavior's `extraDropUpgradeId` (`passive.feno.bulletbag.extra_drop`) is
-granted by the one node in `Passive.Feno_ForgottenBulletBag_Tree`; unlocking
-that node doubles the pickup drop count for that proc. The base 8% chance and
-1.5s cooldown are the same `HasUpgrade`-flag convention's two other knobs
-(`procChanceBoostUpgradeId`, `cooldownReductionUpgradeId`) — inert until a
-tree node is authored to grant one of those ids.
-
-## Core Events
-
-Core gameplay events should stay in their owning systems:
-
-- `ShotFired` from weapon firing
-- `Hit` and `Kill` from projectile, melee, or skill hit logic
-- `TakeDamage` and `DamagePrevented` from health/damage logic
-- `Reload` from reload logic
-- `DashStarted`, `DashEnded`, and `PerfectDodge` from dash logic
-
-These events publish directly to `CombatEventBus`.
-
-## Optional Event Sources
-
-Optional event sources are for monitored or polling-style events that should
-exist only when at least one equipped passive asks for them.
-
-Current source kind:
-
-- `MovementDistance`: implemented by `MovementDistanceEventSource`
-
-`PassiveController` scans triggered passive rules for source requests. For each
-required source kind it:
-
-1. finds an existing matching `PassiveEventSource`, or
-2. auto-adds one from `PassiveEventSourceRegistry`, then
-3. applies only the requests for that kind.
-
-When a source kind is no longer required, the controller clears its requests and
-destroys auto-added source components.
-
-## Movement Distance Source
-
-`MovementDistanceEventSource` tracks horizontal movement distance and publishes
-an event every configured distance step.
-
-Rules configure:
-
-- `eventSourceKind = MovementDistance`
-- `trigger = MovementDistanceReached`
-- `eventSourceFloatValue` as the distance step
-- optional `eventSourceId`; when empty, the rule generates a stable runtime id
-
-The source publishes through `CombatEventBus` and sets the event `EventSourceId`.
-Triggered rules match `context.EventSourceId` against `rule.RuntimeEventSourceId`.
-
-## Adding A New Optional Source
-
-1. Add a value to `PassiveEventSourceKind`.
-2. Implement `PassiveEventSource`.
-3. Keep the source inactive when it has no requests.
-4. Publish events through `CombatEventBus`.
-5. Set `PassiveEventContext.EventSourceId` to the request source id.
-6. Add the source type to `PassiveEventSourceRegistry`.
-7. Add authoring guidance for rule fields.
-
-## Dynamic Stat Modifier Rule
-
-Runtime stat modifiers use `ModifierKey`, not event source identity. The key is
-used for passive stack/replace/refresh behavior and for `StatsHub` cache input
-signatures. Status-effect modifiers use `status:{effectId}` so changing who
-applied an effect does not change the modifier's ownership key.
-
-If a passive, custom passive behavior, or optional event source changes the
-output of an `IStatModifierProvider`, it must raise `StatModifiersChanged`.
-
-`StatsHub` still probes modifier signatures before returning cached stats, so a
-missed notification should not leave stats permanently stale. The event remains
-the preferred fast path for immediate invalidation.
+PassiveDefinition keeps identity, icon, description and upgrade tree, and points to a
+PassiveRecipe. All installed passives execute through PassiveRuntime. AlwaysOn,
+Triggered and Custom definitions remain asset wrappers for serialized reference
+compatibility; their legacy fields are migration input, not a second runtime.
+
+## Recipes and reusable fragments
+
+A recipe contains stable-ID rules. Each rule selects Combat, Equipped,
+ResourceSpent or ResourceChanged, conditions, gates and an ordered step list.
+Weapon grants also use BeforeShot, ShotCommitted and BeforeDamage. These are
+explicit preparation/commit hooks, not synthetic combat facts.
+Lists execute as sequences without rolling back completed effects. A
+PassiveBranchStep selects its true/false list; LastSucceeded branches on the
+immediately preceding result. PassiveFragmentStep invokes a reusable
+PassiveFragment; fragments never subscribe to events.
+
+Recipe/fragment steps use SerializeReference. Keep IDs stable when reordering.
+A fragment declares Number/Status parameters and optional local variables.
+Overrides are scoped to each invocation; numeric expressions resolve defaults,
+invocation overrides, numeric upgrade flags and then their clamp. Assets are not
+modified while executing. Variable bindings explicitly share a fragment variable
+with its parent; otherwise each invocation has its own state.
+Recipes can declare root parameters. PassiveGrantOptions freezes numeric roll
+overrides at installation; fragment parameterBindings explicitly map parent
+parameters to local names. Preview resolves the same PassiveNumber expressions.
+
+PassiveRecipeValidator rejects missing recipes/fragments, duplicate IDs in a scope,
+unknown parameters, mismatched override types, undeclared variables and fragment
+cycles. Persistent registrations require Equipped. The initial conversion adapter
+supports StaminaRegenRate -> MaxStamina; other routes, including conversion chains,
+are rejected.
+
+Current pieces:
+
+| Purpose | Types |
+| --- | --- |
+| Conditions | All / Any / Not, health or stamina ratio, status/stacks, upgrade ID, source/provenance, event type, previous success |
+| Gates | count/window, reset/carry-over, cooldown, chance, once per attack or Dash |
+| Targets | owner, event target, around owner/target using CharacterContextRegistry and TargetIdentity |
+| Effects | stat modifier, status, healing, stamina restore, magazine restore, pickup, PassiveSignal |
+| State | accumulator add/subtract/set with clamp, dynamic modifier, conversion, next-attack modifier |
+
+Add a new reusable behavior as a PassiveStep subtype with its own Execute method,
+then compose it in data. Do not add behavior switches or character-specific fields
+to PassiveController or CharacteContext. Persistent registration steps opt into
+RunOnRefresh; ordinary Equipped effects run once when a grant is installed.
+
+## Installation identity and lifecycle
+
+WeaponAffixDefinition.passiveDefinition supplies the same runtime as character
+and accessory grants. WeaponAffixRuntimeController is an IPassiveGrantProvider
+adapter; it has no combat subscription, timer loop, or behavior runtime. The old
+ConfiguredWeaponAffixBehavior fields remain migration/reference data; calling its
+CreateRuntime is unsupported. Rolling, equip rules, ammo and saving remain owned
+by the equipment systems.
+
+For legacy weapon actors without the shared modules, the adapter installs one
+PassiveController only after a valid affix grant is equipped. It creates a
+CombatEventBus only for recipes with combat/weapon phases and refreshes the weapon's
+context-bound bus reference. A static-only installation needs no combat module.
+After the last grant is removed the empty controller has no subscription or timer.
+Optional step success/expiry signals and committed reservation signals forward to
+the equipment feedback API; cancelled preparations do not emit Consumed feedback.
+
+RolledAffixData.grantId identifies each installation independently of affixId.
+New rolls get IDs; old saves receive stable slot-derived IDs once. Legacy progress
+is claimed by the first matching grant, never copied to duplicate grants.
+Only variables explicitly marked persistent use IPassiveStateStore; the weapon
+adapter stores them lazily in WeaponInstanceData.affixRuntimeStates. Schema 1
+integer counters upgrade to schema 2 numeric entries on write. DeepClone preserves
+identities and copies entries. Static affixes create no persistent record.
+
+Transient charges/stacks/target memories/expiry deadlines belong to the grant and
+disappear on unequip. PassiveExpiryStep resets its declared variables; unlike an
+independent timed buff it does not outlive the grant. Existing weapon expiry uses
+scaled game time; ordinary character passive clocks continue to use UsesWorldSlow.
+PassiveTrackTargetStep keeps the context plus LifeGeneration, scoped to the
+fragment invocation. Pool reuse cannot inherit a target mark.
+
+BeforeShot permits reversible shot patches and variable reservations. The weapon
+commits only after the primary projectile spawns; cancellation refunds reserved
+charges unless their expiry/lifetime has ended. ShotCommitted runs persistent
+counters and extra projectile effects. Prepared damage and impact payloads stay
+with the projectile after unequip. Generated shots carry WeaponAffix provenance,
+retain the parent chain, and use captured ordinary damage without Roma Momentum
+or Fresh Chamber. BeforeDamage applies current target-sensitive grant modifiers;
+its adapter checks the source weapon and owner lifetime.
+
+PassiveStatPreview projects unconditional Equipped stat registrations without a
+PassiveRuntime or state store. Conditional/timed effects are described by authored
+tooltip data rather than shown as permanent weapon totals. Weapon definitions own
+rollSpec/tooltip/eligibility data; equipment authoring no longer requires a runtime
+behavior class for each affix.
+
+WeaponPassiveRecipeMigration.MigrateAll(true) validates a dry run;
+MigrateAll(false) installs subassets while retaining definition GUIDs/references.
+It is repeatable and preserves already-authored recipes. The 27 original affixes
+now have composed recipes. New behavior belongs in reusable step/condition types,
+not in a switch inside the equipment adapter or PassiveController.
+
+PassiveGrant contains Definition, SourceId, GrantId and a copied upgrade snapshot.
+DefinitionId is the asset GUID, independent of the public passiveId string.
+Two Roma assets can retain the same public ID without sharing runtime state.
+
+Skill slots supply slot IDs. Accessory grants use accessory instance IDs plus the
+definition occurrence. Runtime/extra lists retain serialized IDs across reordering;
+SetRuntimeGrants accepts explicit identities. Legacy definition-provider APIs remain
+callable, but new providers should implement IPassiveGrantProvider.
+
+State belongs to owner LifeGeneration -> grant key -> rule/step/invocation path.
+Variables are allocated only when read/written. A stat-only grant has modifier
+registrations, no counter or timer state. An empty controller has no runtime,
+combat/resource subscription or Update method. Its skill-loadout change listener
+remains available to activate it later.
+
+Refresh retains an existing grant's counters/variables, rebuilds registrations and
+clamps the remaining cooldown to the new duration. Removing a grant immediately
+removes its registrations and variables. Applied temporary buffs/statuses continue
+under their recipient's lifetime/time rules. Disable clears old state and releases
+subscriptions. Saved/queued targets and attack reservations check lifetime validity.
+
+PassiveTicker is one shared scheduler, active only for owners with a pending
+cooldown, counting window or timed modifier. Owner timers use UsesWorldSlow.
+Timed buffs run on the recipient controller; status time remains owned by Status.
+
+## Event processing
+
+Combat rules are indexed by event type. Resource notifications are subscribed only
+for rules or dynamic modifiers that need them. MovementDistanceEventSource is added
+only when requested and disabled/removed when no rule needs it. Pure upgrade
+conditions can suppress its installation; health/status conditions are evaluated
+when an event arrives.
+
+Evaluation order is condition -> count -> cooldown -> chance -> reserve -> steps.
+OnAttempt consumes gates before executing; OnSuccess reserves against reentry and
+consumes only after a successful result, preserving the migrated custom behavior.
+Effects return Succeeded, Skipped or Failed, actual quantities where available, and
+successful targets. HealActual / Restore / RestoreMagazineActual obtain quantities
+inside the owning system before callbacks can change state.
+
+PassiveDispatch queues only passive work, FIFO. Other CombatEventBus subscribers
+remain synchronous. Child resource effects retain the current chain. External is
+the default origin filter; receiving Passive or StatusEffect origins is explicit.
+Fact and per-rule/per-target chain guards, depth 8 and 1,024 steps bound chains.
+PassiveSignal is a distinct enum value; do not synthesize Hit/Kill/StatusApplied.
+Diagnostic mode records the last rule outcome/gate reason; budget overflow warns.
+
+StatusApplied describes actual status application independently of the Follow-Up
+feature switch. Follow-Up consumers own their feature gate. FactId, ChainId and
+FollowUpProvenance remain part of the event contract.
+
+## Stamina, conversion and dynamic damage
+
+StaminaSystem.Spend(float) remains supported; Spend(float, reason) emits
+ResourceSpent only for the clamped amount actually paid, with a unique FactId.
+Failed/zero/invalid spending, regen, Restore and max-stamina changes do not emit it.
+Restore returns the applied amount and leaves the regen delay unchanged.
+
+StatsHub computes ordinary totals first. Conversion reads the positive regen bonus
+above StaminaSystem.BaseRegenerationRate from that snapshot, removes the consumed
+bonus from regen and adds the converted maximum stamina. Competing conversion
+fractions share the available source proportionally; the same bonus is never spent
+twice. Rebuilds always start from the ordinary snapshot, so they cannot compound.
+Negative bonuses and baseline regen are not converted.
+
+Dynamic registrations read Current/Max directly, never call StatsHub from a
+provider, and invalidate via OnStaminaChanged. They reuse their registration key.
+Maximum changes preserve the existing stamina ratio and emit only Changed.
+No Momentum field is added to the context, stamina system or save data.
+
+## Next normal attack
+
+ReserveNextAttack(attackId) returns null immediately when no grant uses this hook.
+It reserves accumulator amounts and captures a multiplier. Commit consumes the
+reservation once the normal shot is spawned or normal melee HitStart activates;
+Dispose before commit refunds only the reserved amount to the surviving grant.
+Amounts earned after reservation remain for the following attack.
+
+Normal weapon shots bake the multiplier after shot preparation/affix modification
+and before projectile critical/defense processing. Melee keeps its multiplier and
+attack identity on the active step, shared by its hits and defensive-block snapshot.
+Projectiles retain their prepared damage even after unequip. A committed miss spends
+the bonus. Skills, status ticks, Follow-Up and affix-generated extra shots do not
+reserve or inherit this modifier.
+
+## Migration and example data
+
+Tools > RB > Passives > Dry Run Recipe Migration validates without saving.
+Migrate Recipes adds a recipe subasset to each legacy definition, retaining its
+GUID, name, external references, upgrade tree and serialized legacy input.
+Already migrated assets are validated and skipped; rerunning is safe.
+All ten existing definitions were migrated. Legacy custom behavior assets retain
+their authoring fields but no longer maintain actor dictionaries or execute effects.
+
+Assets/Tests/PassiveComposition/Fixtures/RomaStaminaMomentum.asset is an opt-in test
+definition with a recipe and four fragment subassets. It is not assigned to any
+production character:
+
+| Fragment | Test values |
+| --- | --- |
+| Perfect Dash restore | +10 stamina, once per DashExecutionId |
+| Regen conversion | +1 regen/second converts to +4 max stamina |
+| Missing stamina damage | below 70% remaining, +0.5% damage per 1% missing from full |
+| Momentum | actual stamina spend -> charge, cap 100; next normal attack +2% per point |
+
+Momentum is explicitly bound between the spending and equipped rules. These values
+are test parameters, not production balance. The four mechanics are composed from
+general pieces, without a Roma-specific runtime class.
+
+## Production Roma loadout
+
+Roma now equips `Assets/Character/Roma/Passive/Passive.Roma_StaminaMomentum.asset`
+in the trailing `roma.passive.stamina-momentum` skill slot (hotkey None), after
+its existing Ultimate. This production asset owns its recipe and all four
+fragment subassets; it does not reference the test fixture asset. Its definition
+ID is distinct from the example and its public ID is
+`passive.roma.stamina-momentum`.
+
+The initial live parameters match the proven example: Perfect Dash +10 stamina,
+regen bonus conversion 1:4, below-70% missing-stamina damage at 0.5% per missing
+1%, and Momentum capped at 100 with +2% next-normal-attack damage per point.
+These are the current starting balance values and can be tuned in the production
+recipe/fragments. The original example remains separate test data.
+## Skill slots and preview
+
+Passives remain SkillDefinitionBase assets in CharacterStats.skillSlots, sharing
+the skill-point pool and upgrade trees. A slot's options must all be one kind.
+Passive slots remain last and use hotkey None. CharacterSkillManager publishes
+PassiveLoadoutChanged; it does not own passive execution.
+
+The existing LobbyCharacterStatPreview does not evaluate composed recipes or
+skill-slot passive runtime state. A runtime stat-bearing recipe therefore needs
+runtime inspection; the lobby preview limitation is not resolved by this overhaul.
+
+## Validation
+
+PassiveComposition.Tests runs typed fixture cases through the dedicated test
+assembly. PassiveComposition.PlayMode.Tests exercises real-frame lifecycle and
+timer cleanup. See ../VALIDATION.md for executed results and broader regression
+checks. A full authoring UI, node graph, Delay and Repeat remain outside this version.
+## Passive HUD ownership
+
+`PassiveDefinition.hudPrefab` optionally references a `PassiveHudView` prefab.
+The asset owns only this reference. `PassiveHudHost` creates one view per installed
+`PassiveRuntime`/Grant, and binds it to that runtime rather than to the shared
+definition. Missing prefab means no view. The host listens to
+`PassiveController.RuntimeLoadoutChanged`; it never polls or subscribes to combat.
+Refresh preserves existing views; removing a grant, disabling the HUD or changing
+owners detaches listeners and destroys its instances. Re-enable recreates bindings.
+
+`PassiveRuntime.TryGetVariable` and `GetNextAttackBonusPercent` read values without
+allocating accumulator state. `StateChanged`, `EffectResolved` and `AttackChanged`
+are optional presentation notifications scoped to one runtime. Resource effect
+results carry actual applied amounts. Attack phases distinguish reservation,
+commit and cancellation; the HUD never consumes or restores gameplay resources.
+The existing `PassiveTriggered` API remains intact.
+
+Roma's production definition references
+`Assets/Character/Roma/Passive/UI/RomaPassiveHUD.prefab`. Its custom view displays
+Stamina, Momentum, the registered next-attack bonus and the grant's actual Damage
+AddPercent modifiers. The inner ring has a 70% presentation marker; amber follows
+the active damage bonus. Perfect Dash feedback displays the actual refund, including
+partial refunds near maximum. The two-ring artwork is editable uGUI vector geometry.
+The `momentumVariable` field binds the recipe's shared variable ID `momentum`.
+There is no gameplay formula or additional accumulator in the view.
+
+Create another character's view by deriving from `PassiveHudView`, assigning its
+local UI references and setting that character passive's `hudPrefab`. Subscribe and
+detach through the base lifecycle; check `HasLiveRuntime` before using retained
+references. Do not put scene instances or actor references on Definition assets.

@@ -1,0 +1,7 @@
+{
+  "name": "UnifiedWeaponPassives.Tests",
+  "references": [],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

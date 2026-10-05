@@ -1,0 +1,898 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="134" result="Passed" total="134" passed="134" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:10Z" duration="1.0201842">
+  <test-suite type="TestSuite" id="1000" name="BA Clone" fullname="BA Clone" runstate="Runnable" testcasecount="1102" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:10Z" duration="1.020184" total="134" passed="134" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1014" name="AICombatP0.Tests.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/AICombatP0.Tests.dll" runstate="Runnable" testcasecount="12" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:10Z" duration="0.207553" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1001" name="AICombatP0Tests" fullname="AICombatP0Tests" classname="AICombatP0Tests" runstate="Runnable" testcasecount="12" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:10Z" duration="0.204358" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1002" name="ConditionalsArePureAndReevaluateIdentically" fullname="AICombatP0Tests.ConditionalsArePureAndReevaluateIdentically" methodname="ConditionalsArePureAndReevaluateIdentically" classname="AICombatP0Tests" runstate="Runnable" seed="1191735146" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.098374" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1009" name="ContextCacheRestartAndPool" fullname="AICombatP0Tests.ContextCacheRestartAndPool" methodname="ContextCacheRestartAndPool" classname="AICombatP0Tests" runstate="Runnable" seed="791252655" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.004009" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1011" name="ContextEventsRebindWithoutDuplicates" fullname="AICombatP0Tests.ContextEventsRebindWithoutDuplicates" methodname="ContextEventsRebindWithoutDuplicates" classname="AICombatP0Tests" runstate="Runnable" seed="1952433410" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.003676" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1010" name="ContextFailuresNeverDiscoverOwner" fullname="AICombatP0Tests.ContextFailuresNeverDiscoverOwner" methodname="ContextFailuresNeverDiscoverOwner" classname="AICombatP0Tests" runstate="Runnable" seed="237375863" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.005935" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[InitializeAIContext] No active owning CharacteContext.
+]]></output>
+        </test-case>
+        <test-case id="1013" name="ContextSpecialPointBindings" fullname="AICombatP0Tests.ContextSpecialPointBindings" methodname="ContextSpecialPointBindings" classname="AICombatP0Tests" runstate="Runnable" seed="548783727" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.002017" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1012" name="ContextValidatorRejectsUnsafeGraphs" fullname="AICombatP0Tests.ContextValidatorRejectsUnsafeGraphs" methodname="ContextValidatorRejectsUnsafeGraphs" classname="AICombatP0Tests" runstate="Runnable" seed="656644841" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:09Z" duration="0.009605" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1008" name="GraphRoundTripAndPrefabBindings" fullname="AICombatP0Tests.GraphRoundTripAndPrefabBindings" methodname="GraphRoundTripAndPrefabBindings" classname="AICombatP0Tests" runstate="Runnable" seed="1925569653" result="Passed" start-time="2026-10-03 05:46:09Z" end-time="2026-10-03 05:46:10Z" duration="0.032140" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1005" name="ObservationConsumptionAndPooledLife" fullname="AICombatP0Tests.ObservationConsumptionAndPooledLife" methodname="ObservationConsumptionAndPooledLife" classname="AICombatP0Tests" runstate="Runnable" seed="466572873" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001840" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1004" name="PureSightQueryUsesObstacleAndOwnerRules" fullname="AICombatP0Tests.PureSightQueryUsesObstacleAndOwnerRules" methodname="PureSightQueryUsesObstacleAndOwnerRules" classname="AICombatP0Tests" runstate="Runnable" seed="1987773723" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002923" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1003" name="RangeAndAmmoAdmission" fullname="AICombatP0Tests.RangeAndAmmoAdmission" methodname="RangeAndAmmoAdmission" classname="AICombatP0Tests" runstate="Runnable" seed="150402603" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.003998" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1006" name="StateQuotaAndTargetReplacement" fullname="AICombatP0Tests.StateQuotaAndTargetReplacement" methodname="StateQuotaAndTargetReplacement" classname="AICombatP0Tests" runstate="Runnable" seed="884634579" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002061" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1007" name="TargetEligibilityRejectsDeadDownAndUntargetable" fullname="AICombatP0Tests.TargetEligibilityRejectsDeadDownAndUntargetable" methodname="TargetEligibilityRejectsDeadDownAndUntargetable" classname="AICombatP0Tests" runstate="Runnable" seed="435202657" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002048" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1045" name="AITargetSensor.Tests.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/AITargetSensor.Tests.dll" runstate="Runnable" testcasecount="26" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.081659" total="26" passed="26" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1015" name="AITargetSensorTests" fullname="AITargetSensorTests" classname="AITargetSensorTests" runstate="Runnable" testcasecount="26" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.076196" total="26" passed="26" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1026" name="BlockedTargetUsesMemoryThenExpires" fullname="AITargetSensorTests.BlockedTargetUsesMemoryThenExpires" methodname="BlockedTargetUsesMemoryThenExpires" classname="AITargetSensorTests" runstate="Runnable" seed="348581967" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004736" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1044" name="CallbackObservesCompleteSnapshotAndRescanDoesNotRecurse" fullname="AITargetSensorTests.CallbackObservesCompleteSnapshotAndRescanDoesNotRecurse" methodname="CallbackObservesCompleteSnapshotAndRescanDoesNotRecurse" classname="AITargetSensorTests" runstate="Runnable" seed="171667211" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004764" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1040" name="DeadTargetIsNotRetained" fullname="AITargetSensorTests.DeadTargetIsNotRetained" methodname="DeadTargetIsNotRetained" classname="AITargetSensorTests" runstate="Runnable" seed="1145059435" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000753" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1041" name="DisabledContextIsNotRetained" fullname="AITargetSensorTests.DisabledContextIsNotRetained" methodname="DisabledContextIsNotRetained" classname="AITargetSensorTests" runstate="Runnable" seed="482226121" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000563" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1019" name="DiscoversBestActorBeyondSixtyFourEntries" fullname="AITargetSensorTests.DiscoversBestActorBeyondSixtyFourEntries" methodname="DiscoversBestActorBeyondSixtyFourEntries" classname="AITargetSensorTests" runstate="Runnable" seed="1438884703" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.008008" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1018" name="DiscoversColliderlessActorWithRootOrNestedInfo" fullname="AITargetSensorTests.DiscoversColliderlessActorWithRootOrNestedInfo" classname="AITargetSensorTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.015282" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1016" name="DiscoversColliderlessActorWithRootOrNestedInfo(False)" fullname="AITargetSensorTests.DiscoversColliderlessActorWithRootOrNestedInfo(False)" methodname="DiscoversColliderlessActorWithRootOrNestedInfo" classname="AITargetSensorTests" runstate="Runnable" seed="1885395859" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001261" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1017" name="DiscoversColliderlessActorWithRootOrNestedInfo(True)" fullname="AITargetSensorTests.DiscoversColliderlessActorWithRootOrNestedInfo(True)" methodname="DiscoversColliderlessActorWithRootOrNestedInfo" classname="AITargetSensorTests" runstate="Runnable" seed="720897179" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000521" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1021" name="DoesNotAcquirePropsOrFriendlyActors" fullname="AITargetSensorTests.DoesNotAcquirePropsOrFriendlyActors" methodname="DoesNotAcquirePropsOrFriendlyActors" classname="AITargetSensorTests" runstate="Runnable" seed="580530871" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000809" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1037" name="EqualScoreRetainsCurrentTarget" fullname="AITargetSensorTests.EqualScoreRetainsCurrentTarget" methodname="EqualScoreRetainsCurrentTarget" classname="AITargetSensorTests" runstate="Runnable" seed="1812170099" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000709" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1024" name="InactiveTargetIsImmediatelyInvalid" fullname="AITargetSensorTests.InactiveTargetIsImmediatelyInvalid" classname="AITargetSensorTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004943" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1022" name="InactiveTargetIsImmediatelyInvalid(False)" fullname="AITargetSensorTests.InactiveTargetIsImmediatelyInvalid(False)" methodname="InactiveTargetIsImmediatelyInvalid" classname="AITargetSensorTests" runstate="Runnable" seed="527919015" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000819" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1023" name="InactiveTargetIsImmediatelyInvalid(True)" fullname="AITargetSensorTests.InactiveTargetIsImmediatelyInvalid(True)" methodname="InactiveTargetIsImmediatelyInvalid" classname="AITargetSensorTests" runstate="Runnable" seed="664089081" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000531" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1032" name="LatestTauntWinsAndFallsBackWhenRemoved" fullname="AITargetSensorTests.LatestTauntWinsAndFallsBackWhenRemoved" methodname="LatestTauntWinsAndFallsBackWhenRemoved" classname="AITargetSensorTests" runstate="Runnable" seed="2100125738" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.005837" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1035" name="OrdinaryRetargetHonorsLockThenSwitches" fullname="AITargetSensorTests.OrdinaryRetargetHonorsLockThenSwitches" methodname="OrdinaryRetargetHonorsLockThenSwitches" classname="AITargetSensorTests" runstate="Runnable" seed="542925223" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001010" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1043" name="RecycledActorDoesNotInheritThreat" fullname="AITargetSensorTests.RecycledActorDoesNotInheritThreat" methodname="RecycledActorDoesNotInheritThreat" classname="AITargetSensorTests" runstate="Runnable" seed="1302228485" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002687" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1033" name="RecycledSourceDoesNotInheritOldTaunt" fullname="AITargetSensorTests.RecycledSourceDoesNotInheritOldTaunt" methodname="RecycledSourceDoesNotInheritOldTaunt" classname="AITargetSensorTests" runstate="Runnable" seed="1849823880" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000748" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1042" name="RefreshingEarlierTauntMakesItNewest" fullname="AITargetSensorTests.RefreshingEarlierTauntMakesItNewest" methodname="RefreshingEarlierTauntMakesItNewest" classname="AITargetSensorTests" runstate="Runnable" seed="1359431646" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000934" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1034" name="SensorDisableClearsTargetAndThreat" fullname="AITargetSensorTests.SensorDisableClearsTargetAndThreat" methodname="SensorDisableClearsTargetAndThreat" classname="AITargetSensorTests" runstate="Runnable" seed="948330348" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000760" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1020" name="SharedContainerDoesNotMakeOpponentsTheSameActor" fullname="AITargetSensorTests.SharedContainerDoesNotMakeOpponentsTheSameActor" methodname="SharedContainerDoesNotMakeOpponentsTheSameActor" classname="AITargetSensorTests" runstate="Runnable" seed="1437421849" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000770" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1028" name="TauntBehindWallWinsWithoutFakingSight" fullname="AITargetSensorTests.TauntBehindWallWinsWithoutFakingSight" methodname="TauntBehindWallWinsWithoutFakingSight" classname="AITargetSensorTests" runstate="Runnable" seed="1631206783" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000974" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1031" name="TauntBypassesFovAndRadius" fullname="AITargetSensorTests.TauntBypassesFovAndRadius" classname="AITargetSensorTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.007545" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1029" name="TauntBypassesFovAndRadius(-3.0f)" fullname="AITargetSensorTests.TauntBypassesFovAndRadius(-3.0f)" methodname="TauntBypassesFovAndRadius" classname="AITargetSensorTests" runstate="Runnable" seed="1374851506" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001470" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1030" name="TauntBypassesFovAndRadius(50.0f)" fullname="AITargetSensorTests.TauntBypassesFovAndRadius(50.0f)" methodname="TauntBypassesFovAndRadius" classname="AITargetSensorTests" runstate="Runnable" seed="1629951022" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000610" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1036" name="ThresholdPreventsSmallScoreOscillationsEvenOnForceScan" fullname="AITargetSensorTests.ThresholdPreventsSmallScoreOscillationsEvenOnForceScan" methodname="ThresholdPreventsSmallScoreOscillationsEvenOnForceScan" classname="AITargetSensorTests" runstate="Runnable" seed="881353114" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000883" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1039" name="UnregisterClearsTargetAndThreatBeforeNextScanInterval" fullname="AITargetSensorTests.UnregisterClearsTargetAndThreatBeforeNextScanInterval" methodname="UnregisterClearsTargetAndThreatBeforeNextScanInterval" classname="AITargetSensorTests" runstate="Runnable" seed="1697665409" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001213" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1038" name="UnrelatedLifecycleEventDoesNotBypassCurrentLock" fullname="AITargetSensorTests.UnrelatedLifecycleEventDoesNotBypassCurrentLock" methodname="UnrelatedLifecycleEventDoesNotBypassCurrentLock" classname="AITargetSensorTests" runstate="Runnable" seed="190517531" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001319" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1025" name="UntargetableTargetCannotRemainInGrace" fullname="AITargetSensorTests.UntargetableTargetCannotRemainInGrace" methodname="UntargetableTargetCannotRemainInGrace" classname="AITargetSensorTests" runstate="Runnable" seed="1872539272" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000705" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1027" name="WallBlocksInitialAcquisition" fullname="AITargetSensorTests.WallBlocksInitialAcquisition" methodname="WallBlocksInitialAcquisition" classname="AITargetSensorTests" runstate="Runnable" seed="191287892" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001027" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1879" name="Assembly-CSharp-Editor.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/Assembly-CSharp-Editor.dll" runstate="Runnable" testcasecount="725" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.681064" total="96" passed="96" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1328" name="CharacterMovementIntegrationTests" fullname="CharacterMovementIntegrationTests" classname="CharacterMovementIntegrationTests" runstate="Runnable" testcasecount="17" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.449636" total="17" passed="17" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1343" name="BoundMovementReadsReplacementBodyFromContext" fullname="CharacterMovementIntegrationTests.BoundMovementReadsReplacementBodyFromContext" methodname="BoundMovementReadsReplacementBodyFromContext" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="122981807" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004111" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1344" name="ContextRefreshPreservesExplicitActorRootBinding" fullname="CharacterMovementIntegrationTests.ContextRefreshPreservesExplicitActorRootBinding" methodname="ContextRefreshPreservesExplicitActorRootBinding" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="241917098" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000844" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1340" name="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes" fullname="CharacterMovementIntegrationTests.ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes" classname="CharacterMovementIntegrationTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002485" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1337" name="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.1f,10)" fullname="CharacterMovementIntegrationTests.ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.1f,10)" methodname="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="185303973" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001213" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1338" name="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.5f,2)" fullname="CharacterMovementIntegrationTests.ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.5f,2)" methodname="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1769517179" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000219" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1339" name="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.00025f,20)" fullname="CharacterMovementIntegrationTests.ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes(0.00025f,20)" methodname="ControllerTravelMatchesDirectMoveAtWalkAndDashStepSizes" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="593411041" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000224" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-suite type="ParameterizedMethod" id="1334" name="GravityStopsAtGroundAndPreservesChildOffset" fullname="CharacterMovementIntegrationTests.GravityStopsAtGroundAndPreservesChildOffset" classname="CharacterMovementIntegrationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.107486" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1332" name="GravityStopsAtGroundAndPreservesChildOffset(False)" fullname="CharacterMovementIntegrationTests.GravityStopsAtGroundAndPreservesChildOffset(False)" methodname="GravityStopsAtGroundAndPreservesChildOffset" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1900523674" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004920" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1333" name="GravityStopsAtGroundAndPreservesChildOffset(True)" fullname="CharacterMovementIntegrationTests.GravityStopsAtGroundAndPreservesChildOffset(True)" methodname="GravityStopsAtGroundAndPreservesChildOffset" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1873444966" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000408" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-suite type="ParameterizedMethod" id="1331" name="KnockbackMovesWholeActorAndReturnsBlockedDistance" fullname="CharacterMovementIntegrationTests.KnockbackMovesWholeActorAndReturnsBlockedDistance" classname="CharacterMovementIntegrationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.005663" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1329" name="KnockbackMovesWholeActorAndReturnsBlockedDistance(False)" fullname="CharacterMovementIntegrationTests.KnockbackMovesWholeActorAndReturnsBlockedDistance(False)" methodname="KnockbackMovesWholeActorAndReturnsBlockedDistance" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="192596100" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001371" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1330" name="KnockbackMovesWholeActorAndReturnsBlockedDistance(True)" fullname="CharacterMovementIntegrationTests.KnockbackMovesWholeActorAndReturnsBlockedDistance(True)" methodname="KnockbackMovesWholeActorAndReturnsBlockedDistance" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1760036069" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000508" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1335" name="KnockbackRetainsAuthoredCollisionMask" fullname="CharacterMovementIntegrationTests.KnockbackRetainsAuthoredCollisionMask" methodname="KnockbackRetainsAuthoredCollisionMask" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1413311181" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000876" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1342" name="LookupAndSuspensionInspectionDoNotCreateMotor" fullname="CharacterMovementIntegrationTests.LookupAndSuspensionInspectionDoNotCreateMotor" methodname="LookupAndSuspensionInspectionDoNotCreateMotor" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1351956057" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.021548" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1341" name="MissingBodyStopsAndReportsAuthoringOnce" fullname="CharacterMovementIntegrationTests.MissingBodyStopsAndReportsAuthoringOnce" methodname="MissingBodyStopsAndReportsAuthoringOnce" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1000502427" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001058" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[CharacterMovementMotor] 'Missing body' needs an enabled CharacterController or a solid CharacterPositionCollider for movement.
+]]></output>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1349" name="ProductionPrefabResolvesOneMotorAndMovesWholeActor" fullname="CharacterMovementIntegrationTests.ProductionPrefabResolvesOneMotorAndMovesWholeActor" classname="CharacterMovementIntegrationTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.204443" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1345" name="ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Player.prefab&quot;)" fullname="CharacterMovementIntegrationTests.ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Player.prefab&quot;)" methodname="ProductionPrefabResolvesOneMotorAndMovesWholeActor" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1258143915" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.186593" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1346" name="ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Ally_Helper.prefab&quot;)" fullname="CharacterMovementIntegrationTests.ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Ally_Helper.prefab&quot;)" methodname="ProductionPrefabResolvesOneMotorAndMovesWholeActor" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="352603774" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001883" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1347" name="ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Ally_Stryker.prefab&quot;)" fullname="CharacterMovementIntegrationTests.ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/Player/Ally_Stryker.prefab&quot;)" methodname="ProductionPrefabResolvesOneMotorAndMovesWholeActor" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="27137264" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001179" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1348" name="ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab&quot;)" fullname="CharacterMovementIntegrationTests.ProductionPrefabResolvesOneMotorAndMovesWholeActor(&quot;Assets/Prefab/GameEnemy/Enemy_E_GR_01 Variant.prefab&quot;)" methodname="ProductionPrefabResolvesOneMotorAndMovesWholeActor" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="73303241" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.009286" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1336" name="WalkingWithNestedControllerMovesActorRoot" fullname="CharacterMovementIntegrationTests.WalkingWithNestedControllerMovesActorRoot" methodname="WalkingWithNestedControllerMovesActorRoot" classname="CharacterMovementIntegrationTests" runstate="Runnable" seed="1102710033" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001244" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1675" name="PartyFormationUnityTests" fullname="PartyFormationUnityTests" classname="PartyFormationUnityTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.024212" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="ParameterizedMethod" id="1683" name="OnlyCompanionPartyIndicesOwnFormationSlots" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.013935" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1678" name="OnlyCompanionPartyIndicesOwnFormationSlots(0,False)" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots(0,False)" methodname="OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" seed="501039272" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000927" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1679" name="OnlyCompanionPartyIndicesOwnFormationSlots(1,True)" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots(1,True)" methodname="OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" seed="1354833610" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000156" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1680" name="OnlyCompanionPartyIndicesOwnFormationSlots(2,True)" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots(2,True)" methodname="OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" seed="828530464" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000112" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1681" name="OnlyCompanionPartyIndicesOwnFormationSlots(3,True)" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots(3,True)" methodname="OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" seed="536149849" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000104" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1682" name="OnlyCompanionPartyIndicesOwnFormationSlots(4,False)" fullname="PartyFormationUnityTests.OnlyCompanionPartyIndicesOwnFormationSlots(4,False)" methodname="OnlyCompanionPartyIndicesOwnFormationSlots" classname="PartyFormationUnityTests" runstate="Runnable" seed="1414455055" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000102" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1677" name="SingleFileSlotsPreservePartyOrder" fullname="PartyFormationUnityTests.SingleFileSlotsPreservePartyOrder" methodname="SingleFileSlotsPreservePartyOrder" classname="PartyFormationUnityTests" runstate="Runnable" seed="1475638395" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000519" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1676" name="TriangleSlotsMatchPartyIndexContract" fullname="PartyFormationUnityTests.TriangleSlotsMatchPartyIndexContract" methodname="TriangleSlotsMatchPartyIndexContract" classname="PartyFormationUnityTests" runstate="Runnable" seed="597805404" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000331" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1136" name="SkillCastTransactionSmokeTests" fullname="SkillCastTransactionSmokeTests" classname="SkillCastTransactionSmokeTests" runstate="Runnable" testcasecount="25" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.078466" total="25" passed="25" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1146" name="ABlockedPreCastBurnsTheCooldownButRefundsTheEnergy" fullname="SkillCastTransactionSmokeTests.ABlockedPreCastBurnsTheCooldownButRefundsTheEnergy" methodname="ABlockedPreCastBurnsTheCooldownButRefundsTheEnergy" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="185520400" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.007055" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1155" name="ACastRefusedByCanProceedCostsNothing" fullname="SkillCastTransactionSmokeTests.ACastRefusedByCanProceedCostsNothing" methodname="ACastRefusedByCanProceedCostsNothing" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="860108299" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.007127" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1150" name="AFailedPayloadRollsBackEverythingItReserved" fullname="SkillCastTransactionSmokeTests.AFailedPayloadRollsBackEverythingItReserved" methodname="AFailedPayloadRollsBackEverythingItReserved" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1848973280" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.026896" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1156" name="AnAreaHealThatFindsNobodyStillSucceedsAndStillCosts" fullname="SkillCastTransactionSmokeTests.AnAreaHealThatFindsNobodyStillSucceedsAndStillCosts" methodname="AnAreaHealThatFindsNobodyStillSucceedsAndStillCosts" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="767447" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.003908" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1157" name="AnAreaHealWithNoRadiusIsBrokenConfigurationAndRefunds" fullname="SkillCastTransactionSmokeTests.AnAreaHealWithNoRadiusIsBrokenConfigurationAndRefunds" methodname="AnAreaHealWithNoRadiusIsBrokenConfigurationAndRefunds" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="2029128606" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000594" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1140" name="AnEmptyPoolRefusesAReservation" fullname="SkillCastTransactionSmokeTests.AnEmptyPoolRefusesAReservation" methodname="AnEmptyPoolRefusesAReservation" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="67870164" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000180" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1147" name="AnInterruptedPreCastCostsNothingAtAll" fullname="SkillCastTransactionSmokeTests.AnInterruptedPreCastCostsNothingAtAll" methodname="AnInterruptedPreCastCostsNothingAtAll" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="45405287" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001219" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1153" name="APayloadThatProducesNothingReachesTheCastPointAndThenRollsBack" fullname="SkillCastTransactionSmokeTests.APayloadThatProducesNothingReachesTheCastPointAndThenRollsBack" methodname="APayloadThatProducesNothingReachesTheCastPointAndThenRollsBack" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="2143076543" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004489" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[SkillCast] '' produced no effect (PlacementBlocked): Probe payload always refuses.
+]]></output>
+        </test-case>
+        <test-case id="1154" name="ARejectedStartNeverRunsOnStartedAndKeepsTheChargeAvailable" fullname="SkillCastTransactionSmokeTests.ARejectedStartNeverRunsOnStartedAndKeepsTheChargeAvailable" methodname="ARejectedStartNeverRunsOnStartedAndKeepsTheChargeAvailable" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="84302291" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001372" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1145" name="AReservedCastHoldsItsChargeForTheWholeWindUp" fullname="SkillCastTransactionSmokeTests.AReservedCastHoldsItsChargeForTheWholeWindUp" methodname="AReservedCastHoldsItsChargeForTheWholeWindUp" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1729249979" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001214" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1151" name="ASuccessfulPayloadCommitsEnergyAndCooldownTogether" fullname="SkillCastTransactionSmokeTests.ASuccessfulPayloadCommitsEnergyAndCooldownTogether" methodname="ASuccessfulPayloadCommitsEnergyAndCooldownTogether" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="2083621766" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001846" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1158" name="EveryPayloadWithoutARuntimeContextFailsInsteadOfSilentlyCostingTheCast" fullname="SkillCastTransactionSmokeTests.EveryPayloadWithoutARuntimeContextFailsInsteadOfSilentlyCostingTheCast" methodname="EveryPayloadWithoutARuntimeContextFailsInsteadOfSilentlyCostingTheCast" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="612018495" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.004866" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1161" name="PeerModulesResolveThroughContextForEveryPrefabLayout" fullname="SkillCastTransactionSmokeTests.PeerModulesResolveThroughContextForEveryPrefabLayout" methodname="PeerModulesResolveThroughContextForEveryPrefabLayout" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1124850725" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000986" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1143" name="ReleasingAnEnergyReservationRefundsTheWholeAmount" fullname="SkillCastTransactionSmokeTests.ReleasingAnEnergyReservationRefundsTheWholeAmount" methodname="ReleasingAnEnergyReservationRefundsTheWholeAmount" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="143094154" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000412" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1138" name="ReserveCommitAndReleaseAreAllIdempotent" fullname="SkillCastTransactionSmokeTests.ReserveCommitAndReleaseAreAllIdempotent" methodname="ReserveCommitAndReleaseAreAllIdempotent" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1806169036" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000316" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1139" name="ReservedChargesRechargeSequentiallyOnceCommitted" fullname="SkillCastTransactionSmokeTests.ReservedChargesRechargeSequentiallyOnceCommitted" methodname="ReservedChargesRechargeSequentiallyOnceCommitted" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1227495607" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000307" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1142" name="ReservedEnergyLeavesTheSpendablePoolBeforeItIsSpent" fullname="SkillCastTransactionSmokeTests.ReservedEnergyLeavesTheSpendablePoolBeforeItIsSpent" methodname="ReservedEnergyLeavesTheSpendablePoolBeforeItIsSpent" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="221246198" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000420" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1137" name="ReservingTakesTheChargeImmediatelyAndReleasingGivesItBack" fullname="SkillCastTransactionSmokeTests.ReservingTakesTheChargeImmediatelyAndReleasingGivesItBack" methodname="ReservingTakesTheChargeImmediatelyAndReleasingGivesItBack" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="2045300049" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000245" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1141" name="ResetToFullDropsOutstandingReservations" fullname="SkillCastTransactionSmokeTests.ResetToFullDropsOutstandingReservations" methodname="ResetToFullDropsOutstandingReservations" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1868136067" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000251" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1148" name="StampCooldownFalseRefundsTheChargeEvenOnCommit" fullname="SkillCastTransactionSmokeTests.StampCooldownFalseRefundsTheChargeEvenOnCommit" methodname="StampCooldownFalseRefundsTheChargeEvenOnCommit" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1186170726" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001414" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1160" name="TheBarrierWrapperStillAnswersTheSameAsTheSharedRule" fullname="SkillCastTransactionSmokeTests.TheBarrierWrapperStillAnswersTheSameAsTheSharedRule" methodname="TheBarrierWrapperStillAnswersTheSameAsTheSharedRule" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1705304312" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000688" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1152" name="TheImmediateCastPathRaisesStartedReleasedAndCommittedInOrder" fullname="SkillCastTransactionSmokeTests.TheImmediateCastPathRaisesStartedReleasedAndCommittedInOrder" methodname="TheImmediateCastPathRaisesStartedReleasedAndCommittedInOrder" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="1768644503" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002056" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1159" name="TheSharedFactionRuleDecidesWhoCanBeTaunted" fullname="SkillCastTransactionSmokeTests.TheSharedFactionRuleDecidesWhoCanBeTaunted" methodname="TheSharedFactionRuleDecidesWhoCanBeTaunted" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="343665887" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000718" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1149" name="TheStatsSnapshotIsFrozenWhenTheCastIsReserved" fullname="SkillCastTransactionSmokeTests.TheStatsSnapshotIsFrozenWhenTheCastIsReserved" methodname="TheStatsSnapshotIsFrozenWhenTheCastIsReserved" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="474400973" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.003762" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1144" name="TwoCastsWindingUpCannotSpendTheSameEnergy" fullname="SkillCastTransactionSmokeTests.TwoCastsWindingUpCannotSpendTheSameEnergy" methodname="TwoCastsWindingUpCannotSpendTheSameEnergy" classname="SkillCastTransactionSmokeTests" runstate="Runnable" seed="177991483" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000463" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1816" name="SpecialPointReactionPrioritySmokeTests" fullname="SpecialPointReactionPrioritySmokeTests" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" testcasecount="27" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.010572" total="27" passed="27" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1843" name="DeathIsStillAbsorbing" fullname="SpecialPointReactionPrioritySmokeTests.DeathIsStillAbsorbing" methodname="DeathIsStillAbsorbing" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="324669218" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000334" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1841" name="ExternalControlLossDoesNotOutrankTheReaction" fullname="SpecialPointReactionPrioritySmokeTests.ExternalControlLossDoesNotOutrankTheReaction" methodname="ExternalControlLossDoesNotOutrankTheReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1616297209" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000135" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1842" name="GenericStatusStillCannotInterruptAChain" fullname="SpecialPointReactionPrioritySmokeTests.GenericStatusStillCannotInterruptAChain" methodname="GenericStatusStillCannotInterruptAChain" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1621947924" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000077" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1845" name="LegacyShapeHelperStillCouplesYawToPlanarOnly" fullname="SpecialPointReactionPrioritySmokeTests.LegacyShapeHelperStillCouplesYawToPlanarOnly" methodname="LegacyShapeHelperStillCouplesYawToPlanarOnly" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1130093302" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000303" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1828" name="ReactionCannotInterruptAnActiveChainAttack" fullname="SpecialPointReactionPrioritySmokeTests.ReactionCannotInterruptAnActiveChainAttack" methodname="ReactionCannotInterruptAnActiveChainAttack" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="532146246" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000085" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1830" name="ReactionCannotStartOnADeadOrDownedCharacter" fullname="SpecialPointReactionPrioritySmokeTests.ReactionCannotStartOnADeadOrDownedCharacter" methodname="ReactionCannotStartOnADeadOrDownedCharacter" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="253264704" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000087" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1829" name="ReactionCannotStartOverACinematic" fullname="SpecialPointReactionPrioritySmokeTests.ReactionCannotStartOverACinematic" methodname="ReactionCannotStartOverACinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1233353318" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000062" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1827" name="ReactionStartsOverEveryOtherCombatReaction" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.003794" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1817" name="ReactionStartsOverEveryOtherCombatReaction(Locomotion)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Locomotion)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="815752726" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000363" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1818" name="ReactionStartsOverEveryOtherCombatReaction(Crawl)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Crawl)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="662296132" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000061" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1819" name="ReactionStartsOverEveryOtherCombatReaction(Dash)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Dash)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1712366058" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000036" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1820" name="ReactionStartsOverEveryOtherCombatReaction(FullBodyReload)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(FullBodyReload)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1124023809" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000034" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1821" name="ReactionStartsOverEveryOtherCombatReaction(Melee)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Melee)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="661307925" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000033" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1822" name="ReactionStartsOverEveryOtherCombatReaction(Skill)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Skill)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1286986219" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000034" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1823" name="ReactionStartsOverEveryOtherCombatReaction(Utility)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Utility)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="432419618" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000041" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1824" name="ReactionStartsOverEveryOtherCombatReaction(Knockback)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(Knockback)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="251160794" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000037" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1825" name="ReactionStartsOverEveryOtherCombatReaction(SoftStatus)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(SoftStatus)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="802536800" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000035" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1826" name="ReactionStartsOverEveryOtherCombatReaction(HardStatus)" fullname="SpecialPointReactionPrioritySmokeTests.ReactionStartsOverEveryOtherCombatReaction(HardStatus)" methodname="ReactionStartsOverEveryOtherCombatReaction" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="815367827" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000033" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-suite type="ParameterizedMethod" id="1840" name="RunningReactionAdmitsOnlyLifeStateAndCinematic" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.003206" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1831" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Dead,LifeStateOverride,True)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Dead,LifeStateOverride,True)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="841555282" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000348" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1832" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(StageIntro,CinematicOverride,True)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(StageIntro,CinematicOverride,True)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1262128629" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000080" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1833" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Chain,NormalCommand,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Chain,NormalCommand,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="897633265" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000058" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1834" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Skill,NormalCommand,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Skill,NormalCommand,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1937960789" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000054" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1835" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Dash,NormalCommand,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Dash,NormalCommand,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="322703879" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000056" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1836" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Melee,NormalCommand,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Melee,NormalCommand,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1529578022" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000053" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1837" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(Knockback,NormalCommand,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(Knockback,NormalCommand,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="556197258" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000052" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1838" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(HardStatus,StatusOverride,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(HardStatus,StatusOverride,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="480239566" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000054" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1839" name="RunningReactionAdmitsOnlyLifeStateAndCinematic(SoftStatus,StatusOverride,False)" fullname="SpecialPointReactionPrioritySmokeTests.RunningReactionAdmitsOnlyLifeStateAndCinematic(SoftStatus,StatusOverride,False)" methodname="RunningReactionAdmitsOnlyLifeStateAndCinematic" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1341714882" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000053" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1844" name="YawAndVerticalTranslationCanBeRequestedIndependently" fullname="SpecialPointReactionPrioritySmokeTests.YawAndVerticalTranslationCanBeRequestedIndependently" methodname="YawAndVerticalTranslationCanBeRequestedIndependently" classname="SpecialPointReactionPrioritySmokeTests" runstate="Runnable" seed="1635051069" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000280" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1846" name="SpecialPointStaggerTransactionSmokeTests" fullname="SpecialPointStaggerTransactionSmokeTests" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.007892" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1855" name="CancellingAPendingBreakNeverEntersChainReady" fullname="SpecialPointStaggerTransactionSmokeTests.CancellingAPendingBreakNeverEntersChainReady" methodname="CancellingAPendingBreakNeverEntersChainReady" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="869162967" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001724" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1848" name="ChainReadyIsHeldBackWhileADirectHitTransactionIsOpen" fullname="SpecialPointStaggerTransactionSmokeTests.ChainReadyIsHeldBackWhileADirectHitTransactionIsOpen" methodname="ChainReadyIsHeldBackWhileADirectHitTransactionIsOpen" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="282922675" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000672" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1850" name="ClosingAnUnopenedTransactionIsHarmless" fullname="SpecialPointStaggerTransactionSmokeTests.ClosingAnUnopenedTransactionIsHarmless" methodname="ClosingAnUnopenedTransactionIsHarmless" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="524147782" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000251" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1849" name="NestedDeferralsOnlyCommitOnTheOutermostClose" fullname="SpecialPointStaggerTransactionSmokeTests.NestedDeferralsOnlyCommitOnTheOutermostClose" methodname="NestedDeferralsOnlyCommitOnTheOutermostClose" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="1669311285" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000241" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1854" name="PinnedMeterRejectsFurtherStaggerGain" fullname="SpecialPointStaggerTransactionSmokeTests.PinnedMeterRejectsFurtherStaggerGain" methodname="PinnedMeterRejectsFurtherStaggerGain" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="755212251" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000359" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1853" name="RegularHitStaggerFillingTheMeterAlsoWaitsForTheReaction" fullname="SpecialPointStaggerTransactionSmokeTests.RegularHitStaggerFillingTheMeterAlsoWaitsForTheReaction" methodname="RegularHitStaggerFillingTheMeterAlsoWaitsForTheReaction" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="1868002582" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000312" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1856" name="ReleaseIsIdempotentAndOnlyEntersChainReadyOnce" fullname="SpecialPointStaggerTransactionSmokeTests.ReleaseIsIdempotentAndOnlyEntersChainReadyOnce" methodname="ReleaseIsIdempotentAndOnlyEntersChainReadyOnce" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="1446352319" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000223" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1851" name="RewardBelowMaxProducesNoChainReady" fullname="SpecialPointStaggerTransactionSmokeTests.RewardBelowMaxProducesNoChainReady" methodname="RewardBelowMaxProducesNoChainReady" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="390917063" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000302" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1852" name="RewardThatFillsTheMeterDefersChainReadyUntilTheReactionCompletes" fullname="SpecialPointStaggerTransactionSmokeTests.RewardThatFillsTheMeterDefersChainReadyUntilTheReactionCompletes" methodname="RewardThatFillsTheMeterDefersChainReadyUntilTheReactionCompletes" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="978845353" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000313" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1847" name="UndeferredStaggerStillEntersChainReadyImmediately" fullname="SpecialPointStaggerTransactionSmokeTests.UndeferredStaggerStillEntersChainReadyImmediately" methodname="UndeferredStaggerStillEntersChainReadyImmediately" classname="SpecialPointStaggerTransactionSmokeTests" runstate="Runnable" seed="1316299397" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000218" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1857" name="SpecialShootPointSmokeTests" fullname="SpecialShootPointSmokeTests" classname="SpecialShootPointSmokeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.106871" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1867" name="AnchorIsUnusableWhenDisabledOrUnbound" fullname="SpecialShootPointSmokeTests.AnchorIsUnusableWhenDisabledOrUnbound" methodname="AnchorIsUnusableWhenDisabledOrUnbound" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1006967644" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000616" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1862" name="CountOverrideIsClampedToProfileMaximumAndAnchorCount" fullname="SpecialShootPointSmokeTests.CountOverrideIsClampedToProfileMaximumAndAnchorCount" methodname="CountOverrideIsClampedToProfileMaximumAndAnchorCount" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1953416756" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000456" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1858" name="DrawnAnchorsAreUniqueWithinOneRound" fullname="SpecialShootPointSmokeTests.DrawnAnchorsAreUniqueWithinOneRound" methodname="DrawnAnchorsAreUniqueWithinOneRound" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1396321333" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.001948" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1859" name="EveryEnabledAnchorIsConsumedBeforeAnyRepeats" fullname="SpecialShootPointSmokeTests.EveryEnabledAnchorIsConsumedBeforeAnyRepeats" methodname="EveryEnabledAnchorIsConsumedBeforeAnyRepeats" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="230353943" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000333" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1861" name="IneligibleAnchorsAreNeverDrawn" fullname="SpecialShootPointSmokeTests.IneligibleAnchorsAreNeverDrawn" methodname="IneligibleAnchorsAreNeverDrawn" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1790568182" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000367" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1860" name="InsufficientEligibleAnchorsFailsCleanly" fullname="SpecialShootPointSmokeTests.InsufficientEligibleAnchorsFailsCleanly" methodname="InsufficientEligibleAnchorsFailsCleanly" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1652116406" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000740" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1863" name="PointHealthIsAPercentageOfMaxHpInsideTheProfileClamps" fullname="SpecialShootPointSmokeTests.PointHealthIsAPercentageOfMaxHpInsideTheProfileClamps" methodname="PointHealthIsAPercentageOfMaxHpInsideTheProfileClamps" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1794413166" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000492" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1866" name="RegistryResolveIsSafeForNullAndDestroyedEntries" fullname="SpecialShootPointSmokeTests.RegistryResolveIsSafeForNullAndDestroyedEntries" methodname="RegistryResolveIsSafeForNullAndDestroyedEntries" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="144336008" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.002263" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1865" name="RegistryResolvesOnlyRegisteredColliders" fullname="SpecialShootPointSmokeTests.RegistryResolvesOnlyRegisteredColliders" methodname="RegistryResolvesOnlyRegisteredColliders" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="1885693894" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000631" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1864" name="StaggerRewardIsAPercentageOfMaxStagger" fullname="SpecialShootPointSmokeTests.StaggerRewardIsAPercentageOfMaxStagger" methodname="StaggerRewardIsAPercentageOfMaxStagger" classname="SpecialShootPointSmokeTests" runstate="Runnable" seed="2029177245" result="Passed" start-time="2026-10-03 05:46:10Z" end-time="2026-10-03 05:46:10Z" duration="0.000437" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Saving results to: C:/Users/Hyperlore14/Documents/Codex/2026-10-03/new-chat/work/owner-context/evidence/PlayMode.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

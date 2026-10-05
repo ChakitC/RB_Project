@@ -549,6 +549,9 @@ MonoBehaviour:
   cc: {fileID: 7154190368743996575}
   NavigationAgent: {fileID: 1585247101988985248}
   MovementMotor: {fileID: 1338707178817859999}
+  AITargetSensor: {fileID: 4555766906707524166}
+  AgentMoveDriver: {fileID: 4358868359549360660}
+  AimAxisDriver: {fileID: 0}
   TargetInfo: {fileID: 4934957585661581971}
   Equipment: {fileID: 5646034634250052821}
   AccessoryLoadout: {fileID: 2694061841624252001}
@@ -582,11 +585,10 @@ MonoBehaviour:
   SkillManager: {fileID: 3385807349592701744}
   moveInput: {x: 0, y: 0}
   lookInput: {x: 0, y: 0}
-  AITargetSensor: {fileID: 4555766906707524166}
   agent: {fileID: 1585247101988985248}
-  AgentMoveDriver: {fileID: 4358868359549360660}
   BehaviorTree: {fileID: 5606255429377701377}
   AimTargetDriver: {fileID: 4940790970151266537}
+  InterruptionController: {fileID: 0}
 --- !u!114 &4606287451783796443
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1100,33 +1102,41 @@ MonoBehaviour:
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
         UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-      m_ValuePositions: 00000000050000000500000006000000
-      m_Values: 546167657402ffffffff
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 00000000050000000500000006000000060000000e0000001600000017000000
+      m_Values: 54616765740203f83e76b7996e4eb38bd1116647c78600ffffffff
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[UnityEngine.GameObject,
         UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278927dafeacd28e0b00
-      m_ValuePositions: 00000000060000000600000007000000
-      m_Values: 706c6179657202ffffffff
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d27dafeacd28e0b00
+      m_ValuePositions: 00000000060000000600000007000000070000000f0000001700000018000000
+      m_Values: 706c617965720277aad85fecd6804abc7d10b89ef0927600ffffffff
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Single,
         mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a64278938358727f48d1b29
-      m_ValuePositions: 000000000a0000000a0000000b000000
-      m_Values: 666f6c6c6f77204d6178020000a040
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d38358727f48d1b29
+      m_ValuePositions: 000000000a0000000a0000000b0000000b000000130000001b0000001c000000
+      m_Values: 666f6c6c6f77204d617802f5f12c274358e14082f49d76057f38fb000000a040
       m_UnityObjects: []
       m_Version: 3.4
     - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[System.Boolean,
         mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]'
       m_ValueHashes: 
-      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427894886ea0b921c56fa
-      m_ValuePositions: 00000000080000000800000009000000
-      m_Values: 496e436f6d6261740200
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1d4886ea0b921c56fa
+      m_ValuePositions: 000000000800000008000000090000000900000011000000190000001a000000
+      m_Values: 496e436f6d62617402119f9f76d8a3ad419d19f580a5744af30000
+      m_UnityObjects: []
+      m_Version: 3.4
+    - m_ObjectType: 'Opsive.GraphDesigner.Runtime.Variables.SharedVariable`1[[CharacteContext,
+        Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]'
+      m_ValueHashes: 
+      m_LongValueHashes: 0d00eb254f8d1b29baa620a07799d549a996976a4a6427892639b8bf26fff0e6e533e1845e22a00a65ed42765822a00a10de72e84d1b4b1df7508283c4d1f37e
+      m_ValuePositions: 00000000030000000300000004000000040000000c0000001400000015000000
+      m_Values: 4374780285fef6f265508b4990a4cc808b45f24300ffffffff
       m_UnityObjects: []
       m_Version: 3.4
     m_DisabledEventNodesData: []

@@ -9,6 +9,8 @@ using Opsive.GraphDesigner.Runtime.Variables;
 [Opsive.Shared.Utility.Description("ใช้ NavMeshAgent วิ่งไปยืนตำแหน่งรอบ ๆ Player ตาม Offset")]
 public class MoveToPlayerOffsetNavMesh : Action
 {
+    public SharedVariable<CharacteContext> context;
+    public SharedVariable<bool> InCombat;
     
     [Tooltip("ตัวแปร Taget ที่แชร์ใน Behavior Tree")]
     public SharedVariable<GameObject> Taget;
@@ -27,14 +29,17 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     private NavMeshAgent _agent;
     private CharacteContext _ctx;
+    int executionGeneration;
     private CharacterAnimBrain _animBrain;
     private readonly PartyFormationFollowRuntime _formationRuntime = new();
 
     public override void OnStart()
     {
+        _ctx = AIContextBinding.Read(context);
+        executionGeneration = _ctx != null ? _ctx.LifeGeneration : 0;
         CacheReferences();
 
-        if (_formationRuntime.TryBegin(gameObject, Taget != null ? Taget.Value : null))
+        if (_formationRuntime.TryBegin(AIContextBinding.Read(context), Taget != null ? Taget.Value : null, InCombat))
             return;
 
         if (_agent != null && stopDistance != null)
@@ -46,11 +51,12 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     public override TaskStatus OnUpdate()
     {
+        if (!AIContextBinding.IsCurrent(context, _ctx, executionGeneration) || _ctx.NavigationAgent != _agent) return TaskStatus.Failure;
         CacheReferences();
 
         if (_formationRuntime.TryTick(
-                gameObject,
-                Taget != null ? Taget.Value : null,
+                AIContextBinding.Read(context),
+                Taget != null ? Taget.Value : null, InCombat,
                 out TaskStatus formationStatus))
         {
             return formationStatus;
@@ -118,6 +124,7 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     public override void OnEnd()
     {
+        if (_ctx == null || _ctx.LifeGeneration != executionGeneration) { _formationRuntime.End(); return; }
         if (_formationRuntime.IsAvailable)
         {
             _formationRuntime.End();
@@ -136,32 +143,8 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     private void CacheReferences()
     {
-        if (_agent == null)
-        {
-            _agent = gameObject.GetComponentInParent<NavMeshAgent>();
-        }
-
-        if (_ctx == null)
-        {
-            _ctx = gameObject.GetComponentInParent<CharacteContext>();
-        }
-
-        if (_animBrain != null)
-        {
-            return;
-        }
-
-        if (_ctx != null && _ctx.AnimBrain != null)
-        {
-            _animBrain = _ctx.AnimBrain;
-            return;
-        }
-
-        _animBrain = gameObject.GetComponentInChildren<CharacterAnimBrain>(true);
-        if (_animBrain == null)
-        {
-            _animBrain = gameObject.GetComponentInParent<CharacterAnimBrain>();
-        }
+        _agent = _ctx != null ? _ctx.NavigationAgent : null;
+        _animBrain = _ctx != null ? _ctx.AnimBrain : null;
     }
 
     private bool IsRootMotionActive()
@@ -210,7 +193,8 @@ public class MoveToPlayerOffsetNavMesh : Action
 
     private bool CanControlAgent()
     {
-        return _agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh;
+        return _agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh &&
+            (_ctx.MovementMotor == null || !_ctx.MovementMotor.IsAgentTransformSuspended);
     }
 
     private void StopAgentIfReady()

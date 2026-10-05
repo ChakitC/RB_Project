@@ -10,6 +10,10 @@ public enum PairOffsetBasePose
     ForwardRight = 7,
     BackwardLeft = 8,
     BackwardRight = 9,
+    Slide = 10,
+    Sprint = 11,
+    CrouchIdle = 12,
+    CrouchMove = 13,
 }
 
 public enum PairOffsetUpperAction
@@ -24,10 +28,12 @@ public readonly struct PairOffsetBasePoseWeight
 {
     public readonly PairOffsetBasePose Pose;
     public readonly float Weight;
+    public readonly UnityEngine.AnimationClip Clip;
 
-    public PairOffsetBasePoseWeight(PairOffsetBasePose pose, float weight)
+    public PairOffsetBasePoseWeight(PairOffsetBasePose pose, float weight, UnityEngine.AnimationClip clip = null)
     {
         Pose = pose;
         Weight = weight;
+        Clip = clip;
     }
 }

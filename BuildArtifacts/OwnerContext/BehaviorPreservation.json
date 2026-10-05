@@ -1,0 +1,44 @@
+[
+  {
+    "path": "Assets/Scripts/AI/Aires_Behavior.asset",
+    "original": 18,
+    "current": 20,
+    "issues": []
+  },
+  {
+    "path": "Assets/Scripts/AI/AllyAI.asset",
+    "original": 14,
+    "current": 16,
+    "issues": []
+  },
+  {
+    "path": "Assets/Scripts/AI/Enemy_M_GR_01_PatrolOrbitShoot.asset",
+    "original": 34,
+    "current": 36,
+    "issues": []
+  },
+  {
+    "path": "Assets/Scripts/AI/EnemyAI.asset",
+    "original": 17,
+    "current": 19,
+    "issues": []
+  },
+  {
+    "path": "Assets/Scripts/AI/MineAllyAI.asset",
+    "original": 25,
+    "current": 27,
+    "issues": []
+  },
+  {
+    "path": "Assets/Scripts/AI/MinigunTerretAI.asset",
+    "original": 8,
+    "current": 10,
+    "issues": []
+  },
+  {
+    "path": "Assets/Character/Rector/RectorAI.asset",
+    "original": 12,
+    "current": 14,
+    "issues": []
+  }
+]

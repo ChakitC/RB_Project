@@ -151,7 +151,10 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
     void Awake()
     {
         if (playerContext == null)
-            TryGetComponent(out playerContext);
+            playerContext = CharacterContextModuleLookup.ResolveContext(this) as PlayerContext;
+        playerContext?.ResolveReferences();
+        if (playerInterruptionController == null && playerContext != null)
+            playerInterruptionController = playerContext.interruptionController;
         if (playerInterruptionController == null)
             TryGetComponent(out playerInterruptionController);
         if (playerInterruptionController == null)

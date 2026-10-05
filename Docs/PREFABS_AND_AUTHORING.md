@@ -1,5 +1,101 @@
 # Prefabs And Authoring
 
+## Character passive UI
+
+Assign a prefab with a `PassiveHudView` root to `PassiveDefinition.hudPrefab`.
+Leave it empty for passives without a custom HUD. Never assign a scene instance.
+`GameplayHUD/PassiveHUD` contains the shared `PassiveHudHost` and horizontal layout.
+Select this direct child and edit its RectTransform position/anchors to place the
+passive window. Runtime views spawn beneath it, one per grant. It stays independent
+of HP panel movement. Re-running the builder preserves an existing root-level
+host's authored position; older nested hosts migrate without moving on screen.
+
+Roma uses `Assets/Character/Roma/Passive/UI/RomaPassiveHUD.prefab`, already assigned
+on the production Stamina/Momentum definition. Open this prefab to edit TMP text,
+colors and `PassiveGaugeArc` widths/segments. Keep its `momentumVariable` binding
+equal to the recipe variable ID. UI references are local authoring fields; owner
+Stamina and PassiveController resolve through CharacteContext at binding time.
+
+`Tools > RB > Passives > Create Roma HUD` creates missing assets/host and assigns
+the production reference. Re-running preserves existing authored prefab visuals.
+Play with Roma selected to test actual spending, Perfect Dash and a normal attack.
+Use the dedicated PassiveComposition test assemblies for automated checks.
+
+## Player Sprint and Roma Run
+
+PlayerMovementCC exposes `sprintSpeedMultiplier` (1.6),
+`sprintAccelerationSeconds` (0.2), and `sprintReleaseSeconds` (0.12). Existing
+Player prefabs use these defaults; no new component is required. Keep the
+PlayerContext movement binding and the Dash action's performed/canceled events.
+Shift is the authored keyboard Dash binding. Tap to dash; hold through completion
+to sprint; release to resume ordinary directional movement.
+
+During Sprint, rotate the camera to steer. `sprintTurnSmoothTime` defaults to
+0.25 seconds (larger values respond more slowly), and `sprintMaxTurnSpeed` defaults
+to 360 degrees/second. The smoothed heading controls both travel and body yaw;
+camera pitch and movement keys do not steer the run. Dash retains its initial
+straight path. The same Roma_Run animation continues while turning.
+
+`Assets/Data/Animation/Roma/Roma_AnimProfile.asset` assigns its `sprint` transition
+to `Assets/Animation/Ch_Roma_Anim/Roma_Run.fbx` / `Roma_Run`, fade 0.12 seconds.
+The model clip imports with Loop Time/Loop Pose and root rotation/XZ/height locks.
+Sprint displacement is driven by gameplay code. The clip is optional on other
+profiles. With a sprint clip assigned, all facing directions keep that single
+clip until Sprint ends; the directional movement mixer resumes afterward.
+
+## AI Ctx authoring
+
+For every owner-consuming custom Task, bind `context` to a Graph variable named
+`Ctx`, type CharacteContext, default null. Insert `InitializeAIContext` before the
+old behavior. Under a root Repeater use Sequence -> initializer -> old behavior.
+Bind all nested Stacked Tasks too. Nested Subtree references must explicitly override
+the child's Graph Ctx with the parent's Ctx using the native override list.
+
+Shared sensor, movement driver and aim driver references now live on CharacteContext.
+Existing serialized sensor/driver names and bindings are retained. Assign explicit
+bindings when multiple candidates belong to one actor. Missing navigation is valid
+for a stationary actor; the shooting branch still needs sensor, StateHub and weapon.
+Formation Tasks receive their authored InCombat binding, and Ally contexts supply
+InterruptionController. Enemy-only SpecialShootPoints stays on EnemyContext.
+
+Run Tools > RB > AI > Validate Owner Context after editing. It checks Ctx type/scope,
+all consumer bindings and initialization ordering. Migrate Owner Context is an
+explicit one-time command for existing Subtrees/inline trees; it does not run on
+import. Reopen/save/reopen to confirm node count, GUIDs and bindings remain intact.
+
+## P0 shooting AI example
+
+`Assets/Prefab/GameEnemy/Enemy_M_GR_01 Variant.prefab` keeps its existing Behavior
+Tree reference to `Assets/Scripts/AI/Enemy_M_GR_01_PatrolOrbitShoot.asset` and that
+asset's GUID. Existing Ally and boss behavior settings are preserved during Ctx migration. Context-bound Sensor, StateHub,
+WeaponSystem, NavigationAgent, MovementMotor and optional FieldAllyMember are the
+reference hubs; peers may live on root or nested actor children.
+
+The Subtree declares Graph-scoped `Ctx`, `CurrentTarget`, `InCombat` and
+`CombatState` (`SharedVariable<AICombatState>`). Bind every P0 task's
+`combatState` to that variable; bind target consumers to `CurrentTarget`.
+`CanAct` initializes per-tree/per-actor runtime data. Never reuse a mutable state
+value across actors or reset it on each Repeater cycle.
+
+Priorities are CanAct -> Recovery -> Combat -> Investigate/Search -> Patrol/Wait.
+The visible Combat sequence is range 5-7 m -> orbit 2.5 s -> CanShootTarget ->
+AiShoot 1.5 s -> rest 0.75 s. Its alternative finds/moves to a firing point using
+the perceived aim position. `CanShootTarget.allowReloadCycle=true` and
+`checkAimAngle=false` let AiShoot perform aiming and bounded reloads.
+
+Bind `combatState` on the example's `TargetOrbitNavMesh` and `Patrol` to activate
+their P0 watchdog; leave it unbound on existing graphs. Keep orbit `moveSpeed=0`
+and `repathInterval=0.25`. Search defaults are observation age 10 s, shared budget
+8 s, radius 3 m and 3 points; Recovery allows 2 attempts and waits 0.5 s after
+exhaustion. Configure Both aborts at autonomy and Combat boundaries, Self on
+visible orbit, and priority interruption of Search. Do not configure ammo or
+temporary shoot readiness as a reload-cancelling conditional abort.
+
+The explicit **Tools > RB > AI > Apply P0 to M_GR_01** command rebuilds only this
+example's Subtree using native serialization. It does not run on import. Reopen
+the asset after authoring and inspect Graph variable bindings and prefab Subgraph.
+See `SYSTEMS/AI_AND_TARGETING.md` for contracts and `VALIDATION.md` for results.
+
 ## Animation presentation layers
 
 CharacterAnimBrain retains the serialized locomotion/action indices (normally 0/1)
@@ -172,6 +268,64 @@ outside Play mode. Validate the Player Status position and unchanged surrounding
 panels at 1280 x 720 and 1920 x 1080 after changing these settings.
 
 ## Character Prefab Context
+
+### Player system groups
+
+`Assets/Prefab/Player/Player.prefab` has six direct children under
+`------------ Player_System ------------`:
+
+| Group | Responsibilities |
+| --- | --- |
+| `GamePlayStats_System` | Health, Stamina, Level, CombatEventBus, StatsHub, StateHub/debug view, StatusEffects and Passives |
+| `Movement_System` | Movement, Dash, Knockback, VerticalMotor, PlayerInput/handler and interaction |
+| `Combat_System` | Weapon/affix/upgrade, Melee, SkillManager/SkillUser/progression, aim/targeting, interruption and defensive block/cue |
+| `CharacterVisual_System` | Visual/model binding, visibility, status/cutscene presentation, Animancer, animation Brain/Driver, pair offsets and aim rig |
+| `Character_Equipment` | Equipment, accessories and inventory |
+| `Party_System` | Character loader, formation, commands, helper, field allies, chains and follow-up controller/executor |
+
+The root retains Transform, CharacterController, Rigidbody, Animator,
+PlayerContext, AITargetInfo, AudioListener and CharacterMovementMotor. FirePoint,
+Aim Target and PlayerVisual remain actor anchors. The root Animator is retained;
+this organization change does not remove or retarget animation components.
+
+Keep group transforms at local identity. Important peer references stay explicitly
+bound on PlayerContext, including `inputHandler` and `interruptionController`.
+PlayerInput and its handler share Movement_System; preserve all 18 authored
+UnityEvent callbacks. StateHubDebugView shares StateHub's object; the FollowUp
+controller/executor share Party_System; the animation Brain shares Animancer's
+object. CharacterVisualController.ModelRoot still points to PlayerVisual.
+
+Resolve pickups, reticle, party interruption and chain input suspension through
+the actor context rather than assuming these modules are on the root. StatsHub
+discovers modifier providers across its owning actor, including the sibling
+Combat_System and Character_Equipment groups, while excluding other actors.
+
+Grouping validation: `PlayerPrefabGrouping.Tests` (Edit Mode) and
+`PlayerPrefabGrouping.PlayMode.Tests` (Play Mode). Also run the existing
+StateHub locomotion and UnifiedWeaponPassives production-player regressions.
+
+### Player Crouch / Slide
+
+PlayerInput uses `Inputmaneger.inputactions`, `InvokeUnityEvents`, and a Crouch
+event bound to `PlayerInputHandler.OnCrouch`. `<Keyboard>/ctrl` accepts either Ctrl.
+Retain this event on derived player prefabs. PlayerMovementCC exposes Crouch and
+Momentum Slide Inspector settings; its runtime capsule snapshot uses `ctx.cc` and
+preserves authored foot placement. Do not resize model/hit-zone colliders to
+compensate for missing animation. Assign optional in-place looping `crouchIdle`,
+`crouchMove`, and `slide` transitions on CharacterAnimProfileSO, or leave empty for
+ordinary locomotion fallback. Verify upper-body aim/fire masks with final clips;
+Roma uses `Assets/Animation/Ch_Roma_Anim/Roma_Slide.fbx` for Slide (looping,
+speed 1, fade 0.1 seconds). Crouch idle/move still use fallback until authored.
+Ctrl may be pressed during grounded Dash to hand its current momentum to Slide;
+waiting for Dash to finish or holding Shift until Sprint is no longer necessary.
+
+Set each CharacterStats asset's **Base Stats > Slide Stamina / Unit**
+(`slideStaminaPerUnit`) independently. Default is 2 stamina per world unit of actual
+planar Slide movement; 0 disables the cost. For example, 5 units costs 10 stamina
+at rate 2, applied gradually each movement frame. The value comes from the actor's
+current `ctx.baseStats`, not from the Player prefab or DashSetting. Ensure its
+context resolves StaminaSystem. Paid Slide stops at empty stamina; regeneration
+pauses during Slide and resumes after the usual spending delay. No extra entry fee.
 
 Player, ally, and enemy prefabs should have a context component as the main
 reference hub:
@@ -2085,6 +2239,33 @@ per-bone path, local Euler offset, and weight. Runtime animation lookup uses the
 enum pair, not clip names or clip references. The clip references are retained
 for preview load/save workflows.
 
+For sliding while shooting, preview the
+slide clip with the shooting clip and save a profile with `Base Pose = Slide`
+and the matching `Upper Action`. Runtime selects `Slide` when a valid slide
+clip is active and maps it to `CharacterAnimProfileSO.slide.Clip`. Existing
+clip-keyed slide profiles also work through the clip-reference fallback; they
+do not need to be recreated. Without a valid slide clip, locomotion keeps its
+normal directional offset selection.
+
+### Previewing offset fades
+
+`SoloRootMotionPreview > Transition Preview` accepts optional `From Base Clip`
+and `From Upper Clip`. The normal Base/Upper clips are the destinations. Move
+`Base Fade To Current` and `Upper Fade To Current` from 0 to 1 independently to
+inspect a transition; clearing a source clip fixes that channel at the destination.
+The time scrubber samples all participating clips at the same time in seconds.
+Each pair uses its local working profile if present, otherwise its saved SO
+profile. Missing/disabled pairs contribute zero correction. `Upper Body Weight`
+also scales the correction, using the same rotation evaluator as runtime.
+
+During a transition, Capture Pose does nothing and Save keeps authored values
+without baking the blended pose into one profile. Set both fade weights to 1
+before capturing a destination pose. Existing SO entries remain valid. New
+runtime Base Pose keys include Slide, Sprint, CrouchIdle and CrouchMove.
+`Show Debug State` on the runtime applier lists evaluated base/action weights.
+Runtime fades include every still-weighted state and actual mixer child weights;
+offsets are not switched immediately when movement intent changes.
+
 Runtime pair offsets are applied by `CharacterPairOffsetApplier`. Add it to
 character prefabs that use pair offsets and bind it on the context when possible.
 When a character's anim profile has a `PairOffsetProfilesSO` assigned but the
@@ -2097,11 +2278,11 @@ profile and applies bone rotations after animation sampling. The applier uses
 the `Animator` assigned on the character's `AnimancerComponent` as the skeleton
 root, so it follows the active model instance instead of a parent placeholder
 Animator. Runtime lookup checks the enum pair first, then falls back to the
-preview clip references mapped through `CharacterAnimProfileSO`, so older
+actual evaluated base/action clip references, so older
 clip-keyed `PairOffsetProfilesSO` entries can still work while they are being
 migrated to explicit enum keys. While an upper-body action is held, changing
 movement direction changes the active locomotion blend. The applier uses the
-current locomotion parameter to blend multiple `Base Pose` profiles in the same
+evaluated mixer child weights to blend multiple `Base Pose` profiles in the same
 frame, so offsets can follow transitions such as `Forward + ShootHold` blending
 into `ForwardRight + ShootHold` or `Right + ShootHold`. Author one profile per
 locomotion direction that needs a different correction. Profiles with
@@ -3844,3 +4025,56 @@ UI states no longer pause time as an enter/exit side effect. A gameplay screen
 owns both a StateHub UI-state token and a GlobalTimeScaleManager pause token.
 ActiveSkillScreenController releases its tokens on close, disable, destruction
 or rebinding; closing one screen cannot release another screen or Dialogue's hold.
+
+## Composed passive authoring (2026-10-04)
+
+Keep PassiveController, StatsHub, StaminaSystem, HealthSystem and CombatEventBus
+bound through the actor's CharacteContext. Modules may be on the root or nested;
+StatsHub includes the context-bound PassiveController even outside its own subtree.
+Do not add Momentum or passive-specific counter fields/components to characters.
+
+Edit PassiveDefinition.recipe after migration. Legacy Triggered/Custom fields are
+retained migration input and no longer drive gameplay. Recipes/fragments are
+ScriptableObjects with SerializeReference steps; retain rule/step/invocation IDs
+when reordering and bind shared variables explicitly. New providers should return
+PassiveGrant with stable source/installation IDs.
+
+Use Tools > RB > Passives > Dry Run Recipe Migration before Migrate Recipes.
+Migration is repeatable and retains definition GUIDs, upgrade trees and references.
+No scene/prefab replacement is required. Optional movement event sources are
+created only on demand; author at most one source of each kind per actor.
+
+The RomaStaminaMomentum asset under Assets/Tests/PassiveComposition/Fixtures is
+test/example data only. It has not been assigned to production Roma. Full managed
+reference authoring UI and node graph are outside this change; use typed recipe
+data and the example factory for authoring/validation.
+
+### Roma Stamina / Momentum installation
+
+ChaDef.Roma now has a passive slot after its Ultimate, with stable slot ID
+`roma.passive.stamina-momentum`. It selects the production
+`Assets/Character/Roma/Passive/Passive.Roma_StaminaMomentum.asset` by default.
+The shared Player prefab resolves this through CharacterSkillManager; no passive
+is hard-coded into the Player prefab or added to other character definitions.
+The production asset owns its recipe and four fragments independently of Tests.
+
+### Weapon passive authoring (2026-10-05)
+
+Keep the existing WeaponAffixRuntimeController component and serialized database
+reference on weapon-bearing prefabs. It now supplies grants to the context-bound
+PassiveController; no per-affix MonoBehaviour is needed. WeaponAffixDefinition
+references a ComposedPassiveDef/recipe and owns rollSpec, tooltip and eligibility.
+The optional passive hudPrefab uses the existing GameplayHUD/PassiveHUD host;
+weapon affixes do not require a HUD prefab. Roma's HUD and placement are unchanged.
+
+Older actors such as AI Ally/Ally.prefab can omit the shared passive module. The
+equipment adapter creates it when an actual affix grant requires it; combat/weapon
+phase recipes also install a missing CombatEventBus through the owner context.
+No extra module is installed for an empty weapon, and static-only grants do not
+need a combat bus. Prefer explicit context bindings in newly authored prefabs.
+
+Use WeaponPassiveRecipeMigration.MigrateAll(true) for a dry run, then false to
+migrate. Existing asset GUIDs, names, roll values, feedback profiles and external
+references are preserved. Legacy rootBehavior fields remain for reference and
+migration compatibility but cannot construct gameplay runtimes. New formulas use
+recipe parameters, bindings and steps. Never put affix counters on CharacteContext.

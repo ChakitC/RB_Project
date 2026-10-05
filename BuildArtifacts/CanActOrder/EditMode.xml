@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="13" result="Passed" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-03 06:26:26Z" end-time="2026-10-03 06:26:27Z" duration="0.4411137">
+  <test-suite type="TestSuite" id="1000" name="BA Clone" fullname="BA Clone" runstate="Runnable" testcasecount="1103" result="Passed" start-time="2026-10-03 06:26:26Z" end-time="2026-10-03 06:26:27Z" duration="0.441114" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1015" name="AICombatP0.Tests.dll" fullname="P:/Game_RB_Project/RB_Project/Library/ScriptAssemblies/AICombatP0.Tests.dll" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.349340" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30040" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1001" name="AICombatP0Tests" fullname="AICombatP0Tests" classname="AICombatP0Tests" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.331947" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1002" name="ConditionalsArePureAndReevaluateIdentically" fullname="AICombatP0Tests.ConditionalsArePureAndReevaluateIdentically" methodname="ConditionalsArePureAndReevaluateIdentically" classname="AICombatP0Tests" runstate="Runnable" seed="552749795" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.124030" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1009" name="ContextCacheRestartAndPool" fullname="AICombatP0Tests.ContextCacheRestartAndPool" methodname="ContextCacheRestartAndPool" classname="AICombatP0Tests" runstate="Runnable" seed="2004656673" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.004317" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1011" name="ContextEventsRebindWithoutDuplicates" fullname="AICombatP0Tests.ContextEventsRebindWithoutDuplicates" methodname="ContextEventsRebindWithoutDuplicates" classname="AICombatP0Tests" runstate="Runnable" seed="1401227187" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.003956" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1010" name="ContextFailuresNeverDiscoverOwner" fullname="AICombatP0Tests.ContextFailuresNeverDiscoverOwner" methodname="ContextFailuresNeverDiscoverOwner" classname="AICombatP0Tests" runstate="Runnable" seed="1549592907" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.006375" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[InitializeAIContext] No active owning CharacteContext.
+]]></output>
+        </test-case>
+        <test-case id="1014" name="ContextInitializerOrderSurvivesGraphSave" fullname="AICombatP0Tests.ContextInitializerOrderSurvivesGraphSave" methodname="ContextInitializerOrderSurvivesGraphSave" classname="AICombatP0Tests" runstate="Runnable" seed="1693542010" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.116843" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1013" name="ContextSpecialPointBindings" fullname="AICombatP0Tests.ContextSpecialPointBindings" methodname="ContextSpecialPointBindings" classname="AICombatP0Tests" runstate="Runnable" seed="666935959" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.002296" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1012" name="ContextValidatorRejectsUnsafeGraphs" fullname="AICombatP0Tests.ContextValidatorRejectsUnsafeGraphs" methodname="ContextValidatorRejectsUnsafeGraphs" classname="AICombatP0Tests" runstate="Runnable" seed="726568244" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.001508" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1008" name="GraphRoundTripAndPrefabBindings" fullname="AICombatP0Tests.GraphRoundTripAndPrefabBindings" methodname="GraphRoundTripAndPrefabBindings" classname="AICombatP0Tests" runstate="Runnable" seed="1360834714" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.011532" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1005" name="ObservationConsumptionAndPooledLife" fullname="AICombatP0Tests.ObservationConsumptionAndPooledLife" methodname="ObservationConsumptionAndPooledLife" classname="AICombatP0Tests" runstate="Runnable" seed="588222429" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.001741" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1004" name="PureSightQueryUsesObstacleAndOwnerRules" fullname="AICombatP0Tests.PureSightQueryUsesObstacleAndOwnerRules" methodname="PureSightQueryUsesObstacleAndOwnerRules" classname="AICombatP0Tests" runstate="Runnable" seed="909295125" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.002708" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1003" name="RangeAndAmmoAdmission" fullname="AICombatP0Tests.RangeAndAmmoAdmission" methodname="RangeAndAmmoAdmission" classname="AICombatP0Tests" runstate="Runnable" seed="1146993894" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.003729" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1006" name="StateQuotaAndTargetReplacement" fullname="AICombatP0Tests.StateQuotaAndTargetReplacement" methodname="StateQuotaAndTargetReplacement" classname="AICombatP0Tests" runstate="Runnable" seed="1847574552" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.001996" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1007" name="TargetEligibilityRejectsDeadDownAndUntargetable" fullname="AICombatP0Tests.TargetEligibilityRejectsDeadDownAndUntargetable" methodname="TargetEligibilityRejectsDeadDownAndUntargetable" classname="AICombatP0Tests" runstate="Runnable" seed="696177141" result="Passed" start-time="2026-10-03 06:26:27Z" end-time="2026-10-03 06:26:27Z" duration="0.001881" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Saving results to: C:/Users/Hyperlore14/Documents/Codex/2026-10-03/new-chat/work/order-fix/evidence/EditMode.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

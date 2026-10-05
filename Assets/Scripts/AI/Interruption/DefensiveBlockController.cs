@@ -61,8 +61,9 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
     public event System.Action<DefensiveBlockController, bool> Finished;
     public DefensiveBlockActorProfile Settings => ctx != null && ctx.baseStats != null && ctx.baseStats.defensiveBlock != null
         ? ctx.baseStats.defensiveBlock : defaultSettings;
-    public Vector3 GuardCenter => transform.position + Vector3.up * guardCenterHeight +
-        transform.forward * (active && arrived ? activeGuardForwardOffset : guardForwardOffset);
+    Transform ActorTransform => ctx != null ? ctx.transform : transform;
+    public Vector3 GuardCenter => ActorTransform.position + Vector3.up * guardCenterHeight +
+        ActorTransform.forward * (active && arrived ? activeGuardForwardOffset : guardForwardOffset);
     public bool IsExecuting => active;
     public bool HasArrived => active && arrived;
     float ActorDeltaTime => ctx == null || ctx.UsesWorldSlow
@@ -75,7 +76,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
 
     void Awake()
     {
-        ctx = GetComponentInParent<CharacteContext>();
+        ctx = CharacterContextModuleLookup.ResolveContext(this);
         ctx?.ResolveReferences();
         if (member == null && ctx != null) member = ctx.FieldAllyMember;
         ResolveProfile();
@@ -353,7 +354,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         pendingPlacement = null;
         if (warpVisibility != null) warpVisibility.Appear(warpFadeInSeconds);
         shotCamera = GameplayCameraController.Instance;
-        shotCamera?.BeginDefensiveBlockShot(this, player, transform, loadedProfile);
+        shotCamera?.BeginDefensiveBlockShot(this, player, ActorTransform, loadedProfile);
         Arrived?.Invoke(this);
         TraceGuard("Arrived at reserved guard position");
     }
@@ -362,7 +363,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
     {
         activeGuardForwardOffset = attack != null && attack.skill != null &&
             attack.skill.defensiveBlock?.mode == DefensiveBlockMode.Contact
-            ? DefensiveBlockGeometry.ContactGuardOffset(transform.position, transform.forward,
+            ? DefensiveBlockGeometry.ContactGuardOffset(ActorTransform.position, ActorTransform.forward,
                 attack.CasterContext.transform.position, guardForwardOffset, guardHalfDepth)
             : guardForwardOffset;
     }
@@ -503,7 +504,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
-        Gizmos.matrix = Matrix4x4.TRS(GuardCenter, transform.rotation, Vector3.one);
+        Gizmos.matrix = Matrix4x4.TRS(GuardCenter, ActorTransform.rotation, Vector3.one);
         Gizmos.DrawWireCube(Vector3.zero, new Vector3(guardHalfWidth * 2f, guardHalfHeight * 2f, guardHalfDepth * 2f));
     }
 }

@@ -547,7 +547,7 @@ internal sealed class CharacterSkillLoadoutRuntime
 
             PassiveDefinition definition = state.selectedOption != null ? state.selectedOption.PassiveAsset : null;
             if (definition != null)
-                buffer.Add(new EquippedPassive(definition, state.upgradeSnapshot));
+                buffer.Add(new EquippedPassive(definition, state.upgradeSnapshot, state.slotId));
         }
     }
 

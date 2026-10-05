@@ -178,6 +178,12 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
     [Min(0f)] public float actionFadeOut = 0.08f;
 
     [Header("Locomotion (Layer 0)")]
+    [Tooltip("Optional looping in-place sprint, used for every facing direction while sprinting.")]
+    public ClipTransition sprint;
+    [Tooltip("Optional in-place crouch/slide clips. Missing clips use the ordinary locomotion mixer.")]
+    public ClipTransition crouchIdle;
+    public ClipTransition crouchMove;
+    public ClipTransition slide;
     public DirectionalClipSet2D locomotionDirectionalClips = new();
     [Min(0f)] public float locomotionParamLerp = 14f;
     public bool snapTo8Directions = true;
@@ -390,6 +396,10 @@ public sealed class CharacterAnimProfileSO : ScriptableObject
             PairOffsetBasePose.ForwardRight => locomotionDirectionalClips.forwardRight,
             PairOffsetBasePose.BackwardLeft => locomotionDirectionalClips.backwardLeft,
             PairOffsetBasePose.BackwardRight => locomotionDirectionalClips.backwardRight,
+            PairOffsetBasePose.Slide => slide != null ? slide.Clip : null,
+            PairOffsetBasePose.Sprint => sprint != null ? sprint.Clip : null,
+            PairOffsetBasePose.CrouchIdle => crouchIdle != null ? crouchIdle.Clip : null,
+            PairOffsetBasePose.CrouchMove => crouchMove != null ? crouchMove.Clip : null,
             _ => null,
         };
     }

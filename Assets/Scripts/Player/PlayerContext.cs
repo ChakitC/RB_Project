@@ -10,6 +10,8 @@ public class PlayerContext : CharacteContext
 
     [Header("Modules")]
     public PlayerMovementCC movement;
+    public PlayerInputHandler inputHandler;
+    public PlayerInterruptionController interruptionController;
     public AllyHelperManager allyHelper;
     public FieldAllyManager fieldAllyManager;
     public PartyFormationController partyFormation;
@@ -41,6 +43,13 @@ public class PlayerContext : CharacteContext
     [SerializeField, HideInInspector] private bool logPartyCommandExecution;
 
     public override bool UsesWorldSlow => false;
+    public override bool IsSprinting => movement != null && movement.IsSprinting;
+    public override void CancelSprint() => movement?.CancelSprint();
+    public override bool IsCrouching => movement != null && movement.IsCrouching;
+    public override bool IsSliding => movement != null && movement.IsSliding;
+    public override void CancelSlide() => movement?.CancelSlide();
+    public override bool CanStandForDash() => movement == null || movement.CanStandForDash();
+    public override void PrepareForAcceptedDash() => movement?.PrepareForAcceptedDash();
     public override AITargetIdentity TargetIdentity => AITargetIdentity.Player;
 
     void Awake()
@@ -96,6 +105,12 @@ public class PlayerContext : CharacteContext
 
         if (movement == null)
             movement = ResolveActorComponent(movement);
+
+        if (inputHandler == null)
+            inputHandler = ResolveActorComponent(inputHandler);
+
+        if (interruptionController == null)
+            interruptionController = ResolveActorComponent(interruptionController);
 
         if (inventory == null)
             inventory = ResolveActorComponent(inventory);

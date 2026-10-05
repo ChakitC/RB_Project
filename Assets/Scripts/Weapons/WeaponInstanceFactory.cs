@@ -214,17 +214,12 @@ public static class WeaponInstanceFactory
         if (!definition)
             return null;
 
-        if (definition.rootBehavior != null)
-            return new RolledAffixData { affixId = definition.affixId, hasPrimaryValue = true, primaryValue = definition.rootBehavior.RollPrimaryValue() };
-
-        bool needsPrimaryRoll = definition.behaviorType == WeaponAffixBehaviorType.StatModifier ||
-                                definition.behaviorType == WeaponAffixBehaviorType.TimedBuffOnReload;
-
         return new RolledAffixData
         {
             affixId = definition.affixId,
-            hasPrimaryValue = needsPrimaryRoll,
-            primaryValue = needsPrimaryRoll ? definition.RollPrimaryValue() : 0f
+            grantId = Guid.NewGuid().ToString("N"),
+            hasPrimaryValue = true,
+            primaryValue = definition.RollPrimaryValue()
         };
     }
 }

@@ -75,6 +75,81 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1 &1952185386551078450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9061285807486861180}
+  - component: {fileID: 4920227569776081442}
+  - component: {fileID: 149051759981295592}
+  m_Layer: 0
+  m_Name: PassiveHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &9061285807486861180
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1952185386551078450}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4981152052903367121}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 11, y: 883}
+  m_SizeDelta: {x: 720, y: 176}
+  m_Pivot: {x: 0, y: 0}
+--- !u!114 &4920227569776081442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1952185386551078450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 341d7351608435d4ab9b3802760c5ac6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &149051759981295592
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1952185386551078450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Padding:
+    m_Left: 0
+    m_Right: 0
+    m_Top: 0
+    m_Bottom: 0
+  m_ChildAlignment: 6
+  m_Spacing: 12
+  m_ChildForceExpandWidth: 0
+  m_ChildForceExpandHeight: 0
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &2268778642591592936
 GameObject:
   m_ObjectHideFlags: 0
@@ -568,6 +643,7 @@ RectTransform:
   - {fileID: 8188940538238470081}
   - {fileID: 7671387558463200098}
   - {fileID: 7699109050855379985}
+  - {fileID: 9061285807486861180}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1628,6 +1704,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: FollowUp_Color
       objectReference: {fileID: 0}
+    - target: {fileID: 1093020561414227402, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 1706374580569618746, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Name
       value: FollowUp_BG
@@ -1639,6 +1719,10 @@ PrefabInstance:
     - target: {fileID: 5010343526797305213, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Name
       value: FollowUp_AllyIconFollowUp_Color
+      objectReference: {fileID: 0}
+    - target: {fileID: 5176349364975648282, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 5620589431005379457, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Name
@@ -1747,6 +1831,10 @@ PrefabInstance:
     - target: {fileID: 8189178368542179066, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
       propertyPath: m_Name
       value: FollowUpDisplay
+      objectReference: {fileID: 0}
+    - target: {fileID: 8349399356375897728, guid: 43f29d155da0477449eb1d442195bf91, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

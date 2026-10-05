@@ -16,6 +16,9 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterController cc;
     public UnityEngine.AI.NavMeshAgent NavigationAgent;
     public CharacterMovementMotor MovementMotor;
+    public AITargetSensor AITargetSensor;
+    public AgentMoveDriver AgentMoveDriver;
+    public AimAxisDriver AimAxisDriver;
 
     [Header("Common Modules")]
     public AITargetInfo TargetInfo;
@@ -72,6 +75,13 @@ public abstract class CharacteContext : MonoBehaviour
     public int LifeGeneration => _lifeGeneration;
 
     public virtual bool UsesWorldSlow => _worldSlowExemptionCount <= 0;
+    public virtual bool IsSprinting => false;
+    public virtual void CancelSprint() { }
+    public virtual bool IsCrouching => false;
+    public virtual bool IsSliding => false;
+    public virtual void CancelSlide() { }
+    public virtual bool CanStandForDash() => true;
+    public virtual void PrepareForAcceptedDash() { }
 
     protected virtual void OnEnable()
     {
@@ -134,6 +144,9 @@ public abstract class CharacteContext : MonoBehaviour
         rb = ResolveActorComponent(rb);
         cc = ResolveActorComponent(cc);
         NavigationAgent = ResolveActorComponent(NavigationAgent);
+        AITargetSensor = ResolveStatePeer(AITargetSensor);
+        AgentMoveDriver = ResolveStatePeer(AgentMoveDriver);
+        AimAxisDriver = ResolveStatePeer(AimAxisDriver);
         if (Application.isPlaying) EnsureMovementMotor();
         else
         {

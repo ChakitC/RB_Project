@@ -5,23 +5,25 @@ public sealed class WeaponProjectileSpawner
 {
     readonly Dictionary<GameObject, Projectile> projectilePrefabCache = new();
 
-    public void Spawn(WeaponProjectileSpawnContext context)
+    public void Spawn(WeaponProjectileSpawnContext context) => TrySpawn(context);
+
+    public bool TrySpawn(WeaponProjectileSpawnContext context)
     {
         if (!TryResolveProjectilePrefab(context.ProjectilePrefab, out var prefabComp))
-            return;
+            return false;
 
         if (!context.FirePoint)
-            return;
+            return false;
 
         var pool = ProjectilePool.Instance;
-        if (pool == null) return;
+        if (pool == null) return false;
         Vector3 direction = context.Direction.sqrMagnitude > 0.0001f
             ? context.Direction.normalized
             : context.FirePoint.forward;
         Quaternion rotation = Quaternion.LookRotation(direction, context.FirePoint.up);
         // Atomic spawn: the instance stays inactive until every runtime field below is written.
         var projectile = pool.AcquireInactive(prefabComp, context.FirePoint.position, rotation);
-        if (projectile == null) return;
+        if (projectile == null) return false;
         ProjectileLayerUtility.ApplyForContext(projectile.gameObject, context.OwnerContext);
 
         projectile.gunType = context.GunType;
@@ -71,6 +73,7 @@ public sealed class WeaponProjectileSpawner
         });
 
         pool.ActivateForSpawn(projectile);
+        return true;
     }
 
     public bool TryResolveProjectilePrefab(GameObject prefab, out Projectile projectileComponent)

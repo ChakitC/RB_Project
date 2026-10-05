@@ -272,20 +272,23 @@ public class HealthSystem : MonoBehaviour, IDamageable, IHasArmor, IInteractable
         return currentHealth < maximumHealth;
     }
 
-    public bool Heal(float amount)
+    public bool Heal(float amount) => HealActual(amount) > 0f;
+
+    /// <summary>Returns the amount applied by this operation before notification callbacks run.</summary>
+    public float HealActual(float amount)
     {
         if (!CanHeal(amount))
-            return false;
+            return 0f;
 
         float previous = currentHealth;
         currentHealth = Mathf.Clamp(currentHealth + amount, 0f, maximumHealth);
         if (currentHealth <= previous)
-            return false;
+            return 0f;
 
         float healedAmount = currentHealth - previous;
         RaiseHealthChanged();
         Healed?.Invoke(healedAmount, currentHealth, maximumHealth);
-        return true;
+        return healedAmount;
     }
 
     public virtual DamageResult TakeDamage(in DamageContext damageContext)

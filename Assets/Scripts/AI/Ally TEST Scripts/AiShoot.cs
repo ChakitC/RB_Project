@@ -6,6 +6,7 @@ using Opsive.GraphDesigner.Runtime.Variables;
 
 public class AiShoot : Action
 {
+    public SharedVariable<CharacteContext> context;
     private CharacteContext CTX;
     public SharedVariable<GameObject> target;
 
@@ -72,13 +73,21 @@ public class AiShoot : Action
     private IAITargetable cachedTargetable;
     private Transform cachedAimPoint;
     private AimAxisDriver _aimDriver;
+    private AITargetHandle firingTargetHandle;
+    private int rotationToken;
+    private CharacterMovementMotor executionMotor;
+    private StateHub executionStateHub;
+    private float reloadElapsed;
+    private float phaseElapsed;
+    private bool ownsFire;
+    private AITargetHandle firingOwnerHandle;
+    public float reloadCycleTimeout = 10f;
 
     public override void OnStart()
     {
-        if (CTX == null)
-        {
-            CTX = gameObject.GetComponentInParent<CharacteContext>();
-        }
+        CTX = AIContextBinding.Read(context);
+        executionMotor = CTX != null ? CTX.MovementMotor : null;
+        executionStateHub = CTX != null ? CTX.stateHub : null;
 
         actorTransform = CTX != null ? CTX.transform : transform;
         _rotateTransform =
@@ -86,19 +95,27 @@ public class AiShoot : Action
             ? rotateRoot.Value.transform
             : actorTransform;
         _aimDriver = (CTX != null && delegateRotation)
-            ? CTX.GetComponent<AimAxisDriver>()
+            ? CTX.AimAxisDriver
             : null;
         targetSensor = ResolveTargetSensor();
         agentRotationCaptured = false;
-        agent = actorTransform != null
-            ? actorTransform.GetComponent<NavMeshAgent>()
-            : null;
+        agent = CTX != null ? CTX.NavigationAgent : null;
+        firingTargetHandle = targetSensor != null ? targetSensor.ReadSnapshot.Target : default;
+        firingOwnerHandle = new AITargetHandle(CTX);
+        rotationToken = 0;
+        reloadElapsed = phaseElapsed = 0f;
+        ownsFire = false;
 
-        if (faceTarget && agent != null)
+        if (faceTarget && agent != null && AICombatTaskUtility.CanAct(CTX))
         {
-            cachedAgentUpdateRotation = agent.updateRotation;
-            agent.updateRotation = false;
-            agentRotationCaptured = true;
+            if (CTX.MovementMotor != null)
+                rotationToken = CTX.MovementMotor.AcquireAgentSuspension(agent, false, true);
+            else
+            {
+                cachedAgentUpdateRotation = agent.updateRotation;
+                agent.updateRotation = false;
+                agentRotationCaptured = true;
+            }
         }
 
         phase = ShootPhase.Firing;
@@ -106,7 +123,7 @@ public class AiShoot : Action
         fireSolutionLostTime = float.NegativeInfinity;
         ClearTargetCache();
 
-        if (CTX != null && CTX.stateHub != null)
+        if (AICombatTaskUtility.CanAct(CTX))
         {
             // กันเคสจาก state เก่าค้างอยู่
             CTX.stateHub.RequestCanceledFire();
@@ -115,13 +132,30 @@ public class AiShoot : Action
 
     public override TaskStatus OnUpdate()
     {
-        if (CTX == null)
+        if (!AIContextBinding.IsCurrent(context, CTX, firingOwnerHandle.Generation) ||
+            CTX.stateHub != executionStateHub || CTX.AITargetSensor != targetSensor ||
+            (delegateRotation && (CTX.AimAxisDriver == null || CTX.AimAxisDriver != _aimDriver)))
+        {
+            StopFire(CTX);
             return TaskStatus.Failure;
+        }
+        if (targetSensor == null) return TaskStatus.Failure;
 
         
 
         if (CTX.stateHub == null)
             return TaskStatus.Failure;
+
+        if (!firingOwnerHandle.IsLive || !AICombatTaskUtility.CanAct(CTX))
+        {
+            StopFire(CTX);
+            return TaskStatus.Failure;
+        }
+        if (AICombatTaskUtility.IsPaused)
+        {
+            StopFire(CTX);
+            return TaskStatus.Running;
+        }
 
         GameObject currentTarget = (target != null) ? target.Value : null;
 
@@ -132,7 +166,13 @@ public class AiShoot : Action
             return TargetLostStatus();
         }
 
-        AITargetSnapshot sensorState = targetSensor != null ? targetSensor.Snapshot : AITargetSnapshot.Empty;
+        AITargetSnapshot sensorState = targetSensor != null ? targetSensor.ReadSnapshot : AITargetSnapshot.Empty;
+        if (targetSensor != null && (sensorState.Target != firingTargetHandle ||
+            !AICombatTaskUtility.IsEligible(CTX, firingTargetHandle)))
+        {
+            StopFire(CTX);
+            return TargetLostStatus();
+        }
         CacheTarget(currentTarget.transform);
         if (!IsTaskTargetStillValid(currentTarget.transform, sensorState))
         {
@@ -147,12 +187,26 @@ public class AiShoot : Action
             return WaitForFiringSolutionOrFail();
 
         // กระสุนหมด / รีโหลดอยู่
-        var weaponState = CTX.stateHub.WeaponSM.CurrentId;
-        if (weaponState == WeaponStateId.NoBullet || weaponState == WeaponStateId.Reloading)
+        WeaponSystem weapon = CTX.WeaponSystem;
+        if (weapon == null || weapon.CurrentWeapon == null || weapon.FirePoint == null)
         {
             StopFire(CTX);
-            CTX.stateHub.RequestReload();
+            return TaskStatus.Failure;
+        }
+        if (weapon.IsReloading || weapon.IsMagazineEmpty)
+        {
+            StopFire(CTX);
+            if (!weapon.IsReloading && !weapon.CanReload) return TaskStatus.Failure;
+            reloadElapsed += AICombatTaskUtility.Delta(CTX);
+            if (reloadElapsed >= reloadCycleTimeout) return TaskStatus.Failure;
+            if (!weapon.IsReloading) CTX.stateHub.RequestReload();
             return TaskStatus.Running;
+        }
+        reloadElapsed = 0f;
+        if (!CTX.stateHub.CanShoot())
+        {
+            StopFire(CTX);
+            return TaskStatus.Failure;
         }
 
         // ---------- Phase: Firing ----------
@@ -168,17 +222,20 @@ public class AiShoot : Action
                 float fireTime = (fireDuration != null) ? fireDuration.Value : 3f;
                 stateEndTime = GetActorTime() + Mathf.Max(0.01f, fireTime);
                 phaseTimerStarted = true;
+                phaseElapsed = 0f;
             }
 
             StartFire(CTX);
 
-            if (GetActorTime() >= stateEndTime)
+            phaseElapsed += AICombatTaskUtility.Delta(CTX);
+            if (phaseElapsed >= Mathf.Max(.01f, fireDuration != null ? fireDuration.Value : 3f))
             {
                 StopFire(CTX);
 
                 phase = ShootPhase.Waiting;
                 float waitTime = (waitDuration != null) ? waitDuration.Value : 5f;
                 stateEndTime = GetActorTime() + Mathf.Max(0.01f, waitTime);
+                phaseElapsed = 0f;
             }
 
             return TaskStatus.Running;
@@ -188,7 +245,8 @@ public class AiShoot : Action
         fireSolutionLostTime = float.NegativeInfinity;
         StopFire(CTX);
 
-        if (GetActorTime() >= stateEndTime)
+        phaseElapsed += AICombatTaskUtility.Delta(CTX);
+        if (phaseElapsed >= Mathf.Max(.01f, waitDuration != null ? waitDuration.Value : 5f))
         {
             // รอครบแล้ว จบ task สำเร็จ
             return TaskStatus.Success;
@@ -199,16 +257,19 @@ public class AiShoot : Action
 
     public override void OnEnd()
     {
-        if (agentRotationCaptured && agent != null)
-            agent.updateRotation = cachedAgentUpdateRotation;
-
-        agentRotationCaptured = false;
-
-        if (delegateRotation && _aimDriver != null)
-            _aimDriver.ClearAimPoint();
-
-        if (CTX != null && CTX.stateHub != null)
+        bool sameLife = CTX != null && CTX.LifeGeneration == firingOwnerHandle.Generation;
+        if (sameLife)
+        {
+            if (rotationToken != 0 && executionMotor != null)
+                executionMotor.ReleaseAgentSuspension(rotationToken);
+            if (agentRotationCaptured && agent != null && AICombatTaskUtility.CanAct(CTX))
+                agent.updateRotation = cachedAgentUpdateRotation;
+            if (delegateRotation && _aimDriver != null) _aimDriver.ClearAimPoint();
             StopFire(CTX);
+        }
+        rotationToken = 0;
+        agentRotationCaptured = false;
+        ownsFire = false;
     }
 
     public override void Reset()
@@ -229,7 +290,7 @@ public class AiShoot : Action
         fireSolutionLossTimeout = 0.5f;
     }
 
-    private AITargetSensor ResolveTargetSensor() => AITargetSensor.ResolveFor(CTX);
+    private AITargetSensor ResolveTargetSensor() => CTX != null ? CTX.AITargetSensor : null;
 
     private void CacheTarget(Transform currentTarget)
     {
@@ -404,11 +465,17 @@ public class AiShoot : Action
 
     private void StartFire(CharacteContext ctx)
     {
+        ownsFire = true;
         ctx.stateHub.RequestOnFire();
     }
 
     private void StopFire(CharacteContext ctx)
     {
-        ctx.stateHub.RequestCanceledFire();
+        if (!ownsFire || !firingOwnerHandle.IsLive) { ownsFire = false; return; }
+        executionStateHub?.RequestCanceledFire();
+        ownsFire = false;
     }
+
+    public override void OnBehaviorTreeStopped(bool paused) { if (!paused) OnEnd(); }
+    public override void OnDestroy() => OnEnd();
 }

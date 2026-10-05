@@ -1,5 +1,679 @@
 # Validation
 
+## Player prefab system grouping (2026-10-05)
+
+- **Compilation:** CheckAssemblyBuild.ps1 passed on the final runtime sources:
+  0 errors, 110 warnings. Unity also compiled the Editor fixture, test assemblies
+  and the updated defensive-block production authoring command successfully.
+- **Edit Mode:** PlayerPrefabGrouping.Tests 5/5,
+  CharacterMovementIntegrationTests 17/17, and the DefensiveBlockTests filter
+  31/31 runner cases passed. The defensive-block filter includes bridge executions
+  of existing cases; these are not 31 distinct scenarios.
+- **Play Mode:** PlayerPrefabGrouping.PlayMode.Tests 1/1,
+  StateHub.PlayMode.Tests 65/65 and UnifiedWeaponPassives.PlayMode.Tests 1/1 passed.
+  The first locomotion run was cancelled because the Editor toolbar imposed time
+  scale 0.1; the final full run used normal time. The original toolbar settings
+  and time scale 0.1 were restored afterward.
+- **Prefab/runtime:** 86 existing non-Transform components retain their local
+  file IDs, and 3,019 original non-null serialized references survived native
+  component moves. Both referencing scenes, Prototype_Map02 and
+  MossyMaterialPreview, were inspected in preview scenes without saving: each
+  resolves the grouped Player with eight root components and no missing scripts.
+  Tests cover all 18 input callbacks, unbound context resolution, root/nested
+  pickup bodies, sibling stat providers with actor isolation, guard geometry,
+  production Roma module binding/visibility, status pickup and actor reactivation.
+  Existing production movement/animation and actual weapon/passive firing tests
+  also passed. This is not a manual playthrough of every party command/map.
+
+Evidence: `../../BuildArtifacts/PlayerPrefabGrouping/AssemblyBuild.log`,
+`FinalTests.json`, `Migration.txt` and `SceneReferences.json` in that same
+artifact directory. Existing URP shadergraph/Volume Inspector errors remain in
+the Editor Console; successful compilation/tests do not certify a clean Console.
+
+The production defensive-block authoring command now reuses the context-bound
+guard and its co-located cue, so running it does not recreate them on Player's root.
+
+## Unified weapon and character passives (2026-10-05)
+
+- **Compilation:** required CheckAssemblyBuild.ps1 passed with 0 errors and 110
+  warnings. Unity compiled runtime, Editor and dedicated test assemblies.
+  Build log: ../../BuildArtifacts/PassiveUnification/build.log.
+- **Automated tests:** 73 distinct tests passed: UnifiedWeaponPassives.Tests
+  21/21, PassiveComposition.Tests 42/42, WeaponAffixFrameworkTests 6/6,
+  UnifiedWeaponPassives.PlayMode.Tests 1/1 and
+  PassiveComposition.PlayMode.Tests 3/3.
+- **Runtime checks:** the production Player prefab with Roma's installed passive
+  was exercised through actual weapon firing. Failed projectile preparation
+  preserved Fresh Chamber charges, Momentum and Echo progress. Successful firing
+  committed charges and Momentum once, captured their damage on the primary
+  projectile, and produced an Echo without those primary-only bonuses. Weapon
+  replacement removed its grants while preserving Roma and in-flight damage.
+  Existing production Roma/HUD Play Mode checks also passed. Tests cover weapon,
+  accessory and character grant coexistence, duplicate grants, persistence,
+  root/nested module ownership and lazy module installation for legacy actors.
+- **Migration:** all 27 existing affix assets have valid composed recipes.
+  Their GUIDs and all pre-existing serialized definition fields match the saved
+  baseline; repeated migration did not rewrite recipes. Baseline evidence:
+  ../../BuildArtifacts/PassiveUnification/AffixBaseline.json.
+- **Idle cost:** 10,000 warmed weapon-preparation probes each for empty and
+  static-only configurations measured zero allocated bytes, no passive state
+  and no active ticker. This is a narrow idle-path measurement, not a zero-GC
+  claim for active combat; active phases, chains and area effects use snapshots.
+
+Console inspection still showed URP VolumeComponentEditor/Bloom Inspector
+SerializedObjectNotCreatableException entries and an AutodeskInteractive
+shadergraph import error. These were not repaired in this change; compilation
+and completed Test Runner results above do not certify a clean Editor Console.
+Extended combat stress/profiling and every gameplay scene remain unverified.
+Controlled runtime tests use production prefabs and isolated fixtures.
+
+## Editable passive HUD placement (2026-10-05)
+
+`GameplayHUD/PassiveHUD` is now a direct prefab child. The builder migrates the
+previous nested host while preserving its screen rectangle; subsequent runs keep
+the authored root placement. The position is independent of the HP aim layout.
+Unity compiled the Editor changes successfully; no default-assembly sources
+changed, so CheckAssemblyBuild.ps1 was not required for this placement change.
+The authoring assertion passed both directly and through the dedicated
+PassiveComposition.Tests wrapper (2/2 executions). The production Roma HUD Play
+Mode test passed 1/1, including live binding, visible meshes, screen bounds and
+disable/re-enable. The refreshed runtime screenshot was visually reviewed.
+Documentation in PARTY_HUD.md and PREFABS_AND_AUTHORING.md reflects the new path.
+
+## Roma passive HUD (2026-10-05)
+
+- **Compilation:** required CheckAssemblyBuild.ps1 passed with 0 errors and 110
+  warnings. Unity compiled runtime, Editor fixtures and dedicated test assemblies.
+  Output: ../BuildArtifacts/PassiveHud/AssemblyBuild.log.
+- **Automated tests:** 52 distinct tests passed: 38 existing PassiveComposition
+  Edit Mode cases, 4 PassiveHud cases, 7 GameplayHud integration/layout/spawn
+  regression cases, and 3 PassiveComposition Play Mode cases. The initial Edit
+  run exposed a test lifecycle issue (Edit Mode does not invoke ordinary
+  MonoBehaviour activation callbacks); the corrected HUD fixture passed 4/4.
+  Visual review then found missing CanvasRenderer components on custom rings;
+  the fix adds RequireComponent and prefab repair, and the final production HUD
+  Play Mode test checks nonempty meshes for all four rings.
+- **Runtime checks:** production Player prefab loads Roma's actual installed
+  grant into the production GameplayHUD prefab. Verified 48/80 Stamina,
+  Momentum 32, next-attack +64%, low-Stamina Damage +20%, visible ring geometry,
+  screen bounds at 1920x1080, reservation cancellation and HUD disable/re-enable.
+  Edit tests cover duplicate grants/owners, upgrade refresh preserving views,
+  unequip, no UI for absent prefab, no accumulator allocation from display reads,
+  actual partial Perfect Dash refund, and old-lifetime cleanup. Existing aim
+  layout regressions passed at 1920x1080 and 1280x720.
+
+Evidence: ../BuildArtifacts/PassiveHud/Validation.json and
+../BuildArtifacts/PassiveHud/RomaPassiveHUD-runtime.png. The screenshot is from
+the isolated Play Mode fixture using production prefabs. Extended manual combat,
+all aspect ratios, and visual polish/balance are not certified by these checks.
+Unity MCP intermittently timed out around domain reload; focus/auto-tick recovered
+the connection. Existing URP shadergraph/Volume Inspector errors remain unrelated
+to this feature; test results above came from completed Unity Test Runner runs.
+
+## Production Roma Stamina / Momentum installation (2026-10-04)
+
+The production definition is Assets/Character/Roma/Passive/Passive.Roma_StaminaMomentum.asset.
+ChaDef.Roma selects it in the appended roma.passive.stamina-momentum slot after
+the existing Ultimate. The definition, recipe and four fragment subassets have
+production ownership; Unity dependency inspection reports no Assets/Tests references.
+The original test fixture asset remains independent. Initial tuning matches the
+four values documented in SYSTEMS/PASSIVES.md.
+
+- **Compilation:** Unity compiled the added Editor fixture and Play Mode test
+  wrapper; scriptCompilationFailed is false. No default Assembly-CSharp source
+  changed in this installation, so the standalone assembly build is not required.
+- **Automated tests:** ProductionRomaLoadsStaminaMomentumFromCharacterSlots passed
+  1/1 in Play Mode. It instantiates the production Player prefab with the actual
+  Roma definition and verifies automatic slot loading, Perfect Dash refund/dedup,
+  conversion, missing-stamina damage and Momentum. No SetRuntimePassives test
+  injection is used. PlayerSlideTests.StaminaRoma also passed 1/1.
+- **Runtime/authoring:** two configured Roma slots; loadout validation has no
+  issues. Player prefab bindings resolve through the existing context. Unity
+  reserialization also materializes current schema defaults on ChaDef.Roma.
+  Manual HUD/VFX presentation and gameplay balance remain unreviewed.
+
+Evidence: ../BuildArtifacts/PassiveOverhaul/ProductionRomaInstall.json.
+
+
+## Composed passive overhaul (2026-10-04)
+
+### Compilation
+
+- Required CheckAssemblyBuild.ps1: **0 errors, 110 warnings**. The warning set
+  includes legacy serialized custom-behavior fields intentionally retained for
+  migration/reference compatibility. Output is outside Assets:
+  ../BuildArtifacts/PassiveOverhaul/AssemblyBuild.log.
+- Unity compiled runtime, Editor fixtures and both dedicated test assemblies.
+  Final EditorUtility.scriptCompilationFailed is false.
+- Console still reports existing URP AutodeskInteractive shadergraph/Volume
+  Inspector errors. Some MCP requests timed out around domain reload; retrying
+  after enabling session auto-tick recovered the connection. These are not counted
+  as test passes or compiler failures.
+- Scoped C# / Markdown git diff whitespace check passed. Unity-generated YAML
+  retains Unity's empty-field trailing spaces.
+
+### Automated tests
+
+| Unity Test Runner suite | Mode | Passed |
+| --- | --- | ---: |
+| PassiveComposition.Tests | Edit | 38/38 |
+| PassiveComposition.PlayMode.Tests | Play | 1/1 |
+| StateHub.PlayMode.Tests | Play | 65/65 |
+| MeleeSkillIntegrationTests | Edit | 48/48 |
+| PartyFollowUpCoreSmokeTests | Edit | 26/26 |
+| ProjectileLifecycleSmokeTests | Edit | 19/19 |
+| WeaponAffixFrameworkTests | Edit | 6/6 |
+| **Total** | | **203/203** |
+
+The dedicated passive fixture covers empty/stat-only owners, independent actor and
+grant state, local/bound fragment variables, numeric overrides, validation/cycles,
+count/cooldown refresh, actual stamina spend and refunds, one Perfect Dash refund
+per execution, noncompounding/shared conversion source, conversion-only cache
+revision changes, the 70% boundary, attack reservation cancellation/commit,
+post-reservation earnings, unequip, FIFO/dedup/chain limits, status-success branches,
+area-result quantities, world-slow recipient timing, lifetime cleanup and migration.
+It also exercises real normal-shot preparation and real melee HitStart/contact
+processing across multiple targets and passive removal.
+
+Play Mode exercises frame-to-frame spending, committed Momentum and timed-buff
+cleanup after removing the final grant. StateHub regressions include production
+Player/Roma gradual Slide stamina and Dash behavior. Existing skill/upgrade smoke
+checks run inside the passive suite.
+
+Runner evidence:
+- ../BuildArtifacts/PassiveOverhaul/TestResults.json
+- ../BuildArtifacts/PassiveOverhaul/PlayModeResults.json
+
+### Migration and runtime / authoring inspection
+
+BaselineAssets.txt records all ten original definitions; Migration.json records
+10 migrated with no errors. Definition GUIDs, names, external references and
+upgrade trees remain in place. A final Unity MCP dry run sees **11 definitions,
+0 pending, 0 errors**: ten migrated assets plus the opt-in Roma example.
+
+The example has exactly four fragment subassets. Unity AssetDatabase dependency
+inspection finds no CharacterStats referencing it. Production Roma was not given
+the example automatically.
+
+Unity MCP inspected Assets/Prefab/Player/Player.prefab and the defensive-block test
+Player prefab: both resolve PassiveController/StatsHub on the root and
+StaminaSystem/CombatEventBus in GamePlayStats_System through context bindings.
+Synthetic fixtures additionally cover nested StatsHub and root passive providers.
+
+These checks do not constitute a manual visual playthrough of every character,
+pickup arc, HUD transition or slow projectile/shotgun configuration. Prepared
+snapshot semantics and pooled projectile lifecycle are automated checks; production
+VFX/presentation and balance still require normal playtesting. Lobby stat preview
+does not evaluate composed runtime recipes and remains a documented limitation.
+
+### Test maintenance
+
+The dedicated assemblies bridge to typed Editor fixtures because this project
+keeps gameplay in Assembly-CSharp. Run the assemblies by the exact names above.
+The Play Mode wrapper invokes the real-frame fixture without introducing a player
+build dependency on UnityEditor or test-only components. Test helpers create and
+clean up their own objects and do not install the example on production characters.
+
+
+## Distance-based Slide stamina (2026-10-04)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1` passed: **0 errors, 93 warnings**.
+  Log: `../BuildArtifacts/SlideStaminaBuild.log`.
+- Unity compiled runtime, Editor fixtures and test assembly successfully;
+  `EditorUtility.scriptCompilationFailed` is false. Console still contains the
+  existing URP shadergraph loading errors. MCP briefly disconnected during reload
+  and an asset query timed out; a subsequent focused query succeeded.
+
+### Automated tests
+
+`StateHub.PlayMode.Tests`: **65/65 passed**. Eight added stamina cases verify
+per-frame actual planar distance, current-character rate changes with nested peers,
+production Player/Roma, collision-constrained distance, exhaustion and regeneration,
+empty-stamina Dash handoff rejection, explicit free Slide, and tiny spending amounts.
+Existing Crouch, Slide, Dash/Sprint and StateHub/animation runtime tests pass.
+Results: `../BuildArtifacts/SlideStaminaPlayMode.json`.
+
+### Runtime and authoring checks
+
+The production Player/Roma fixture measures actual displacement against gradual
+stamina loss and verifies release blending stops charging. Unity MCP confirms the
+existing Roma CharacterStats asset loads `slideStaminaPerUnit = 2`. UIManager already
+subscribes to `OnStaminaChanged`; the existing HUD receives every spending update.
+Manual HUD visual smoothness and character-specific balance tuning remain unverified.
+Movement and prefab-authoring documentation now describe the new field, zero-cost
+option, regeneration pause and exhaustion behavior.
+
+## Roma Dash to Run arm continuity (2026-10-04)
+
+- **Asset/config:** validated the user's replacement `Roma_RolL_Forward.fbx`
+  (0.6 seconds and four arm/forearm `twist_2` bones). The replacement already
+  removes the earlier 91.7-degree crossfade flip. Set only the Roma profile's
+  Sprint normalized start to 0 explicitly, preserving its 0.15-second fade.
+  The FBX replacement itself was supplied by the user, not generated by this fix.
+- **Compilation:** Unity compiled the new Editor fixture and runner registration;
+  `EditorUtility.scriptCompilationFailed` was false and the compile-error Console
+  query was empty. No default Assembly-CSharp source changed, so the standalone
+  assembly build is not applicable to this update. Existing Inspector
+  `SerializedObjectNotCreatableException` messages are separate from compilation.
+- **Edit Mode:** 12/12 passed: six actual Roma rig/profile cases (forward/backward
+  at 30/60/120 Hz), each discovered directly and through the runner bridge.
+  Assertions cover overlapping Dash/Run weights, fade completion, and all
+  shoulder/upper-arm/forearm/twist/hand rotations. Maximum sampled step across
+  handoff plus the following Run cycle is 43.390/21.779/11.362 degrees at
+  30/60/120 Hz respectively, without the former isolated blend flip.
+  Evidence: `../BuildArtifacts/RomaDashRunEditMode.json` from the repository parent.
+- **Play Mode:** `PlayerSprintTests.RomaPrefab` passed 1/1 via the Unity test
+  endpoint, exercising the production Player/Roma Dash-to-Sprint path.
+- **Runtime limits:** these are automated real-rig and production-prefab checks,
+  not a visual playthrough of every combat pose. The backward FBX still lacks
+  the newer twist bones, although its tested handoff passes. Revalidate when it
+  or Run is re-exported. Updated `ANIMATION_COMMAND_FLOW.md` with the entry-pose
+  and crossfade contract.
+
+## Shared pair-offset evaluation during fades (2026-10-04)
+
+- **Compilation:** required `CheckAssemblyBuild.ps1` passed with 0 errors and
+  93 warnings. Log: `P:/Game_RB_Project/BuildArtifacts/PairOffsetBuild.log`.
+  Unity compiled the Editor and test changes; the compile-error Console query
+  returned no entries. URP Volume Inspector reload exceptions remain separate.
+- **Edit Mode:** `CommanBlockRunnerTests` passed **34/34**. Coverage includes
+  evaluated mixer child weights, simultaneous base/action fades, interrupted
+  three-state fades, absent profiles, order-independent rotation accumulation,
+  preview/runtime evaluator parity, capture protection, full-body suppression,
+  manual evaluation, pause, disable and rebind cleanup.
+- **Play Mode:** `PairOffsetPlayModeTests.RomaRigDuringInterruptedSlideFade`
+  passed **1/1** through the Unity MCP `unity` test endpoint. The `unityMCP`
+  endpoint lost its callbacks during domain reload and reported initialization
+  timeout; its status is not counted as a passing Test Runner result.
+- **Actual rig:** instantiated `Assets/Character/Roma/Roma.fbx` with the Roma
+  animation profile and existing offset SO. Checked the sampled bone rotation
+  plus expected correction for 55 manual graph evaluations, including exit,
+  reversal and graph speed 0.2 during a fade. CSV evidence:
+  `P:/Game_RB_Project/BuildArtifacts/PairOffsets/RomaEditMode.csv` and
+  `P:/Game_RB_Project/BuildArtifacts/PairOffsets/RomaPlayMode.csv`.
+  Slide weight grows from 0.11111 to 1 over its authored 0.15-second fade;
+  correction grows from about 9.40 to 84.57 degrees. At graph speed 0.2, the
+  outgoing weight and correction both decrease proportionally.
+
+The rig checks use real assets with manually evaluated graphs. They are not an
+end-to-end movement/input test or a visual review of all clips. Production
+prefabs, profiles, offset values and scenes were not edited by this change.
+
+## Dash to Slide handoff (2026-10-04)
+
+Ctrl can now interrupt a grounded, moving Dash immediately and inherit its actual
+planar displacement velocity. It does not require waiting for Sprint. Airborne
+or wall-blocked Dash admission fails without canceling Dash or queuing a Slide.
+
+### Compilation
+
+- `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. Evidence:
+  `P:/Game_RB_Project/BuildArtifacts/DashSlideHandoffBuild.log`.
+- Unity compiled runtime, Editor and test sources successfully. Console still
+  contains the existing URP shadergraph and Volume inspector reload errors.
+
+### Automated tests
+
+- `StateHub.PlayMode.Tests`: **56/56 passed**. Five added handoff cases cover
+  same-frame Dash entry, nested controller, production Player/Roma, airborne
+  rejection and a Dash stopped against a wall. Existing Crouch, Slide, Sprint,
+  StateHub and animation runtime regressions also pass.
+- `CrouchSlideClipsAndFallback`: **2/2 passed** in Edit Mode.
+- Evidence: `../BuildArtifacts/DashSlideHandoffPlayMode.json` and
+  `../BuildArtifacts/DashSlideHandoffAnimation.json`.
+- Fixture teardown now also runs through NUnit teardown, preventing a failed
+  nested coroutine from leaving physics objects or input settings behind.
+
+### Runtime checks
+
+The production Player/Roma Play Mode fixture verifies exact entry momentum,
+unchanged stamina at handoff, removal of Dash invincibility, no delayed Dash
+completion/Sprint restart, and immediate `Roma_Slide` playback without root motion.
+These are automated runtime checks; unrestricted combat and visual hit-zone
+alignment still need manual playtesting. Crouch idle/move clips remain fallback.
+
+Updated movement, animation-flow and prefab-authoring documentation for the new
+Dash admission rule, which supersedes the original no-entry-during-Dash plan.
+
+## Roma Slide animation binding (2026-10-04)
+
+- Assigned the new `Roma_Slide.fbx` clip to `Roma_AnimProfile.slide` through Unity.
+  Enabled Loop Time; playback speed 1 and fade 0.1 seconds. The source rig remains
+  Generic, consistent with Roma's existing animations. Root/trajectory curves are
+  stationary and endpoint curve differences are negligible for looping.
+- Unity compilation passed after updating the existing Editor fixture to assert
+  the real production Slide clip. No default Assembly-CSharp source changed, so
+  the standalone assembly build was not required for this asset-binding update.
+- `PlayerSlideTests.RomaPrefab` **1/1 passed** in Play Mode: actual Slide clip,
+  looping, advancing playback without restarts, aim/fire coexistence, no gameplay
+  root motion, and Ctrl left/right input. Evidence:
+  `P:/Game_RB_Project/BuildArtifacts/RomaSlideClipPlayMode.json`.
+- Sampled the clip on Roma's model in an isolated preview scene; image:
+  `P:/Game_RB_Project/BuildArtifacts/RomaSlidePreview.png`. Crouch idle/move clips
+  remain unassigned and use fallback. Full motion-to-hit-zone visual alignment
+  across combat poses is not covered by this binding check.
+- Console retains URP shadergraph/Volume inspector errors around Editor reloads;
+  these are not C# compile failures. Updated movement and prefab-authoring docs.
+
+## Crouch and momentum Slide (2026-10-04)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1` passed: **0 errors, 93 existing warnings**.
+  The initial sandbox invocation could not read Windows SDK discovery paths;
+  the same script passed with authorized SDK access. Final evidence:
+  `P:/Game_RB_Project/BuildArtifacts/CrouchSlideBuild.log`.
+- Unity compilation completed successfully, including Editor fixtures and the
+  dedicated Test assembly. Editor was left stopped and not compiling.
+
+### Automated tests
+
+- **Play Mode 51/51 passed** in `StateHub.PlayMode.Tests`: 25 Slide, 5 Crouch,
+  18 existing Sprint, and 3 animation/StateHub lifecycle tests. Covers actual entry
+  velocity, camera-only yaw, lateral steering, opposing brake, diagonal speed,
+  duration, release blending, successful/failed Dash, walls, pause/UI/focus/disable,
+  stun/down/death, ledges, root/nested peers, head clearance and shape ownership.
+- **Movement Edit Mode 18/18 passed**: 17 integration tests plus the ownership
+  coroutine matrix, which enters Play Mode and exercises 18 ownership scenarios.
+- **Animation 2/2 passed**: the Crouch/Slide clip and fallback contract runs both
+  directly and through its existing dedicated-assembly bridge. Verifies idle/move/
+  slide selection, no repeated clip restart, fallback and no root-motion takeover.
+- **StateHub Edit Mode 19/19 passed**, including fault-isolation contracts.
+- Evidence is saved in `P:/Game_RB_Project/BuildArtifacts/` as
+  `CrouchSlidePlayMode.json`, `CrouchSlideMovementRegression.json`,
+  `CrouchSlideAnimationRegression.json`, and `CrouchSlideStateRegression.json`.
+
+### Runtime and prefab checks
+
+- The production Player prefab is bound through Unity's prefab API to the new
+  `Inputmaneger` Crouch action. The Roma Play Mode case verifies both Ctrl keys
+  through PlayerInput's persistent UnityEvent, aim/fire while sliding, layer-0
+  fallback and disabled gameplay root motion. Its temporary input settings bypass
+  Editor focus filtering only inside the fixture and are restored afterward.
+- Physics fixtures verify low ceilings, safe standing, a walkable step and a
+  10-degree ascending ramp using the actual controller and vertical motor. These
+  are automated runtime probes, not manual traversal of every production map.
+- Console inspection found expected fault-injection logs from passing StateHub
+  tests, plus URP shadergraph loading/Volume inspector exceptions during Editor
+  reload. These package/editor diagnostics were not changed by this work; the
+  Console is not claimed to be empty.
+- At this original validation, crouch/slide clips were unassigned. Ordinary
+  locomotion is the temporary fallback. Final pose quality, upper-body masking
+  with those future clips, and visual/hit-zone alignment remain unverified until
+  the real clips are authored. No Jump or slope acceleration was added.
+
+Updated movement, context, animation-flow and prefab-authoring documentation.
+
+## Sprint follows camera yaw with delayed turning (2026-10-04)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**.
+- Unity finished compiling runtime, Editor fixture, and test assembly sources;
+  `scriptCompilationFailed` is false.
+- Evidence: `../BuildArtifacts/SprintCameraSteeringBuild.log`.
+
+### Automated tests and runtime coverage
+
+- **Play Mode 21/21 passed** in `StateHub.PlayMode.Tests`: 18 Sprint cases plus
+  StateHub lifecycle/Dash ownership and animation frame-order coverage.
+- Camera yaw now steers Sprint with a 0.25-second smoothing time and a
+  360-degree/second maximum turn speed. Tests cover gradual turns, 180-degree
+  reversal, the shortest turn across +/-180 degrees, rotation locks, root/nested
+  peers, unchanged heading under movement-key input, and existing stop conditions.
+- The production Player prefab with Roma follows camera turns at 90/180/270
+  degrees while retaining the same looping `Roma_Run` playback state. Body facing
+  matches travel direction; releasing Sprint restores ordinary locomotion.
+- This supersedes the fixed-world-travel behavior recorded in the older entries.
+  Runtime coverage is automated; a manual traversal of production stairs/slopes
+  remains unverified.
+- Updated movement and prefab authoring documentation. Test evidence:
+  `../BuildArtifacts/SprintCameraSteeringPlayMode.json`.
+
+## Sprint uses one run clip for every facing direction (2026-10-03)
+
+- Removed the local-forward threshold from live Sprint presentation. Entry and
+  updates play the assigned sprint clip in every direction; turning keeps the
+  same playback state and time. The directional mixer resumes when Sprint ends.
+- Required assembly check: **0 errors, 93 warnings**. Unity compilation completed.
+- Targeted Edit Mode: **2/2 passed** (direct and adapter registrations), checking
+  all eight movement directions retain Roma_Run and release restores the mixer.
+- Production Player/Roma Play Mode: **1/1 passed**, including camera turns at
+  90/180/270 degrees, fixed world travel, unchanged run playback, and release.
+- Updated animation flow and authoring documentation. Evidence:
+  `../BuildArtifacts/SprintSingleClipBuild.log`, `SprintSingleClipEditMode.json`,
+  and `SprintSingleClipPlayMode.json`. These targeted checks do not rerun the
+  unrelated AvatarMask cleanup failures recorded below.
+
+## Roma Dash to Sprint (2026-10-03)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings** after the final
+  runtime changes. The sandbox initially denied access to installed SDK metadata;
+  the same required script succeeded with approved elevated access.
+- Unity compiled the runtime, Editor fixture and discoverable test assembly.
+  No generated project or validation tooling was edited.
+- Evidence: `../BuildArtifacts/SprintAssemblyBuild.log`.
+
+### Automated tests
+
+- **Play Mode 19/19 passed**: 16 PlayerSprintTests plus the existing StateHub
+  lifecycle/Dash and animation frame-order tests. Covers tap, hold, failed/canceled
+  dash, rotation with fixed travel, immediate release steering, root/nested peers,
+  straight/angled walls, fire, suspension, UI, stun, down/death, disable/re-enable,
+  and the production Player prefab loading Roma and its looping sprint clip.
+- **Edit Mode StateHub 7/7**, **movement integration 17/17** passed.
+- **Animation smoke 114/126 passed**. The new Roma sprint playback/fallback test
+  passed through both direct and adapter registrations. Six existing model/profile
+  rebind cases fail through both registrations (12 results): the unchanged
+  `CharacterAnimationPresentation.DisposePresentationLayers()` assigns a null
+  AvatarMask, which the installed Animancer layer mixer rejects. These cases run
+  with Sprint disabled and fail before live locomotion updates. That cleanup
+  path was not modified as part of Sprint.
+- Earlier Sprint runs exposed re-enable latch handling and a wall check that
+  included ordinary walking after Sprint stopped. The latch now requires release;
+  wall clearance includes controller skin, and the fixture disables ordinary
+  movement input before checking that Sprint does not slide around the corner.
+- MCP results are saved in `../BuildArtifacts/SprintPlayMode.json`,
+  `SprintStateEditMode.json`, `SprintMovementEditMode.json`, and
+  `SprintAnimationEditMode.json`. The native callback reused its filename across
+  runs; `SprintAnimationEditMode.xml` contains the final **movement** run only.
+  Use the explicitly named JSON reports for the other runs.
+
+### Runtime and authoring checks
+
+- Production Player prefab uses the existing Movement_System context binding and
+  Shift Dash action. Roma's profile references the imported `Roma_Run` clip with
+  Loop Time/Loop Pose and root locks; no additional prefab component is needed.
+- The production-prefab Play Mode test verifies Dash -> Sprint -> directional
+  locomotion, animation time advancing beyond a full 0.5-second loop, and no
+  gameplay root motion during Sprint.
+- An additional live Editor probe observed `IsSprinting=true`, world direction
+  `(0,0,1)`, looping `Roma_Run`, and `RootMotionActive=false`. A paused visual
+  capture used a suspended actor to isolate the pose. Evidence:
+  `../BuildArtifacts/SprintProductionRuntime.json` and `RomaSprint.png`.
+- The original RectorDefensiveBlock scene is restored after the probe. A visual
+  traversal of production stairs/slopes remains unverified. Sprint now keeps the
+  single run clip for every facing direction; the directional mixer resumes on exit.
+- Existing URP AutodeskInteractive shadergraph/Volume Inspector errors remain
+  separate from source compilation and the Sprint test results.
+
+## Ally follow initializer order (2026-10-03)
+
+- Production Test Stage 03 inspection found Ally 2 (`AllyAI`) with null Ctx:
+  its initializer ran after the Selector. Ally 1 (`Aires_Behavior`) had valid Ctx
+  and was initially within the existing follow distance.
+- Repaired and saved `AllyAI` and the same unsafe ordering in `MinigunTerretAI`
+  outside Play Mode using the native migration. All seven Subtrees pass the
+  context validator, retaining their original node GUIDs. Reopening and saving
+  AllyAI through BehaviorDesignerWindow retains initializer 2 before Selector 3.
+- Unity compiled the Editor/test sources with no C# errors. Runtime sources
+  were unchanged; the preceding assembly build result remains applicable.
+- Targeted Play Mode test `LegacyAllyTreesFollowMovingPlayer`: **1/1 passed**
+  (two production graphs). It verifies actor-local Ctx and NavMesh movement both
+  toward a distant player and after that player changes position, with the
+  formation task's player, Ctx and InCombat bindings intact.
+- Native Test Runner XML finished at 07:46:50 UTC and is authoritative. The MCP
+  job timed out during initialization/domain reload, but the test subsequently
+  ran and passed. The first fixture attempt used manual Tick without Manual
+  update mode and failed; that fixture was corrected before the passing run.
+- Actual MapRun/Test Stage 03 check: both allies bind their own Ctx and Player.
+  After Player moves away, Ally 2 moves from (0.90, 0.01, 1.50) to
+  (5.71, -0.79, 1.18), and Ally 1 moves from (-0.90, 0.01, 1.50) to
+  (6.81, -0.79, 1.18). Moving Player back makes both follow again, to
+  (1.50, 0.01, 1.48) and (2.01, 0.01, -1.48), respectively.
+- Evidence: `../BuildArtifacts/AllyFollow/PlayMode.xml` and
+  `ProductionMovement.json`. Editor play options are restored. Play Mode is
+  left running in Test Stage 03 with Ally 2 selected.
+
+## CanAct blocked by initializer order (2026-10-03)
+
+- Production inspection found active M_GR_01 trees with null Ctx and an
+  initializer at node 35, after the autonomy Selector. CanAct correctly failed
+  because initialization had not run.
+- Repair keeps the initializer first under its Sequence and to the left of its
+  sibling behavior. Existing node GUIDs and behavior values are retained.
+  Migration can repair already migrated graphs; validation also checks horizontal
+  placement before Graph Designer can save an unsafe sibling order.
+- Unity compiled the changed Editor/test sources with no source errors. Runtime
+  Assembly-CSharp sources were unchanged, so the runtime assembly build check
+  from the preceding validation remains applicable.
+- Targeted **Edit Mode 13/13** and **Play Mode 13/13** passed, zero skipped.
+  Edit Mode adds a regression for an existing behavior left of zero, an
+  initializer moved to the right, idempotent repair, GUID preservation and
+  disabled-node remapping. The native Test Runner XML is authoritative.
+- The actual P0 asset was loaded and saved through BehaviorDesignerWindow,
+  then deserialized: initializer remains node 2, before the behavior Selector
+  at node 3; Owner Context validation passes.
+- All 7 Subtrees and 4 inline prefab trees pass validation after repair.
+- Production check restarted from GameSetup, loaded the same Test MapRun config
+  and entered main_01 (Sewer_Cross). Three P0 enemies received distinct Ctx values
+  with matching CombatState owners. All three CanAct reevaluations returned
+  Success; Patrol positions changed between observations and NavMesh velocities
+  were nonzero, with no recorded navigation failure.
+- Editor is left in Play Mode, paused, with a P0 enemy tree selected for inspection.
+- Evidence: `../BuildArtifacts/CanActOrder/EditMode.xml`, `PlayMode.xml`,
+  `ProductionMovement.json`.
+
+## Shared AI owner context (2026-10-03)
+
+### Compilation
+
+- Required `Assets/Scripts/CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**.
+- Unity 6000.0.58f2 compiled the runtime, Editor tools and test assemblies.
+  Final `scriptCompilationFailed=false`, `isCompiling=false`; Console has no
+  `error CS` entries. The existing URP shadergraph import issue remains separate.
+
+### Automated tests
+
+- **Edit Mode: 134/134 passed, 0 skipped**: P0/context (12), target sensor (26),
+  movement integration (17), party formation (7), skill transactions (25),
+  special-point reaction (27), stagger (10), and special-point smoke (10).
+- **Play Mode: 13/13 passed, 0 skipped**: P0/context (10) and target sensor (3).
+  The ownership bridge also executes all 18 existing movement ownership cases.
+- Context cases cover missing/wrong bindings without fallback lookup, deferred
+  CombatState initialization, repeated cycles, full restart, pause/resume, pooled
+  life changes, module replacement and event subscription counts.
+- The native nested-Subtree fixture verifies two actors sharing one parent asset
+  while receiving their own Ctx in child graphs through variable overrides.
+  Its assets are prepared before Play Mode through Test Runner PrebuildSetup.
+- Formation checks verify task-bound InCombat, abort cleanup and preservation of
+  an external movement suspension. P0 checks retain orbit/burst, reload, stalled
+  navigation and recovery coverage.
+- The navigation-stuck fixture now waits for game time rather than 300 frames:
+  fast Editor runs could exhaust that frame count before the 1.5-second policy.
+- Final Play Mode job: `ba0e6d02b5b040c282759886e679a33f`.
+  Results are recorded using Unity Test Runner's native ResultsSavingCallbacks;
+  XML is authoritative when the MCP job callback is lost during domain reload.
+
+### Runtime and asset checks
+
+- All **7 Subtrees** and **4 inline prefab trees** deserialize with one exposed
+  Graph Ctx, default null, complete task bindings and valid initialization order.
+  The native project validator also checked **96 scenes** in preview scenes.
+- A before/after native deserialization comparison retained every original node
+  GUID, type, enabled state, abort setting and task behavior value in all 11
+  graphs; only context bindings, explicit formation InCombat and graph indices
+  required by inserted initialization nodes are excluded from value comparison.
+  Local prefab references are compared by their file IDs rather than transient
+  instance IDs or temporary-copy asset GUIDs.
+- The 11-prefab binding audit retained the prior sensor/driver references,
+  including existing null bindings. Common declarations now belong to
+  CharacteContext; central resolution handles unique optional peers.
+- Consumer source inspection found no owner hierarchy lookup; remaining lookup
+  calls concern targets/player objects or bootstrap resolution.
+- Play Mode fixtures exercised runtime behavior in the Editor. A visual
+  walkthrough of every production encounter was not performed.
+- Existing UnknownTask nodes in legacy EnemyAI/MineAllyAI and the Ally prototype
+  remain as before migration; this work does not repair those missing task types.
+- The original active scene was preserved and temporary validation assets were
+  removed. Test Runner's enter-play-mode setting was restored.
+- Evidence: `../BuildArtifacts/OwnerContext/AssemblyBuild.log`, `EditMode.xml`,
+  `PlayMode.xml`, `FinalGraphAudit.json`, `BehaviorPreservation.json`,
+  `InlineBehaviorPreservation.json`, and `PrefabBindingBaseline.json`.
+
+## P0 shooting AI (2026-10-03)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 93 warnings**. Default runtime
+  sources are scanned normally; no generated project or validation-tool changes.
+- Unity 6000.0.58f2 compiled runtime, Editor authoring/bridge and isolated test
+  assemblies. Final `scriptCompilationFailed=false`; source compilation errors
+  from intermediate fixture setup were corrected before the passing runs.
+- The pre-existing URP `AutodeskInteractive.shadergraph` import error can still
+  appear in Console around asset imports/Play Mode transitions; it is unrelated
+  to P0 and is not reported as a source compilation failure.
+
+### Automated tests
+
+- **Edit Mode: 50/50 passed, 0 skipped**: `AICombatP0Tests` (7),
+  `AITargetSensorTests` (26), `CharacterMovementIntegrationTests` (17).
+  Final MCP job: `e6f4d86d6664491f8fefc1ef2226ef58`.
+- **Play Mode: 11/11 passed, 0 skipped**: `AICombatP0RuntimeTests` (8) and
+  `AITargetSensorRuntimeTests` (3). The P0 ownership bridge invokes all **18**
+  unchanged `CharacterMovementOwnershipTests` scenarios with their original
+  SetUp/TearDown while already in Play Mode.
+- Final Play Mode MCP job: `c6e3aa8f7e0648dc8a3c63cd48b0b036`. Its completion
+  callback was lost on domain reload, so the passing result is taken from native
+  Test Runner XML, exported with Unity's existing `ResultsSavingCallbacks` via
+  MCP. No project validation tooling was modified. The native XML contains every
+  test name/result, including the ownership bridge.
+- Earlier runs exposed fixture speed/FirePoint setup errors and an Editor-only
+  platform constraint on the new Play Mode asmdef. These were corrected. An
+  intermediate ownership matrix attempted EnterPlayMode during a fixture compile
+  error and failed its NavMesh setup; the final 18-scenario bridge passed.
+- Evidence: `../BuildArtifacts/P0AI/FinalAssemblyBuild.log`,
+  `FinalEditMode.xml`, `FinalPlayMode.xml`, and `AuthoringAudit.json`.
+
+### Runtime and authoring checks
+
+The Play Mode fixtures build real NavMesh data and execute actual task lifecycles;
+the two-actor fixture runs the saved Subtree through real BehaviorTree components.
+Validated:
+
+- Actual orbit followed by burst; LOS blockage stops held fire; CanAct interruption
+  releases it; two actors using one Subtree have separate runtime state.
+- Deterministic candidate selection, blocked/no firing point, partial/disconnected
+  path rejection, invalid/recycled target life, and navigation failure/quota.
+- Frozen last observation, one search consumption per observation, real reload
+  completion, no firing while reloading and Failure without reserve ammo.
+- Pause/movement-lock do not count as stuck; world-slow clocks honor actor
+  exemptions; movement and rotation cleanup preserve a newer motor owner.
+- Sensor regression covers live target eligibility, Taunt, pooling, memory/LOS,
+  prefab references, clock behavior and warm-scan allocation checks.
+- Unity MCP inspected `Enemy_M_GR_01 Variant` context/Sensor/agent/health/weapon
+  bindings and its Subgraph. The saved graph has 34 nodes, three Graph variables
+  and a valid Start connection. Asset GUID remains
+  `00121cc81c970b148a4f454934ec4db0`. Fixture peers exercise root and nested layouts.
+
+These are instrumented runtime checks, not a visual playthrough of every authored
+combat room or animation asset. Production level geometry and final animation
+appearance remain manual acceptance checks; no claim is made for that visual pass.
+
 ## Party Follow-Up rename (2026-10-01)
 
 Renamed the event-driven Party Combo system to Party Follow-Up, including types,

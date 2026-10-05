@@ -135,7 +135,18 @@ public sealed class CharacterVisibilityController : MonoBehaviour
     void Awake()
     {
         if (characterVfx == null)
-            characterVfx = GetComponentInChildren<ZLZ_CharacterVFX>(true);
+            characterVfx = ResolveVisualVfx();
+    }
+
+    ZLZ_CharacterVFX ResolveVisualVfx()
+    {
+        var context = CharacterContextModuleLookup.ResolveContext(this);
+        Transform visualRoot = context != null && context.Visual != null
+            ? context.Visual.ModelRoot
+            : null;
+        return visualRoot != null
+            ? visualRoot.GetComponentInChildren<ZLZ_CharacterVFX>(true)
+            : GetComponentInChildren<ZLZ_CharacterVFX>(true);
     }
 
     void OnEnable()
@@ -217,7 +228,7 @@ public sealed class CharacterVisibilityController : MonoBehaviour
             : null;
 
         if (characterVfx == null)
-            characterVfx = GetComponentInChildren<ZLZ_CharacterVFX>(true);
+            characterVfx = ResolveVisualVfx();
 
         // A rebuilt model starts visible; push the state gameplay currently expects.
         _alphaDirty = true;

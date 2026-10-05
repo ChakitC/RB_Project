@@ -52,6 +52,9 @@ public sealed class GameplayHudPresenter : MonoBehaviour
             blockVisibility = gameObject.AddComponent<GameplayHudBlockVisibility>();
         blockVisibility.Bind(player);
 
+        PassiveHudHost passiveHud = GetComponentInChildren<PassiveHudHost>(true);
+        if (passiveHud != null) passiveHud.Bind(player);
+
         CooperativeBlockHud blockHud = GetComponentInChildren<CooperativeBlockHud>(true);
         if (blockHud != null)
             blockHud.Bind(player != null ? player.interruptionCommand : null);

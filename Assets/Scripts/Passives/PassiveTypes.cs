@@ -25,6 +25,9 @@ public enum PassiveEventType
     StatusApplied = 11,
     StatusStackChanged = 12,
     FollowUpSkillCommitted = 13,
+    ResourceSpent = 14,
+    ResourceChanged = 15,
+    PassiveSignal = 16,
 }
 
 public enum PassiveEventOrigin

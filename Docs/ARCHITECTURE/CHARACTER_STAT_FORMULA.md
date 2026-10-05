@@ -97,3 +97,25 @@ Summon damage inheritance is captured at spawn and exposed through the summon
 runtime as a `StatsHub` flat `Damage` modifier. The modifier is scoped to the
 summon instance, so it does not alter the caster's persistent or lobby stats and
 is removed with the transient actor.
+
+## Passive conversion stage (2026-10-04)
+
+StatsHub includes ctx.PassiveController explicitly in its modifier providers, so a
+nested StatsHub can resolve a root-level passive provider. Ordinary totals are
+computed first, then passive conversions read that pre-conversion snapshot.
+
+The initial conversion is positive StaminaRegenRate bonus -> MaxStamina. Baseline
+regen and negative bonuses are excluded. Requested source fractions share one
+budget; requests above the available total scale proportionally. Converted source
+is removed from final regen. Rebuilds start from the original totals, never the
+previous converted result. Conversion chains are rejected by recipe validation.
+
+Dynamic passive modifiers read StaminaSystem.Current/Max and raise dirty
+notifications through OnStaminaChanged. Providers must not call StatsHub while it
+is collecting modifiers. Max changes keep the stamina ratio and do not count as
+spending. Attack-specific Momentum multipliers bypass StatsHub and are applied to
+prepared normal-attack damage before critical/defense.
+
+The lobby preview does not evaluate composed recipes, resource state or conversion
+registrations. This is an existing preview limitation, so runtime/preview equality
+does not apply to newly composed stat-bearing passive recipes.

@@ -1,5 +1,28 @@
 # Face Switcher Visibility
 
+## Exclusive expression groups (add-on 2.7.0)
+
+Selecting an expression activates its group and sets all other selectors to -1
+(inactive). Existing visibility and scale drivers hide every expression for that
+value. Key, Key All Groups and Auto Key record all nonempty groups together using
+Constant interpolation. Replace-only/available-only Auto Key requires every
+channel to qualify; the explicit Key button can create missing channels. Reset
+Preview restores the active group's default, or the first group if none is active.
+Static base export enables only the first group's default. Action defaults keep
+missing channels inactive when another face channel already has keys.
+
+Old selector ID-property ranges are upgraded on file load and selection, including
+editable library overrides. Without this, Blender can clamp animated -1 to 0.
+Existing Action keys are not automatically rewritten. Validate/Export reports
+overlapping groups; choose the desired expression and key all groups at each old
+change point. Preset groups and UI display slots remain separate stored groups.
+
+Validation: `tests/test_exclusive_groups.py` runs inside the existing Blender with
+temporary scene data, including real drivers, playback, registered Choose/Auto Key,
+legacy range migration, and export timelines. The preset weight fixture also tests
+exclusive playback on linked collection overrides. These checks do not launch an
+additional Blender process or reopen the user's file.
+
 ## Remove an expression group (add-on 2.5.2)
 
 Select a group in Face Switcher > Setup and click Remove Group beside Add Group
@@ -70,6 +93,15 @@ selection are retained; an empty group uses the first expression as its default.
 This setup operation requires a local rig and supports Blender Undo/Redo.
 
 ## Blender Face Presets (add-on 2.6.0)
+
+From 2.6.2, Apply nests the output collection under the rig's collection in the
+current scene, so linking the enclosing character collection includes its faces.
+The rig must have one unambiguous local collection membership in the scene.
+For older imports outside that hierarchy, move their collection inside the character
+collection in the source file, save, then resync the animation file's override.
+Missing mesh errors distinguish a source outside the linked collection from an
+existing override excluded from the view layer; meshes from other hierarchies are
+never substituted by name.
 
 Starting with 2.3.2, Apply preserves each mesh's preset origin after placement,
 in the target rig's rest space. The shared placement box still transforms all

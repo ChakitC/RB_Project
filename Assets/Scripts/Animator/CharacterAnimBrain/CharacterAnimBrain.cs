@@ -154,6 +154,9 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
     // ----- Runtime inputs -----
     public float MoveSpeed01 { get; set; } // 0..1
+    public bool IsSprinting { get; set; }
+    public bool IsCrouching { get; set; }
+    public bool IsSliding { get; set; }
     private bool _canApplyFireHold = true;
     public bool DesiredFireHold { get; private set; }
     public bool IsHoldingFire { get; private set; }
@@ -633,6 +636,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         ApplyWorldAnimationSpeed();
         RefreshStatusLocomotion();
+        // Slide can take over before the dash clip's authored duration has elapsed.
+        if (IsSliding) HandleDashEnd();
         locomotionSM.CurrentState?.Update();
         actionSM.CurrentState?.Update();
         presentation.UpdatePresentationTransitions();
@@ -758,6 +763,15 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         }
 
         profiles = PairOffsetProfiles;
+        presentation.GetBaseContributions(_activePairBasePoseWeights);
+        _activePairBasePose = PairOffsetBasePose.None;
+        float dominantWeight = 0f;
+        foreach (var pose in _activePairBasePoseWeights)
+        {
+            if (pose.Weight <= dominantWeight) continue;
+            dominantWeight = pose.Weight;
+            _activePairBasePose = pose.Pose;
+        }
         basePose = _activePairBasePose;
         upperAction = _activePairUpperAction;
         weight = Mathf.Clamp01(ActLayer.Weight);
@@ -790,6 +804,7 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         profiles = PairOffsetProfiles;
         upperAction = _activePairUpperAction;
         weight = Mathf.Clamp01(ActLayer.Weight);
+        presentation.GetBaseContributions(_activePairBasePoseWeights);
 
         if (profiles == null ||
             upperAction == PairOffsetUpperAction.None ||
@@ -1339,14 +1354,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
             actionSM.TrySetState(shootHold);
     }
 
-    private void SetActivePairBasePose(PairOffsetBasePose pose)
-    {
-        _activePairBasePose = pose;
-        _activePairBasePoseWeights.Clear();
-        if (pose != PairOffsetBasePose.None)
-            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(pose, 1f));
-    }
-
     private void SetActivePairUpperAction(PairOffsetUpperAction action)
     {
         _activePairUpperAction = action;
@@ -1362,88 +1369,6 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         _activePairBasePose = PairOffsetBasePose.None;
         _activePairBasePoseWeights.Clear();
         _activePairUpperAction = PairOffsetUpperAction.None;
-    }
-
-    private void SetActivePairBasePoseBlend(Vector2 parameter)
-    {
-        _activePairBasePoseWeights.Clear();
-
-        float magnitude = Mathf.Clamp01(parameter.magnitude);
-        if (magnitude <= 0.001f)
-        {
-            _activePairBasePose = PairOffsetBasePose.Idle;
-            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(PairOffsetBasePose.Idle, 1f));
-            return;
-        }
-
-        float idleWeight = 1f - magnitude;
-        if (idleWeight > 0.001f)
-            _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(PairOffsetBasePose.Idle, idleWeight));
-
-        Vector2 direction = parameter / magnitude;
-        float angle = Mathf.Atan2(direction.y, direction.x);
-        float octantFloat = angle / (Mathf.PI * 0.25f);
-        octantFloat = octantFloat % 8f;
-        if (octantFloat < 0f)
-            octantFloat += 8f;
-
-        int lowerOctant = Mathf.FloorToInt(octantFloat);
-        int upperOctant = (lowerOctant + 1) % 8;
-        float upperWeight = octantFloat - lowerOctant;
-        float lowerWeight = 1f - upperWeight;
-
-        AddActivePairBasePoseWeight(MapOctantToPairBasePose(lowerOctant), magnitude * lowerWeight);
-        AddActivePairBasePoseWeight(MapOctantToPairBasePose(upperOctant), magnitude * upperWeight);
-
-        _activePairBasePose = ResolveDominantLocomotionPairBasePose(parameter);
-    }
-
-    private void AddActivePairBasePoseWeight(PairOffsetBasePose pose, float weight)
-    {
-        if (pose == PairOffsetBasePose.None || weight <= 0.001f)
-            return;
-
-        for (int i = 0; i < _activePairBasePoseWeights.Count; i++)
-        {
-            PairOffsetBasePoseWeight existing = _activePairBasePoseWeights[i];
-            if (existing.Pose != pose)
-                continue;
-
-            _activePairBasePoseWeights[i] = new PairOffsetBasePoseWeight(pose, existing.Weight + weight);
-            return;
-        }
-
-        _activePairBasePoseWeights.Add(new PairOffsetBasePoseWeight(pose, weight));
-    }
-
-    private PairOffsetBasePose ResolveDominantLocomotionPairBasePose(Vector2 parameter)
-    {
-        if (parameter.sqrMagnitude < 0.0001f)
-            return PairOffsetBasePose.Idle;
-
-        parameter.Normalize();
-
-        float angle = Mathf.Atan2(parameter.y, parameter.x);
-        int octant = Mathf.RoundToInt(angle / (Mathf.PI * 0.25f));
-        octant = (octant % 8 + 8) % 8;
-
-        return MapOctantToPairBasePose(octant);
-    }
-
-    private static PairOffsetBasePose MapOctantToPairBasePose(int octant)
-    {
-        return octant switch
-        {
-            0 => PairOffsetBasePose.Right,
-            1 => PairOffsetBasePose.ForwardRight,
-            2 => PairOffsetBasePose.Forward,
-            3 => PairOffsetBasePose.ForwardLeft,
-            4 => PairOffsetBasePose.Left,
-            5 => PairOffsetBasePose.BackwardLeft,
-            6 => PairOffsetBasePose.Backward,
-            7 => PairOffsetBasePose.BackwardRight,
-            _ => PairOffsetBasePose.Idle,
-        };
     }
 
     private void HandleShootPulseEnd()

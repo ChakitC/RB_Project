@@ -25,18 +25,11 @@ public partial class PlayerMovementCC
     private bool CanUsePlayerLocomotion(bool handingOffDash = false)
     {
         if (!isActiveAndEnabled || _characteContext == null || stateHub == null ||
-            !stateHub.IsAlive || stateHub.Isdown || suspensionTokens.Count > 0 ||
+            suspensionTokens.Count > 0 ||
             _characterController == null || !_characterController.enabled ||
-            _characteContext.MovementMotor == null || GlobalTimeScaleManager.Instance.IsPaused)
+            _characteContext.MovementMotor == null)
             return false;
-        var facts = stateHub.GetActionFacts();
-        // Admission after the handoff must retain every restriction except the Dash being canceled.
-        if (handingOffDash) facts.Dashing = false;
-        return facts.UI == UIStateId.Normal && !facts.Stunned && !facts.Knockback &&
-            !facts.Dashing && (facts.Blocks & ControlBlockFlags.Move) == 0 &&
-            !facts.SkillPlayback && !facts.ShootBlockingPlayback &&
-            (_brain == null || !_brain.RootMotionActive) &&
-            CharacterActionPolicy.Evaluate(CharacterAction.Move, facts).Allowed;
+        return stateHub.GetAdmission(handingOffDash ? CharacterAction.Slide : CharacterAction.Crouch).Allowed;
     }
 
     private bool CanSlide(bool handingOffDash = false)
@@ -44,8 +37,7 @@ public partial class PlayerMovementCC
         if (!CanUsePlayerLocomotion(handingOffDash) || !stateHub.IsGrounded) return false;
         if (SlideStaminaPerUnit > 0f && (_characteContext.StaminaSystem == null ||
             _characteContext.StaminaSystem.Current <= 0f)) return false;
-        var facts = stateHub.GetActionFacts();
-        return !facts.Melee && !facts.Reloading;
+        return stateHub.GetAdmission(CharacterAction.Slide).Allowed;
     }
 
     private void TryBeginSlide()
@@ -64,8 +56,7 @@ public partial class PlayerMovementCC
         if (entryVelocity.magnitude < GetBaseMoveSpeedFromHubOrFallback() * slideEntrySpeedMultiplier)
             return;
         // Capture before cancellation clears velocity, i-frames, and the pending Sprint request.
-        if (fromDash) dash.CancelDash();
-        CancelSprint();
+        stateHub.ApplyAcceptedAction(stateHub.GetAdmission(CharacterAction.Slide));
         slideReleaseRemaining = 0f;
         slideVelocity = entryVelocity;
         PlanarVelocityWorld = entryVelocity;

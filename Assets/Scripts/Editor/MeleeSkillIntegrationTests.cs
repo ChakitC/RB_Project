@@ -256,6 +256,43 @@ public sealed class MeleeSkillIntegrationTests
         Assert.That(context.GetComponentInChildren<SkillHitboxGroup>().Colliders[0].enabled, Is.False);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SkillAcceptancePreservesReloadOnRejectionAndSurvivesMenu(bool nestedModules)
+    {
+        var context = MakeRig(nestedModules);
+        var weapon = context.SkillManager.gameObject.AddComponent<WeaponSystem>();
+        context.WeaponSystem = weapon; weapon.ctx = context;
+        context.stateHub.RefreshOwnerBindings();
+        var profile = context.baseStats.animProfile;
+        profile.reload = new ClipTransition { Clip = MakeClip() };
+        profile.reloadBodyMode = CharacterAnimProfileSO.ReloadBodyMode.FullBody;
+        Set(weapon, "isReloading", true);
+        context.AnimBrain.PlayReload(2f);
+
+        var invalid = MakeSkill();
+        invalid.skillClip = null;
+        Assert.That(context.SkillManager.TryStartExternalSkill(invalid, "rejected-test").Started, Is.False);
+        Assert.That(weapon.IsReloading, Is.True);
+        Assert.That(context.AnimBrain.CurrentAnimationMode, Is.EqualTo(CharacterAnimationMode.FullBodyReload));
+
+        var valid = MakeSkill();
+        valid.skillId = "test.accepted.menu";
+        context.SkillManager.CastStarted += _ => Assert.That(weapon.IsReloading, Is.False,
+            "Gameplay reload must be canceled before the cast-start notification.");
+        var result = context.SkillManager.TryStartExternalSkill(valid, "accepted-test");
+        Assert.That(result.Started, Is.True);
+        int menu = context.stateHub.AcquireUIStateToken(UIStateId.Inventory);
+        Call(context.SkillManager, "Update");
+        Assert.That(context.SkillManager.TryGetActiveCast(out var cast), Is.True);
+        Assert.That(cast.RequestId, Is.EqualTo(result.RequestId));
+        Assert.That(context.stateHub.CanUseSkill(), Is.False, "Menu blocks a new cast, not continuation.");
+        context.stateHub.ReleaseUIStateToken(menu);
+        context.stateHub.SetStatusEffectControlState(ControlBlockFlags.None, true);
+        Assert.That(context.SkillManager.TryGetActiveCast(out _), Is.False);
+        Assert.That(context.AnimBrain.IsSkillPlaybackActive, Is.False);
+    }
+
     [Test]
     public void FrameZeroHitboxAndNormalCompletionUseTheSharedAnimationTimeline()
     {

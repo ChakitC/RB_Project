@@ -3,6 +3,19 @@ using UnityEngine;
 public class EnemyDropper : MonoBehaviour
 {
     public EnemyDropProfile profile;
+    EnemyContext ctx;
+
+    EnemyContext Context
+    {
+        get
+        {
+            if (ctx == null)
+                ctx = GetComponentInParent<EnemyContext>(true);
+            return ctx;
+        }
+    }
+
+    Vector3 DropPosition => Context != null ? Context.transform.position : transform.position;
 
     public void DropItem()
     {
@@ -39,29 +52,27 @@ public class EnemyDropper : MonoBehaviour
 
         int amount = entry.ResolveAmount();
 
-        dropManager.DropItem(item, amount, transform.position, weaponRarity);
+        dropManager.DropItem(item, amount, DropPosition, weaponRarity);
     }
 
     void DropGuaranteedCurrency(ItemDropManager dropManager)
     {
         int goldAmount = profile.RollGoldAmount();
         if (profile.goldItem != null && goldAmount > 0)
-            dropManager.DropItem(profile.goldItem, goldAmount, transform.position, WeaponRarity.Common);
+            dropManager.DropItem(profile.goldItem, goldAmount, DropPosition, WeaponRarity.Common);
 
         int scrapAmount = profile.RollScrapAmount();
         if (profile.scrapItem != null && scrapAmount > 0)
-            dropManager.DropItem(profile.scrapItem, scrapAmount, transform.position, WeaponRarity.Common);
+            dropManager.DropItem(profile.scrapItem, scrapAmount, DropPosition, WeaponRarity.Common);
     }
 
     int ResolveEnemyLevel()
     {
-        EnemyLevelSystem levelSystem = GetComponentInParent<EnemyLevelSystem>();
-        if (levelSystem != null)
-            return levelSystem.Level;
-
-        EnemyContext context = GetComponentInParent<EnemyContext>();
-        return context != null && context.EnemyLevelSystem != null
-            ? context.EnemyLevelSystem.Level
-            : 1;
+        EnemyContext context = Context;
+        context?.ResolveReferences();
+        EnemyLevelSystem levelSystem = context != null
+            ? context.EnemyLevelSystem
+            : GetComponentInParent<EnemyLevelSystem>(true);
+        return levelSystem != null ? levelSystem.Level : 1;
     }
 }

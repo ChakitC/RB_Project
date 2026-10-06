@@ -59,12 +59,12 @@ public sealed class UnifiedWeaponPassivePlayModeFixture
         Assert.That(projectiles.Count, Is.EqualTo(2), "One primary + one committed Echo projectile");
         var primary = projectiles.Single(p => !Context(p).combatMetadata.IsWeaponAffixGenerated);
         var generated = projectiles.Single(p => Context(p).combatMetadata.IsWeaponAffixGenerated);
-        Assert.That(Context(primary).stats.damage, Is.EqualTo(baseDamage * 1.2f * 1.2f).Within(.01));
+        Assert.That(Context(primary).stats.damage, Is.EqualTo(baseDamage * 1.2f).Within(.01));
         Assert.That(Context(generated).stats.damage, Is.EqualTo(baseDamage * echoBehavior.fixedValue).Within(.01));
         Assert.That(Context(generated).origin, Is.EqualTo(PassiveEventOrigin.Passive));
         freshRuntime.TryGetVariable("charges", out charges, out _); Assert.That(charges, Is.EqualTo(2));
         echoRuntime.TryGetVariable("progress", out progress, out _); Assert.That(progress, Is.Zero);
-        roma.TryGetVariable("momentum", out momentum, out _); Assert.That(momentum, Is.Zero);
+        roma.TryGetVariable("momentum", out momentum, out _); Assert.That(momentum, Is.EqualTo(10));
         float snapshot = Context(primary).stats.damage;
         weapon.Equip(gun, WeaponInstanceFactory.CreatePlainInstance(gun));
         Assert.That(ctx.PassiveController.ContainsRuntime(freshRuntime), Is.False);

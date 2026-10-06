@@ -278,7 +278,8 @@ public partial class PlayerMovementCC : MonoBehaviour
         if (_characteContext.WeaponSystem != null)
         {
             if (_characteContext.WeaponSystem.IsAiming)
-                targetSpeed *= aimSpeedMult;
+                targetSpeed *= _characteContext.StatsHub != null
+                    ? _characteContext.StatsHub.GetAimMovementMultiplier(aimSpeedMult) : aimSpeedMult;
             if (_characteContext.WeaponSystem.IsFiringActivity)
                 targetSpeed *= fireSpeedMult;
         }

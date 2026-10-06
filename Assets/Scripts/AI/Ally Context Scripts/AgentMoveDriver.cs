@@ -65,10 +65,11 @@ public class AgentMoveDriver : MonoBehaviour
         {
             ctx = GetComponent<CharacteContext>();
             if (!ctx)
-                ctx = GetComponentInParent<CharacteContext>();
+                ctx = GetComponentInParent<CharacteContext>(true);
         }
 
         ctx?.ResolveReferences();
+        if (ctx && ctx.stateHub) stateHub = ctx.stateHub;
         ctx?.EnsureMovementMotor();
         if (ctx && ctx.NavigationAgent) agent = ctx.NavigationAgent;
 
@@ -211,7 +212,7 @@ public class AgentMoveDriver : MonoBehaviour
             }
             else
             {
-                Vector3 moveLocal3 = transform.InverseTransformDirection(moveWorldDir);
+                Vector3 moveLocal3 = ActorTransform.InverseTransformDirection(moveWorldDir);
                 Vector2 dirLocal = new Vector2(moveLocal3.x, moveLocal3.z);
                 if (dirLocal.sqrMagnitude > 1.0001f)
                     dirLocal.Normalize();

@@ -103,7 +103,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         return CanStartSequence(sequenceDef, context.Target != null ? context.Target.transform : null);
     }
 
-    public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, Transform explicitTargetTransform)
+    public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, Transform explicitTargetTransform, System.Action onAccepted = null)
     {
         if (_activeRoutine != null || sequenceDef == null || !sequenceDef.HasAnySteps)
             return false;
@@ -126,10 +126,10 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             targetObject,
             targetTransform,
             targetAnchor,
-            ChainAttackTargetingUtility.CreateTargetHandle(targetTransform));
+            ChainAttackTargetingUtility.CreateTargetHandle(targetTransform), onAccepted);
     }
 
-    public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, SkillTargetHandle targetHandle)
+    public bool TryStartSequence(ChainAttackSequenceDef sequenceDef, SkillTargetHandle targetHandle, System.Action onAccepted = null)
     {
         if (_activeRoutine != null || sequenceDef == null || !sequenceDef.HasAnySteps ||
             targetHandle == null ||
@@ -144,7 +144,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             targetTransform.gameObject,
             targetTransform,
             targetAnchor,
-            targetHandle);
+            targetHandle, onAccepted);
     }
 
     bool TryStartResolvedSequence(
@@ -152,7 +152,8 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
         GameObject targetObject,
         Transform targetTransform,
         Transform targetAnchor,
-        SkillTargetHandle targetHandle)
+        SkillTargetHandle targetHandle,
+        System.Action onAccepted = null)
     {
         if (targetObject == null || targetTransform == null || targetAnchor == null ||
             targetHandle == null || !targetHandle.TryResolveAliveTarget(out Transform resolved, out _) ||
@@ -171,6 +172,7 @@ public sealed class ChainAttackCoordinator : MonoBehaviour
             startedAt = WorldNow,
         };
 
+        onAccepted?.Invoke();
         if (ShouldProtectPlayer(runtime: _activeRuntime))
             ApplyPlayerProtection();
         _activeRoutine = StartCoroutine(RunSequence(_activeRuntime));

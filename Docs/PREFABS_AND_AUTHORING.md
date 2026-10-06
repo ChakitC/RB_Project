@@ -19,6 +19,11 @@ Stamina and PassiveController resolve through CharacteContext at binding time.
 `Tools > RB > Passives > Create Roma HUD` creates missing assets/host and assigns
 the production reference. Re-running preserves existing authored prefab visuals.
 Play with Roma selected to test actual spending, Perfect Dash and a normal attack.
+For Combat Surge, spend 100 total Stamina (refilling between payments if needed),
+then fire a successful normal shot. The existing Momentum ring shows charge,
+READY, then a five-second countdown. `surge-active` is the recipe's timer binding;
+the serialized `nextAttackText` reference now displays the Surge state. Keep this
+local binding intact. The three other passive effects still use their existing UI.
 Use the dedicated PassiveComposition test assemblies for automated checks.
 
 ## Player Sprint and Roma Run
@@ -304,6 +309,56 @@ Grouping validation: `PlayerPrefabGrouping.Tests` (Edit Mode) and
 `PlayerPrefabGrouping.PlayMode.Tests` (Play Mode). Also run the existing
 StateHub locomotion and UnifiedWeaponPassives production-player regressions.
 
+### Ally and Enemy system groups
+
+`Assets/Prefab/Player/Ally_Helper.prefab`, `Ally_Stryker.prefab` and
+`Assets/Prefab/GameEnemy/Enemy_Base.prefab` use six direct groups under
+`------------ Ally_System ------------` or `------------ Enemy_System ------------`.
+The four GameEnemy variants inherit these groups from Enemy_Base.
+
+Variant EnemyLevelSystem and the existing SpecialShootPointController modules
+remain added-component overrides on the inherited stats/combat hosts. Their
+component file IDs and original property overrides are retained. Unity's native
+component-move command rejects restructuring these prefab instances; the one-time
+migration is archived outside Assets, with its serialized-data audit. Keep the
+variants linked to Enemy_Base when editing their systems.
+
+| Group | Responsibilities |
+| --- | --- |
+| `GamePlayStats_System` | Health/EnemyHealth, Stamina, Level, CombatEventBus, StatsHub, StateHub/debug view, StatusEffects and Passives; Enemy also owns StaggerMeter, EnemyDropper and variant EnemyLevelSystem |
+| `Movement_System` | AgentMoveDriver, RootMotionNavMeshDriver, Dash, Knockback and VerticalMotor; Ally also owns Interactor/InteractableLink |
+| `Combat_System` | Weapon/affix/upgrade, SkillManager/SkillUser/progression, Melee, DefensiveBlock, PreCastBlock and variant SpecialShootPointController |
+| `CharacterVisual_System` | Visual/model binding, animation Brain/Driver, Animancer, pair offsets, aim rig, visibility and status/cutscene presentation |
+| `Character_Equipment` | Equipment and existing accessories |
+| `AI_System` | BehaviorTree, GameObjectSharedVariables and their authoring layers, target sensor and aim driver; Ally also owns the party loader, FieldAllyMember, ChainSkillUserProxy and interruption |
+
+Move only modules already authored on that prefab. Ally retains eight root
+components: Transform, AllyContext, NavMeshAgent, CharacterController, Rigidbody,
+Animator, CharacterMovementMotor and AITargetInfo. Enemy retains the corresponding
+seven without CharacterController. Keep model roots, FirePoint, HelperAim, HitTaget,
+colliders and other positional anchors at their authored transforms; system groups
+use local identity. `AI Ally/Ally.prefab` and `Ally_Base.prefab` are separate layouts.
+
+Bind important systems through the existing context. Agent movement and Stagger
+read sibling state/animation systems through that owner; Helper uses
+`AllyContext.BehaviorTree`, and EnemyLevelSystem notifies its owner's StatsHub even
+while inactive. EnemyDropper uses the context position and enemy level. Keep AI
+graph data, task GUIDs, Ctx bindings and the shared-variable layer chain intact;
+an inherited layer plus its variant override layer is intentional.
+
+The production DefensiveBlock command reuses context-bound guards/attacks and adds
+missing ones in Combat_System. TestStage authoring reads the context-bound Weapon,
+Dropper and EnemyLevelSystem, creating a missing enemy level in GamePlayStats_System.
+Do not add copies to the actor root after grouping.
+
+Grouping regression assemblies: `AllyEnemyPrefabGrouping.Tests` and
+`AllyEnemyPrefabGrouping.PlayMode.Tests`. Run AI targeting, movement, party commands,
+DefensiveBlock, SpecialShootPoint and shared Player regressions as well.
+See `VALIDATION.md` for completed runs and the remaining unrelated party/HUD
+authoring failures. Enemy_Base still uses the original Mons_GR01_MaleData model
+definition, which instantiates a complete M_GR_01 actor beneath VisualModel;
+the grouping migration preserves this existing model choice.
+
 ### Player Crouch / Slide
 
 PlayerInput uses `Inputmaneger.inputactions`, `InvokeUnityEvents`, and a Crouch
@@ -318,6 +373,9 @@ Roma uses `Assets/Animation/Ch_Roma_Anim/Roma_Slide.fbx` for Slide (looping,
 speed 1, fade 0.1 seconds). Crouch idle/move still use fallback until authored.
 Ctrl may be pressed during grounded Dash to hand its current momentum to Slide;
 waiting for Dash to finish or holding Shift until Sprint is no longer necessary.
+Keep the animation profile's Reload Body Mode at **UpperBody** (as on Roma) to
+reload while sliding. Reload and Slide can start in either order without canceling
+each other. FullBody Reload retains its authored exclusive movement lock.
 
 Set each CharacterStats asset's **Base Stats > Slide Stamina / Unit**
 (`slideStaminaPerUnit`) independently. Default is 2 stamina per world unit of actual
@@ -882,7 +940,8 @@ so the Player `Interactor` sphere cast can focus it and show the return prompt.
 
 The supported Test Stage enemy prefabs are the four Variant prefabs under
 `Assets/Prefab/GameEnemy`. Each must bind its canonical `CharacterStats` asset
-and carry `EnemyLevelSystem` on the `EnemyContext` object. Do not put a fixed
+and bind `EnemyLevelSystem` through `EnemyContext` (GamePlayStats_System on grouped
+prefabs). Do not put a fixed
 combat level on these prefabs: `MapRunController` assigns it from the selected
 stage when the encounter spawns the enemy.
 
@@ -3909,7 +3968,7 @@ so the command is included in the right-click menu as well as GameObject.
 ### Defensive Block timing in the Animation / VFX view
 
 `Assets/Prefab/GameEnemy/Enemy_Base.prefab` owns one enabled
-`DefensiveBlockAttack` on its Context root and binds the Context's shared
+`DefensiveBlockAttack` in Combat_System and binds the Context's shared
 `DefensiveBlockAttack` reference. Enemy variants inherit this component, including
 Rector and GR04; do not add another copy on each variant. Rector's former local
 component has been moved to the Base. This supplies attack-side runtime support;

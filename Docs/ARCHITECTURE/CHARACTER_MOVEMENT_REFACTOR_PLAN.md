@@ -1,5 +1,15 @@
 # Character movement consolidation
 
+## Shared action policy (2026-10-06)
+
+Sprint/Crouch/Slide use CharacterActionPolicy for gameplay admission. Owners retain ground,
+clearance, stamina, velocity and collider checks. IsCrouching reports body ownership without
+querying policy, avoiding recursive fact collection. Failed combat commands preserve
+Sprint/Slide; accepted commands apply cancellation flags. Slide captures Dash velocity
+before cancellation. UpperBody reload and Slide coexist in either order; FullBody reload
+stops Slide. Menu/stun/life transitions clear movement intent and transient locomotion;
+menus preserve accepted reload/combat playback while blocking new commands.
+
 ## Held Crouch and momentum Slide (2026-10-04)
 
 `PlayerMovementCC.Crouch.cs` and `.Slide.cs` own crouch and slide. The production
@@ -30,14 +40,17 @@ Holding Ctrl through regeneration does not restart Slide. StaminaSystem pauses
 regeneration during Slide and retains its normal delay after each spend. Small
 per-frame costs are retained instead of discarded by the previous value tolerance.
 
-Aim/fire keep Slide without walking speed penalties. Release blends back to walk
+Aim/fire and upper-body Reload keep Slide without walking speed penalties.
+Reload requests, including rejected requests, do not clear Slide momentum, and
+starting Slide does not cancel an ongoing upper-body Reload. Full-body Reload
+retains its exclusive locomotion/movement lock. Release blends back to walk
 over 0.15 seconds. Slowdown/wall contact becomes crouch while held. Crouch speed is
 0.45 times walk; height is 60%, clamped to capsule diameter, preserving foot height.
 Standing requires clear space and retries later when blocked. Restore only a shape
 still owned by crouch. Model transforms and hit zones are not resized.
 
 Dash requires standing clearance; failure preserves Slide. Holding Ctrl through
-successful Dash ends in crouch, never Sprint. Reload, melee, skill, Block, locks,
+successful Dash ends in crouch, never Sprint. Melee, skill, Block, locks,
 stun, knockback, down/death and exclusive motion cancel Slide. UI/pause, disable
 and focus loss clear momentum and require release before a new slide. Leaving
 ground ends Slide; the vertical motor remains authoritative. No Jump, slope

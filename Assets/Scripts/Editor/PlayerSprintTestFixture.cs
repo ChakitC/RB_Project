@@ -185,7 +185,15 @@ public sealed class PlayerSprintTestFixture
             yield break;
         }
 
-        if (scenario == "Fire") ctx.stateHub.RequestOnFire();
+        if (scenario == "Fire")
+        {
+            ctx.stateHub.RequestOnFire(); // This rig has no usable weapon.
+            ctx.stateHub.RequestReload();
+            ctx.stateHub.RequestOnMelee();
+            yield return null;
+            Assert.That(movement.IsSprinting, Is.True, "Rejected combat requests preserve Sprint.");
+            yield break;
+        }
         if (scenario == "Down") ctx.HealthSystem.Down();
         if (scenario == "Dead") ctx.HealthSystem.Die();
         if (scenario == "Release")

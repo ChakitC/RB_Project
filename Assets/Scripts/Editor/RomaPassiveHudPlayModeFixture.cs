@@ -33,7 +33,7 @@ public sealed class RomaPassiveHudPlayModeFixture
         ctx.StaminaSystem.Spend(ctx.StaminaSystem.Max * 0.4f);
         Assert.That(view.DisplayedStaminaRatio, Is.EqualTo(0.6f).Within(0.001));
         Assert.That(view.DisplayedDamagePercent, Is.EqualTo(20).Within(0.001));
-        Assert.That(view.DisplayedNextAttackPercent, Is.EqualTo(ctx.StaminaSystem.Max * 0.8f).Within(0.001));
+        Assert.That(view.DisplayedNextAttackPercent, Is.Zero);
         yield return null;
         Canvas.ForceUpdateCanvases();
         foreach (var ring in view.GetComponentsInChildren<PassiveGaugeArc>())
@@ -50,9 +50,24 @@ public sealed class RomaPassiveHudPlayModeFixture
         var capture = ScreenCapture.CaptureScreenshotAsTexture();
         File.WriteAllBytes(Path.Combine(folder, "RomaPassiveHUD-runtime.png"), capture.EncodeToPNG()); Object.Destroy(capture);
         var attack = ctx.PassiveController.ReserveNextAttack("hud-production-cancel");
-        Assert.That(view.DisplayedMomentum, Is.Zero);
-        ctx.StaminaSystem.Spend(2); attack.Dispose();
+        Assert.That(attack, Is.Null);
+        ctx.StaminaSystem.Spend(2);
         Assert.That(view.DisplayedMomentum, Is.EqualTo(ctx.StaminaSystem.Max * 0.4f + 2).Within(0.001));
+        while (view.DisplayedMomentum < 100)
+        {
+            ctx.StaminaSystem.Restore(ctx.StaminaSystem.Max);
+            ctx.StaminaSystem.Spend(Mathf.Min(ctx.StaminaSystem.Max, 100 - view.DisplayedMomentum));
+        }
+        Assert.That(view.IsMomentumReady, Is.True);
+        yield return new WaitForEndOfFrame();
+        capture = ScreenCapture.CaptureScreenshotAsTexture();
+        File.WriteAllBytes(Path.Combine(folder, "RomaCombatSurge-ready.png"), capture.EncodeToPNG()); Object.Destroy(capture);
+        var shot = new WeaponShotBuildContext { PassiveContext = ctx.CombatEventBus.CreateExternalContext(PassiveEventType.ShotFired) };
+        using (var phase = ctx.PassiveController.PrepareWeaponShot(ref shot)) phase.Commit();
+        Assert.That(view.DisplayedSurgeRemaining, Is.EqualTo(5).Within(.01));
+        yield return new WaitForEndOfFrame();
+        capture = ScreenCapture.CaptureScreenshotAsTexture();
+        File.WriteAllBytes(Path.Combine(folder, "RomaCombatSurge-active.png"), capture.EncodeToPNG()); Object.Destroy(capture);
         canvasObject.SetActive(false); Assert.That(host.ViewCount, Is.Zero);
         canvasObject.SetActive(true); Assert.That(host.ViewCount, Is.EqualTo(1));
     }

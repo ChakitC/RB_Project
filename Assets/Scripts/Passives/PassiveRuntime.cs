@@ -8,6 +8,7 @@ public sealed class PassiveRuntime
     public PassiveGrant Grant { get; private set; }
     public readonly PassiveController Controller;
     public event Action StateChanged;
+    public event Action TimerChanged;
     public event Action<PassiveStep, PassiveResult, PassiveEventContext> EffectResolved;
     public event Action<string, PassiveAttackPhase, float> AttackChanged;
     internal void NotifyEffect(PassiveStep step, PassiveResult result, PassiveEventContext evt, PassiveExecution execution)
@@ -213,8 +214,19 @@ public sealed class PassiveRuntime
         expiries ??= new();
         if (!expiries.TryGetValue(execution.Key, out var entry)) expiries.Add(execution.Key, entry = new());
         entry.Execution = execution; entry.Variables = reset; entry.End = Now + Mathf.Max(.01f, duration); entry.Active = true;
+        entry.Duration = Mathf.Max(.01f, duration);
         entry.Signal = signal;
         Controller.RefreshTiming();
+        TimerChanged?.Invoke();
+    }
+    public float GetVariableExpiryRemaining(string variableId, out float duration)
+    {
+        duration = 0;
+        if (!IsAlive || expiries == null) return 0;
+        foreach (var entry in expiries.Values)
+            if (entry.Active && entry.Variables.Contains(variableId))
+            { duration = entry.Duration; return Mathf.Max(0, (float)(entry.End - Now)); }
+        return 0;
     }
     public void Tick()
     {
@@ -231,6 +243,7 @@ public sealed class PassiveRuntime
             }
             Feedback(expiry.Signal, 0);
         }
+        TimerChanged?.Invoke();
     }
     public int VariableEpoch(string key)
     {
@@ -333,5 +346,5 @@ public sealed class PassiveRuntime
     }
     sealed class DynamicEntry { public PassiveExecution Execution; public PassiveDynamicModifierStep Step; }
     sealed class AttackEntry { public PassiveExecution Execution; public PassiveNextAttackStep Step; }
-    sealed class ExpiryEntry { public PassiveExecution Execution; public List<string> Variables; public string Signal; public double End; public bool Active; }
+    sealed class ExpiryEntry { public PassiveExecution Execution; public List<string> Variables; public string Signal; public double End; public float Duration; public bool Active; }
 }

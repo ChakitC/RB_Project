@@ -42,6 +42,8 @@ public sealed class StateHub : MonoBehaviour
     readonly Dictionary<int, (UIStateId state, string owner)> uiHolds = new();
     int nextUiToken = 1;
     bool subscribed, refreshing, refreshPending, suspended, ownerReloading;
+    bool applyingCancellations, menuWasBlocking, controlWasStunned;
+    LifeStateId reconciledLife = LifeStateId.Alive;
     WeaponSystem boundWeapon;
     HealthSystem boundHealth;
     MeleeController boundMelee;
@@ -197,15 +199,74 @@ public sealed class StateHub : MonoBehaviour
             Reloading = ws != null && ws.IsReloading, EmptyMagazine = ws != null && ws.IsMagazineEmpty,
             FullBodyReload = ws != null && ws.IsReloading && ctx.baseStats != null && ctx.baseStats.animProfile != null &&
                 ctx.baseStats.animProfile.reloadBodyMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody,
+            FullBodyReloadConfigured = ctx != null && ctx.baseStats != null && ctx.baseStats.animProfile != null &&
+                ctx.baseStats.animProfile.reloadBodyMode == CharacterAnimProfileSO.ReloadBodyMode.FullBody,
             ShootBlockingPlayback = brain != null && brain.IsShootBlockingPlaybackActive,
             SkillPlayback = brain != null && brain.IsSkillPlaybackActive,
             CanInterruptReload = ws != null && ws.CanInterruptReloadWithFire,
             HasWeapon = ws != null, HasDash = ctx != null && ctx.DashSystem != null,
             HasMelee = ctx != null && ctx.MeleeController != null,
-            HasSkill = ctx != null && ctx.SkillManager != null
+            HasSkill = ctx != null && ctx.SkillManager != null,
+            Paused = GlobalTimeScaleManager.IsCurrentlyPaused,
+            Aiming = ws != null && ws.IsAiming, Firing = ws != null && ws.IsFiringActivity,
+            Crouching = IsCrouching, Sliding = IsSliding,
+            RootMotion = brain != null && brain.RootMotionActive,
+            ProtectedPlayback = brain != null && (brain.IsChainPlaybackActive || brain.IsStageIntroPlaybackActive) || CutsceneDirector.IsCinematicPlaying,
+            MeleeCanInterruptReload = ctx != null && ctx.baseStats != null && ctx.baseStats.animProfile != null && ctx.baseStats.animProfile.meleeCanInterruptReload
         };
     }
-    public ActionAdmissionResult GetAdmission(CharacterAction action) => CharacterActionPolicy.Evaluate(action, GetActionFacts());
+    public ActionAdmissionResult GetAdmission(CharacterAction action) => applyingCancellations
+        ? new(ActionBlockReason.Busy) : CharacterActionPolicy.Evaluate(action, GetActionFacts());
+    public bool CanContinue(CharacterAction action) => CharacterActionPolicy.Evaluate(action, GetActionFacts(), continuing: true).Allowed;
+
+    // Only the owner calls this, after readiness has succeeded and before publishing its start.
+    internal void ApplyAcceptedAction(ActionAdmissionResult decision)
+    {
+        if (!decision.Allowed || applyingCancellations) return;
+        applyingCancellations = true;
+        try
+        {
+            var cancel = decision.Cancellations;
+            if ((cancel & ActionCancellation.Sprint) != 0) ctx?.CancelSprint();
+            if ((cancel & ActionCancellation.Slide) != 0) ctx?.CancelSlide();
+            if ((cancel & ActionCancellation.Dash) != 0) ctx?.DashSystem?.CancelDash();
+            if ((cancel & ActionCancellation.Reload) != 0) ctx?.WeaponSystem?.CancelReload();
+            if ((cancel & ActionCancellation.Firing) != 0)
+            {
+                ctx?.WeaponSystem?.SetFiring(false);
+                SetFireHeld(false);
+            }
+        }
+        finally { applyingCancellations = false; }
+    }
+
+    void ReconcileControlTransitions(in CharacterActionFacts facts)
+    {
+        bool menu = facts.UI != UIStateId.Normal || facts.Paused;
+        bool lostLife = facts.Life != LifeStateId.Alive && facts.Life != reconciledLife;
+        bool stunned = facts.Stunned && !controlWasStunned;
+        bool openedMenu = menu && !menuWasBlocking;
+        menuWasBlocking = menu;
+        controlWasStunned = facts.Stunned;
+        reconciledLife = facts.Life;
+        if (!openedMenu && !stunned && !lostLife) return;
+        if (ctx == null) return;
+        ctx.moveInput = Vector2.zero;
+        ctx.CancelSprint();
+        ctx.CancelSlide();
+        if (ctx is PlayerContext player) player.movement?.ResetCrouchInput();
+        RequestCanceledFire();
+        ctx.WeaponSystem?.OnAim(false);
+        if ((stunned && !facts.ProtectedPlayback) || lostLife)
+        {
+            ctx.WeaponSystem?.CancelReload();
+            ctx.DashSystem?.CancelDash();
+            ctx.MeleeController?.InterruptMelee();
+            ctx.SkillManager?.TryCancelActiveCast(SkillCastCancelReason.InvalidState);
+            ctx.AnimBrain?.StopOrdinaryActionPlayback();
+            ctx.DefensiveBlock?.Cancel();
+        }
+    }
     public bool CanShoot() => GetAdmission(CharacterAction.Shoot).Allowed;
     public bool CanMove() => GetAdmission(CharacterAction.Move).Allowed;
     public bool CanDash() => GetAdmission(CharacterAction.Dash).Allowed;
@@ -224,6 +285,8 @@ public sealed class StateHub : MonoBehaviour
             {
                 refreshPending = false;
                 var facts = GetActionFacts();
+                ReconcileControlTransitions(facts);
+                facts = GetActionFacts();
                 life.Set(facts.Life);
                 ui.Set(facts.UI);
                 move.Set(facts.Knockback ? MoveStateId.Knockback : facts.Stunned ? MoveStateId.Stunned :
@@ -246,7 +309,6 @@ public sealed class StateHub : MonoBehaviour
     void SetControlSource(CharacterControlSource source, ControlBlockFlags flags, bool stunned)
     {
         if (!controlLocks.Set(source, flags, stunned)) return;
-        if (stunned && IsInitialized) ctx?.MeleeController?.InterruptMelee();
         RefreshStates();
     }
     public void SetStatusEffectControlState(ControlBlockFlags controlBlocks, bool stunned)
@@ -301,34 +363,31 @@ public sealed class StateHub : MonoBehaviour
     {
         if (!GetAdmission(fresh ? CharacterAction.FireRequest : CharacterAction.Shoot).Allowed) return;
         var ws = ctx.WeaponSystem;
-        if (fresh && ws.IsReloading) ws.CancelReload();
-        if (!CanShoot()) return;
-        ws.SetFiring(true);
+        ws.TryStartFiring(fresh);
         SetFireHeld(ws.IsFiringHeld && CanShoot());
     }
-    public void RequestReload() { ctx?.CancelSprint(); ctx?.CancelSlide(); if (GetAdmission(CharacterAction.Reload).Allowed) ctx.WeaponSystem.TryReload(); }
-    public void RequestOnFire() { ctx?.CancelSprint(); DesiredFireHeld = true; TryStartHeldFire(true); }
+    public void RequestReload() { if (GetAdmission(CharacterAction.Reload).Allowed) ctx.WeaponSystem.TryReload(); }
+    public void RequestOnFire()
+    {
+        var facts = GetActionFacts();
+        if (facts.Initialized && (facts.UI != UIStateId.Normal || facts.Paused || facts.Stunned || facts.Life != LifeStateId.Alive)) return;
+        DesiredFireHeld = true;
+        TryStartHeldFire(true);
+    }
     public void RequestCanceledFire() { DesiredFireHeld = false; ctx?.WeaponSystem?.SetFiring(false); SetFireHeld(false); }
     public bool RequestOnMelee(MeleeType meleeType = MeleeType.Heavy)
     {
-        ctx?.CancelSprint();
-        ctx?.CancelSlide();
         return CanStartMelee() && ctx.MeleeController.TryStartMelee(meleeType);
     }
     public void RequestMeleePress(MeleeType meleeType = MeleeType.Heavy)
     {
-        ctx?.CancelSprint();
-        ctx?.CancelSlide();
         if (!CanStartMelee()) return;
         ctx.MeleeController.PressMelee(meleeType);
     }
     public void RequestOnDash()
     {
         if (!CanDash()) return;
-        bool cancelReload = GetActionFacts().FullBodyReload;
-        ctx.WeaponSystem?.SetFiring(false);
-        SetFireHeld(false);
-        if (ctx.DashSystem.TryDash() && cancelReload) ctx.WeaponSystem?.CancelReload();
+        ctx.DashSystem.TryDash();
     }
     public void SetMoveSpeed01(float v01) => MoveSpeed01 = v01;
     public void SetMoveDirLocal(Vector2 value) => MoveDirLocal = value;

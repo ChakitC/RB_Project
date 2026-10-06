@@ -1,5 +1,13 @@
 # Melee Combo
 
+## Shared action admission (2026-10-06)
+
+CharacterActionPolicy reads meleeCanInterruptReload from the existing animation profile.
+Accepted melee steps use SkillCastRequest.OnAccepted to cancel Reload/Sprint/Slide/fire
+before playback notifications. A rejected step does not cancel those activities.
+Skill-only control locks still do not block basic melee. New combo presses are denied
+while a menu is open, but an accepted step may finish; stun cancels ordinary melee.
+
 ## Step Data
 
 `SkillGemDefinition` owns optional Combo data (`comboEnabled`, `comboSteps`).

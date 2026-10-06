@@ -21,6 +21,8 @@ public sealed class RomaPassiveHudView : PassiveHudView
     StaminaSystem stamina;
     Coroutine feedback;
     public float DisplayedMomentum { get; private set; }
+    public float DisplayedSurgeRemaining { get; private set; }
+    public bool IsMomentumReady { get; private set; }
     public float DisplayedNextAttackPercent { get; private set; }
     public float DisplayedDamagePercent { get; private set; }
     public float DisplayedStaminaRatio { get; private set; }
@@ -31,6 +33,7 @@ public sealed class RomaPassiveHudView : PassiveHudView
         Unsubscribe();
         subscribed = Runtime;
         subscribed.StateChanged += RefreshView;
+        subscribed.TimerChanged += RefreshView;
         subscribed.EffectResolved += OnEffect;
         subscribed.AttackChanged += OnAttack;
         subscribed.Controller.StatModifiersChanged += RefreshView;
@@ -42,6 +45,7 @@ public sealed class RomaPassiveHudView : PassiveHudView
         if (subscribed != null)
         {
             subscribed.StateChanged -= RefreshView;
+            subscribed.TimerChanged -= RefreshView;
             subscribed.EffectResolved -= OnEffect;
             subscribed.AttackChanged -= OnAttack;
             if (subscribed.Controller != null) subscribed.Controller.StatModifiersChanged -= RefreshView;
@@ -72,6 +76,19 @@ public sealed class RomaPassiveHudView : PassiveHudView
         if (momentumText != null) momentumText.text = value.ToString("0.#");
         if (staminaText != null) staminaText.text = resource != null ? $"STA  {resource.Current:0.#} / {resource.Max:0.#}" : "STA  --";
         if (nextAttackText != null) nextAttackText.text = $"NEXT ATTACK  +{DisplayedNextAttackPercent:0.#}%";
+        bool hasSurge = Runtime.TryGetVariable("surge-active", out float active, out _);
+        DisplayedSurgeRemaining = Runtime.GetVariableExpiryRemaining("surge-active", out float duration);
+        IsMomentumReady = hasSurge && active <= 0 && cap > 0 && value >= cap;
+        if (hasSurge)
+        {
+            if (momentumRing != null)
+            {
+                momentumRing.SetFill(active > 0 ? (duration > 0 ? DisplayedSurgeRemaining / duration : 1) : (cap > 0 ? value / cap : 0));
+                momentumRing.color = active > 0 || IsMomentumReady ? lowColor : normalColor;
+            }
+            if (momentumText != null) momentumText.text = active > 0 ? $"{DisplayedSurgeRemaining:0.0}s" : value.ToString("0.#");
+            if (nextAttackText != null) nextAttackText.text = active > 0 ? "COMBAT SURGE ACTIVE" : IsMomentumReady ? "READY - FIRE TO ACTIVATE" : "BUILD MOMENTUM";
+        }
         if (damageText != null)
         {
             damageText.text = DisplayedDamagePercent > 0 ? $"LOW STAMINA  +{DisplayedDamagePercent:0.#}% DMG" : "LOW STAMINA BONUS  --";

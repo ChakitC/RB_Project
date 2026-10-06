@@ -4,6 +4,16 @@ using NUnit.Framework;
 
 public sealed class SkillCastArchitectureTests
 {
+    [TestCase("ARejectedStartNeverRunsOnStartedAndKeepsTheChargeAvailable")]
+    [TestCase("ACastRefusedByCanProceedCostsNothing")]
+    [TestCase("AcceptanceRunsOnceBeforeStartedAndRejectsReentrantCommands")]
+    public void ActionAcceptance(string method)
+    {
+        var type = Type.GetType("SkillCastTransactionSmokeTests, Assembly-CSharp-Editor", true);
+        var fixture = Activator.CreateInstance(type);
+        try { type.GetMethod("SetUp").Invoke(fixture, null); type.GetMethod(method).Invoke(fixture, null); }
+        finally { type.GetMethod("TearDown").Invoke(fixture, null); }
+    }
     static void Run(string method, params object[] arguments)
     {
         var harness = Type.GetType("SkillArchitectureTestHarness, Assembly-CSharp-Editor", true);

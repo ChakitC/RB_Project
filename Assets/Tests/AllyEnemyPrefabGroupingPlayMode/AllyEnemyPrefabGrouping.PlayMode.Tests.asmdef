@@ -1,0 +1,6 @@
+{
+    "name": "AllyEnemyPrefabGrouping.PlayMode.Tests",
+    "references": [],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

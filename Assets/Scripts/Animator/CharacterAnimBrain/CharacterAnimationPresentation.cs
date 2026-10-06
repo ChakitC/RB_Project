@@ -58,6 +58,8 @@ internal sealed class CharacterAnimationPresentation
         fullBodyActionLayer.Weight = 0f;
     }
 
+    internal void PrepareLocomotionTransition(ITransition transition) => LocoLayer.GetOrCreateState(transition);
+
     internal AnimancerState PlayLocomotionTransition(ITransition transition)
         => RegisterLocomotion(PrepareTransitionState(LocoLayer.Play(transition), transition), transition);
 

@@ -89,13 +89,27 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
     public bool TryStartManualSequence(SkillChainDef chainDef)
     {
+        if (startingManualSequence) return false;
+        startingManualSequence = true;
+        try { return StartManualSequence(chainDef); }
+        finally { startingManualSequence = false; }
+    }
+
+    bool startingManualSequence;
+    bool StartManualSequence(SkillChainDef chainDef)
+    {
         if (chainDef == null || chainAttackCoordinator == null)
             return false;
 
         if (!CanStartManualSequence(chainDef))
             return false;
 
-        bool started = chainAttackCoordinator.TryStartSequence(chainDef.chainSequence);
+        var hub = playerContext != null ? playerContext.stateHub : null;
+        if (hub == null) return false;
+        var admission = hub.GetAdmission(CharacterAction.Chain);
+        if (!admission.Allowed) return false;
+        bool started = chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, (Transform)null,
+            () => hub.ApplyAcceptedAction(admission));
         if (started)
             StampCooldown(chainDef);
 
@@ -115,6 +129,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
     /// </summary>
     public bool CanStartManualSequence(SkillChainDef chainDef, Transform explicitTargetTransform)
     {
+        if (playerContext == null || playerContext.stateHub == null ||
+            !playerContext.stateHub.GetAdmission(CharacterAction.Chain).Allowed) return false;
         if (chainDef == null || chainAttackCoordinator == null)
             return false;
 
@@ -258,6 +274,17 @@ public sealed class ChainAttackProcController : MonoBehaviour
         Transform targetTransform,
         StaggerMeter meter)
     {
+        if (startingManualSequence || playerContext == null || playerContext.stateHub == null) return false;
+        var admission = playerContext.stateHub.GetAdmission(CharacterAction.Chain);
+        if (!admission.Allowed) return false;
+        startingManualSequence = true;
+        try { return StartChainReadyManualSequence(chainDef, target, targetTransform, meter, admission); }
+        finally { startingManualSequence = false; }
+    }
+
+    bool StartChainReadyManualSequence(SkillChainDef chainDef, GameObject target,
+        Transform targetTransform, StaggerMeter meter, ActionAdmissionResult admission)
+    {
         if (chainDef == null || chainAttackCoordinator == null || meter == null)
             return false;
 
@@ -275,12 +302,13 @@ public sealed class ChainAttackProcController : MonoBehaviour
 
         if (chainDef.enableChainReadyIntroCutscene &&
             ResolveIntroCutsceneDef() != null &&
-            TryStartIntroCutscene(chainDef, target, targetHandle, meter))
+            TryStartIntroCutscene(chainDef, target, targetHandle, meter, admission))
         {
             return true;
         }
 
-        if (!chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, targetHandle))
+        if (!chainAttackCoordinator.TryStartSequence(chainDef.chainSequence, targetHandle,
+            () => playerContext.stateHub.ApplyAcceptedAction(admission)))
             return false;
 
         StampCooldown(chainDef);
@@ -305,7 +333,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
         SkillChainDef chainDef,
         GameObject target,
         SkillTargetHandle targetHandle,
-        StaggerMeter meter)
+        StaggerMeter meter,
+        ActionAdmissionResult admission)
     {
         ResolveAnimBrainAndPresenter();
         if (_animBrain == null || _animDriver == null) return false;
@@ -320,7 +349,8 @@ public sealed class ChainAttackProcController : MonoBehaviour
         if (!stageStarted)
             return false;
 
-        if (!_animDriver.TryPlayChainCutscene(introId, introDef))
+        if (!_animDriver.TryPlayAcceptedChainCutscene(introId, introDef,
+            () => playerContext.stateHub.ApplyAcceptedAction(admission)))
         {
             _cutscenePresenter.EndChainIntro(introId);
             return false;

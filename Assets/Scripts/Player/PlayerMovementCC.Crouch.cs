@@ -13,7 +13,8 @@ public partial class PlayerMovementCC
     private Vector3 standingCenter, loweredCenter;
     private bool ownsCrouchBody;
     private bool crouchBodyOverridden;
-    public bool IsCrouching => ownsCrouchBody && CanUsePlayerLocomotion();
+    // Owner facts must not query admission: StateHub reads this while building its snapshot.
+    public bool IsCrouching => ownsCrouchBody && isActiveAndEnabled && suspensionTokens.Count == 0;
 
     public void SetCrouchHeld(bool held)
     {
@@ -27,10 +28,11 @@ public partial class PlayerMovementCC
             return;
         }
         if (crouchHeld || crouchNeedsRelease || !isActiveAndEnabled) return;
-        crouchHeld = true;
         TryBeginSlide();
-        CancelSprint();
-        if (CanUsePlayerLocomotion()) LowerCrouchBody();
+        if (!CanUsePlayerLocomotion()) return;
+        crouchHeld = true;
+        stateHub.ApplyAcceptedAction(stateHub.GetAdmission(CharacterAction.Crouch));
+        LowerCrouchBody();
     }
 
     public void ResetCrouchInput()
@@ -44,8 +46,7 @@ public partial class PlayerMovementCC
     private void UpdateCrouchAndSlide()
     {
         if (stateHub == null) return;
-        var facts = stateHub.GetActionFacts();
-        if (GlobalTimeScaleManager.Instance.IsPaused || facts.UI != UIStateId.Normal)
+        if (stateHub.GetAdmission(CharacterAction.Crouch).Reason == ActionBlockReason.MenuOpen)
         {
             ResetCrouchInput();
             return;

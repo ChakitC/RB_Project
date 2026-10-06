@@ -330,7 +330,13 @@ public sealed partial class AICombatP0Checks
         opponent.transform.position += Vector3.right * 10f;
         Assert.AreEqual(observed, state.Value.SearchCenter);
         TaskStatus result = TaskStatus.Running;
-        for (int i = 0; i < 300 && result == TaskStatus.Running; i++) { result = investigate.OnUpdate(); yield return null; }
+        // Navigation advances in seconds; a frame budget can expire before arrival in an uncapped Editor.
+        float deadline = Time.realtimeSinceStartup + 10f;
+        while (result == TaskStatus.Running && Time.realtimeSinceStartup < deadline)
+        {
+            result = investigate.OnUpdate();
+            yield return null;
+        }
         Assert.AreEqual(TaskStatus.Success, result); investigate.OnEnd();
         var search = Bind(new SearchArea { maxPoints = 0 }); search.OnStart();
         Assert.AreEqual(TaskStatus.Success, search.OnUpdate()); search.OnEnd();

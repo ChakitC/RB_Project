@@ -1,0 +1,7 @@
+{
+    "name": "AllyEnemyPrefabGrouping.Tests",
+    "references": [],
+    "includePlatforms": ["Editor"],
+    "optionalUnityReferences": ["TestAssemblies"],
+    "autoReferenced": false
+}

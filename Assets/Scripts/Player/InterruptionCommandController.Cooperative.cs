@@ -8,12 +8,18 @@ public sealed partial class InterruptionCommandController
     public string BlockBindingLabel { get; internal set; } = "Block";
     public event Action<CooperativeBlockSession> CooperativeBlockStarted;
 
-    public InterruptionCommandResult TryExecuteBlockInput(double eventTime) => ActiveCooperativeBlock != null
-        ? (ActiveCooperativeBlock.PressAt(eventTime) ? InterruptionCommandResult.Success : InterruptionCommandResult.SkillRejected)
-        : TryExecuteInterruptionCommand();
+    public InterruptionCommandResult TryExecuteBlockInput(double eventTime)
+    {
+        if (playerContext == null || playerContext.stateHub == null ||
+            !playerContext.stateHub.GetAdmission(CharacterAction.Block).Allowed) return InterruptionCommandResult.SkillRejected;
+        return ActiveCooperativeBlock != null
+            ? (ActiveCooperativeBlock.PressAt(eventTime) ? InterruptionCommandResult.Success : InterruptionCommandResult.SkillRejected)
+            : TryExecuteInterruptionCommand();
+    }
 
     internal void SetCooperativeSession(CooperativeBlockSession session)
     {
+        AcceptBlockCommand();
         ActiveCooperativeBlock = session;
         var input = playerContext.GetComponentInChildren<PlayerInput>(true);
         var action = input != null ? input.actions?.FindAction("Block") : null;

@@ -14,6 +14,11 @@ public sealed class StateHubIntegrationTests
     public void MeleeRootAndNested(bool nested) => Run("MeleeSkillIntegrationTests",
         "PlayerPressAdvancesComboAndReusesHost", "Cleanup", nested);
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SkillAcceptanceAndMenu(bool nested) => Run("MeleeSkillIntegrationTests",
+        "SkillAcceptancePreservesReloadOnRejectionAndSurvivesMenu", "Cleanup", nested);
+
     [TestCase("ScopedTokenAddsAndRemovesOnlyItsOwnBlocks")]
     [TestCase("ReleasingAScopedTokenDoesNotClearLegacyExternalBlocks")]
     [TestCase("TwoScopedOwnersReleaseIndependently")]

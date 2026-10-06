@@ -51,6 +51,8 @@ public enum StatType
     MaxCharges,
     SummonMaxHP,
     SummonCap,
+    ReloadSpeed,
+    AimMovementPenaltyReduction,
 }
 
 // โมดิฟายค่า Stat แบบ generic

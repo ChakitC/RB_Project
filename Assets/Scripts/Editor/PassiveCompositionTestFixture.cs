@@ -48,6 +48,57 @@ public sealed class PassiveCompositionTestFixture
         d.recipe.rules.AddRange(rules); return d;
     }
     ComposedPassiveDef Roma() => RomaPassiveExample.Create(owned);
+    [Test] public void CombatSurgeRequiresFullMomentumAndCommittedShot()
+    {
+        foreach (bool nested in new[] { false, true })
+        {
+            var actor = Actor(nested);
+            var definition = AssetDatabase.LoadAssetAtPath<PassiveDefinition>(RomaCombatSurgeAuthoring.Path);
+            Equip(actor, definition);
+            var runtimes = new List<PassiveRuntime>(); actor.PassiveController.AppendRuntimes(runtimes);
+            var runtime = runtimes.Single();
+            Assert.That(PassiveRecipeValidator.Validate(definition.recipe), Is.Empty);
+            actor.StaminaSystem.Spend(99);
+            void Shot(bool commit)
+            {
+                var shot = new WeaponShotBuildContext { PassiveContext = Event(actor, PassiveEventType.ShotFired) };
+                using var phase = actor.PassiveController.PrepareWeaponShot(ref shot);
+                if (commit) { phase.Commit(); phase.Commit(); }
+            }
+            Shot(true);
+            runtime.TryGetVariable("momentum", out float value, out _); Assert.That(value, Is.EqualTo(99));
+            actor.StaminaSystem.Restore(100); actor.StaminaSystem.Spend(1);
+            Shot(false);
+            actor.CombatEventBus.Publish(Event(actor, PassiveEventType.DashStarted));
+            actor.CombatEventBus.Publish(Event(actor, PassiveEventType.Reload));
+            actor.PassiveController.Tick(10);
+            runtime.TryGetVariable("momentum", out value, out _); Assert.That(value, Is.EqualTo(100));
+            Assert.That(actor.PassiveController.ReserveNextAttack("no-damage-bonus"), Is.Null);
+            Shot(true);
+            Assert.That(runtime.GetVariableExpiryRemaining("surge-active", out float duration), Is.EqualTo(5));
+            Assert.That(duration, Is.EqualTo(5));
+            Assert.That(actor.StatsHub.GetReloadSpeedMultiplier(), Is.EqualTo(1.3f).Within(.001));
+            Assert.That(actor.StatsHub.GetAimMovementMultiplier(.6f), Is.EqualTo(.8f).Within(.001));
+            actor.StaminaSystem.Spend(20);
+            runtime.TryGetVariable("momentum", out value, out _); Assert.That(value, Is.Zero);
+            actor.PassiveController.Tick(2);
+            actor.PassiveController.RefreshPassiveLoadout();
+            Shot(true);
+            Assert.That(runtime.GetVariableExpiryRemaining("surge-active", out _), Is.EqualTo(3));
+            actor.PassiveController.Tick(3);
+            Assert.That(actor.StatsHub.GetReloadSpeedMultiplier(), Is.EqualTo(1));
+            Assert.That(actor.StatsHub.GetAimMovementMultiplier(.6f), Is.EqualTo(.6f));
+            actor.StaminaSystem.Spend(10);
+            runtime.TryGetVariable("momentum", out value, out _); Assert.That(value, Is.EqualTo(10));
+            actor.StaminaSystem.Restore(100); actor.StaminaSystem.Spend(90); Shot(true);
+            Equip(actor);
+            Assert.That(actor.StatsHub.GetReloadSpeedMultiplier(), Is.EqualTo(1));
+            Assert.That(actor.StatsHub.GetAimMovementMultiplier(.6f), Is.EqualTo(.6f));
+            Equip(actor, definition);
+            runtimes.Clear(); actor.PassiveController.AppendRuntimes(runtimes);
+            runtimes.Single().TryGetVariable("momentum", out value, out _); Assert.That(value, Is.Zero);
+        }
+    }
     static PassiveRecipeRule RestoreRule(int count = 1, float cooldown = 0) => new()
     {
         id = "restore", eventType = PassiveEventType.Hit, count = new(count), cooldown = new(cooldown),

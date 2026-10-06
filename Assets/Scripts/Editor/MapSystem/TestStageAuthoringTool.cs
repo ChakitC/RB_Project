@@ -197,7 +197,8 @@ public static class TestStageAuthoringTool
 
             context.baseStats = stats;
             context.currentWeapon = enemyWeapon;
-            WeaponSystem weaponSystem = context.GetComponent<WeaponSystem>();
+            context.ResolveReferences();
+            WeaponSystem weaponSystem = context.WeaponSystem;
             if (weaponSystem != null)
             {
                 SerializedObject weaponSerialized = new SerializedObject(weaponSystem);
@@ -205,14 +206,18 @@ public static class TestStageAuthoringTool
                 weaponSerialized.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(weaponSystem);
             }
-            EnemyDropper dropper = context.GetComponent<EnemyDropper>();
+            EnemyDropper dropper = context.dropper;
             if (dropper == null)
                 throw new InvalidOperationException($"Enemy prefab '{path}' has no EnemyDropper.");
             dropper.profile = dropProfile;
             EditorUtility.SetDirty(dropper);
-            EnemyLevelSystem enemyLevel = context.GetComponent<EnemyLevelSystem>();
+            EnemyLevelSystem enemyLevel = context.EnemyLevelSystem;
             if (enemyLevel == null)
-                enemyLevel = context.gameObject.AddComponent<EnemyLevelSystem>();
+            {
+                Transform systems = context.transform.Find("------------ Enemy_System ------------");
+                Transform statsGroup = systems != null ? systems.Find("GamePlayStats_System") : null;
+                enemyLevel = (statsGroup != null ? statsGroup.gameObject : context.gameObject).AddComponent<EnemyLevelSystem>();
+            }
             context.EnemyLevelSystem = enemyLevel;
             EditorUtility.SetDirty(context);
             PrefabUtility.SaveAsPrefabAsset(root, path);

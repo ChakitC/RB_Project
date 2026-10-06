@@ -100,6 +100,9 @@ public sealed class PartyCommandSkillTests
         Component manager = actor.gameObject.AddComponent(T("CharacterSkillManager"));
         Set(actor, "SkillManager", manager);
         Set(actor, "AimTargetDriver", driver);
+        Component state = actor.gameObject.GetComponent(T("StateHub")) ?? actor.gameObject.AddComponent(T("StateHub"));
+        Set(actor, "stateHub", state);
+        Call(state, "Awake");
         ScriptableObject payload = ScriptableObject.CreateInstance(Type.GetType(payloadType + ", Assembly-CSharp-Editor", true));
         created.Add(payload);
         Set(skill, "payload", payload);
@@ -209,7 +212,7 @@ public sealed class PartyCommandSkillTests
         Component health = actor.gameObject.AddComponent(T("HealthSystem"));
         Set(health, "currentHealth", 100f);
         Set(actor, "HealthSystem", health);
-        Component state = actor.gameObject.AddComponent(T("StateHub"));
+        Component state = actor.gameObject.GetComponent(T("StateHub")) ?? actor.gameObject.AddComponent(T("StateHub"));
         Set(actor, "stateHub", state);
         Call(state, "Awake");
         Component member = actor.gameObject.AddComponent(T("FieldAllyMember"));
@@ -341,7 +344,7 @@ public sealed class PartyCommandSkillTests
         Component health = actor.gameObject.AddComponent(T("HealthSystem"));
         Set(health, "currentHealth", 100f);
         Set(actor, "HealthSystem", health);
-        Component state = actor.gameObject.AddComponent(T("StateHub"));
+        Component state = actor.gameObject.GetComponent(T("StateHub")) ?? actor.gameObject.AddComponent(T("StateHub"));
         Set(actor, "stateHub", state);
         Call(state, "Awake");
         var slots = (System.Collections.IList)Get(Get(actor, "baseStats"), "skillSlots");

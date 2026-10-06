@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: NEXT ATTACK  +0%
+  m_text: BUILD MOMENTUM
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -95,9 +95,9 @@ MonoBehaviour:
   m_fontSize: 14
   m_fontSizeBase: 14
   m_fontWeight: 400
-  m_enableAutoSizing: 0
-  m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_enableAutoSizing: 1
+  m_fontSizeMin: 10
+  m_fontSizeMax: 14
   m_fontStyle: 0
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 512
@@ -393,6 +393,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7713637658348295069}
   - component: {fileID: 2802430276500546336}
+  - component: {fileID: 4777074924174240664}
   m_Layer: 0
   m_Name: Stamina
   m_TagString: Untagged
@@ -443,6 +444,14 @@ MonoBehaviour:
   thickness: 3
   segments: 1
   gapDegrees: 0
+--- !u!222 &4777074924174240664
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939772027036860672}
+  m_CullTransparentMesh: 1
 --- !u!1 &2007568727824058370
 GameObject:
   m_ObjectHideFlags: 0
@@ -528,6 +537,7 @@ GameObject:
   m_Component:
   - component: {fileID: 468694175148108390}
   - component: {fileID: 2251114803277013971}
+  - component: {fileID: 3645481524668149350}
   m_Layer: 0
   m_Name: StaminaTrack
   m_TagString: Untagged
@@ -578,6 +588,14 @@ MonoBehaviour:
   thickness: 3
   segments: 1
   gapDegrees: 0
+--- !u!222 &3645481524668149350
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2139053091102721196}
+  m_CullTransparentMesh: 1
 --- !u!1 &2376879118512572516
 GameObject:
   m_ObjectHideFlags: 0
@@ -935,6 +953,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2675976188079827621}
   - component: {fileID: 1577047347037529431}
+  - component: {fileID: 2171866505075988611}
   m_Layer: 0
   m_Name: MomentumTrack
   m_TagString: Untagged
@@ -985,6 +1004,14 @@ MonoBehaviour:
   thickness: 6
   segments: 5
   gapDegrees: 5
+--- !u!222 &2171866505075988611
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4810480845026697813}
+  m_CullTransparentMesh: 1
 --- !u!1 &5043843450215743256
 GameObject:
   m_ObjectHideFlags: 0
@@ -1267,6 +1294,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2388087530784253914}
   - component: {fileID: 1870017407419699633}
+  - component: {fileID: 9200369154779754281}
   m_Layer: 0
   m_Name: Momentum
   m_TagString: Untagged
@@ -1317,6 +1345,14 @@ MonoBehaviour:
   thickness: 6
   segments: 5
   gapDegrees: 5
+--- !u!222 &9200369154779754281
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5829241848641932264}
+  m_CullTransparentMesh: 1
 --- !u!1 &6371207741528236310
 GameObject:
   m_ObjectHideFlags: 0

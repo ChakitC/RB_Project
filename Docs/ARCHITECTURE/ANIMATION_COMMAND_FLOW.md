@@ -1,17 +1,33 @@
 # Animation Command Flow
 
+## Action acceptance (2026-10-06)
+
+Gameplay conflicts and cancellations come from CharacterActionPolicy. Animation transition
+authority still handles Chain, cinematic and life overrides. Skill playback checks its clip,
+transition authority and state exit, then prepares its Animancer state before invoking the
+acceptance callback. Gameplay cancellations run before playback and start signals.
+SkillCastOrchestrator invokes acceptance at most once and refuses recursive starts while
+preparing a command. OnStarted remains the post-playback notification. Failures after
+acceptance do not restore earlier Reload/Sprint; resource settlement remains unchanged.
+Manual Chain intro uses the same ordering: clip/state preflight, acceptance callback,
+then playback. Existing Chain/cinematic interruption priority is preserved.
+
 ## Crouch / Slide locomotion
 
 StateHub projects the movement owner's Crouch/Slide flags through CharacterAnimDriver
 into CharacterAnimBrain. Live locomotion selects optional `slide`, `crouchMove`, or
 `crouchIdle` transitions before Sprint/ordinary locomotion. Missing clips fall back
 to the existing directional mixer. These are in-place layer-0 transitions and do not
-acquire exclusive locomotion, movement locks, or root motion; upper-body aim/fire
+acquire exclusive locomotion, movement locks, or root motion; upper-body aim/fire/reload
 continues through the existing action layers. Repeated frames retain the same clip
 state rather than restarting it. Down/death and exclusive states retain precedence.
 Slide intent also exits active Dash playback immediately through the guarded Dash
 end path. This handles Ctrl during Dash without waiting for the dash animation timer;
 other locomotion states are not forced out by this check.
+
+Upper-body Reload can begin during Slide and continues when Slide starts; it
+uses its existing action layer over the Slide clip without restarting or canceling
+the weapon's reload. Full-body Reload remains an exclusive locomotion state.
 
 ## Sprint presentation
 

@@ -49,7 +49,7 @@ public sealed class StateHubArchitectureTests
             facts.Initialized = false;
             Assert.That(CharacterActionPolicy.Evaluate(action, facts).Reason, Is.EqualTo(ActionBlockReason.NotInitialized));
             facts = Ready; facts.UI = UIStateId.Inventory;
-            bool menuAllowed = action == CharacterAction.Reload || action == CharacterAction.Rotate;
+            bool menuAllowed = false;
             Assert.That(CharacterActionPolicy.Evaluate(action, facts).Allowed, Is.EqualTo(menuAllowed), action.ToString());
             facts = Ready; facts.Life = LifeStateId.Down;
             Assert.That(CharacterActionPolicy.Evaluate(action, facts).Allowed,
@@ -70,6 +70,94 @@ public sealed class StateHubArchitectureTests
             typeof(CharacterActionFacts).GetField(restriction).SetValue(boxed, true);
             Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.FireRequest, (CharacterActionFacts)boxed).Allowed, Is.False, restriction);
         }
+    }
+
+    public void UnifiedPolicyGlobalsAndContinuation()
+    {
+        foreach (CharacterAction action in Enum.GetValues(typeof(CharacterAction)))
+        {
+            var f = Ready; f.Stunned = true;
+            var denied = CharacterActionPolicy.Evaluate(action, f);
+            Assert.That(denied.Reason, Is.EqualTo(ActionBlockReason.ControlBlocked), action.ToString());
+            Assert.That(denied.Cancellations, Is.EqualTo(ActionCancellation.None));
+            f.Life = LifeStateId.Dead;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f).Reason, Is.EqualTo(ActionBlockReason.NotAlive));
+            f = Ready; f.Paused = true;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f).Reason, Is.EqualTo(ActionBlockReason.MenuOpen));
+            f.Stunned = true; f.ProtectedPlayback = true;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f).Reason, Is.EqualTo(ActionBlockReason.MenuOpen), "UI precedes control/playback.");
+            f.Initialized = false; f.Life = LifeStateId.Dead;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f).Reason, Is.EqualTo(ActionBlockReason.NotInitialized));
+            f = Ready; f.ProtectedPlayback = true;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f).Reason, Is.EqualTo(ActionBlockReason.Busy));
+            foreach (var flags in new[] { ControlBlockFlags.Move, ControlBlockFlags.Rotate, ControlBlockFlags.Shoot,
+                ControlBlockFlags.Skill, ControlBlockFlags.Move | ControlBlockFlags.Shoot | ControlBlockFlags.Skill | ControlBlockFlags.Rotate })
+            {
+                f = Ready; f.Blocks = flags;
+                bool blocked = action switch
+                {
+                    CharacterAction.Move or CharacterAction.Dash or CharacterAction.Sprint or CharacterAction.Crouch or CharacterAction.Slide => (flags & ControlBlockFlags.Move) != 0,
+                    CharacterAction.FireRequest or CharacterAction.Shoot or CharacterAction.Reload or CharacterAction.Aim => (flags & ControlBlockFlags.Shoot) != 0,
+                    CharacterAction.Skill or CharacterAction.Chain => (flags & ControlBlockFlags.Skill) != 0,
+                    CharacterAction.Rotate => (flags & ControlBlockFlags.Rotate) != 0,
+                    _ => false
+                };
+                var result = CharacterActionPolicy.Evaluate(action, f);
+                Assert.That(result.Allowed, Is.EqualTo(!blocked), $"{action}: {flags}");
+                if (blocked)
+                {
+                    Assert.That(result.Reason, Is.EqualTo(ActionBlockReason.ControlBlocked));
+                    Assert.That(result.Cancellations, Is.EqualTo(ActionCancellation.None));
+                }
+            }
+        }
+        foreach (var action in new[] { CharacterAction.Reload, CharacterAction.Skill, CharacterAction.Melee, CharacterAction.Block })
+        {
+            var f = Ready; f.UI = UIStateId.Inventory;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f, true).Allowed, Is.True, action.ToString());
+            f.Stunned = true;
+            Assert.That(CharacterActionPolicy.Evaluate(action, f, true).Allowed, Is.False, action.ToString());
+        }
+        var protectedFacts = Ready; protectedFacts.ProtectedPlayback = protectedFacts.Stunned = true;
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Chain, protectedFacts, true).Allowed, Is.True);
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Chain, protectedFacts).Allowed, Is.False);
+    }
+
+    public void UnifiedReloadCancellationMatrix()
+    {
+        foreach (bool fullBody in new[] { false, true })
+        {
+            var f = Ready;
+            f.Reloading = f.CanInterruptReload = f.MeleeCanInterruptReload = true;
+            f.FullBodyReload = fullBody;
+            foreach (var action in new[] { CharacterAction.Move, CharacterAction.Crouch, CharacterAction.Slide })
+                Assert.That(CharacterActionPolicy.Evaluate(action, f).Allowed, Is.EqualTo(!fullBody), action.ToString());
+            Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Sprint, f).Allowed, Is.False);
+            Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Rotate, f).Allowed, Is.True);
+            var dash = CharacterActionPolicy.Evaluate(CharacterAction.Dash, f);
+            Assert.That(dash.Allowed, Is.True);
+            Assert.That((dash.Cancellations & ActionCancellation.Reload) != 0, Is.EqualTo(fullBody));
+            foreach (var action in new[] { CharacterAction.FireRequest, CharacterAction.Melee, CharacterAction.Skill })
+            {
+                var result = CharacterActionPolicy.Evaluate(action, f);
+                Assert.That(result.Allowed, Is.True, action.ToString());
+                Assert.That((result.Cancellations & ActionCancellation.Reload) != 0, Is.True);
+            }
+            Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Shoot, f).Allowed, Is.False);
+            f.MeleeCanInterruptReload = f.CanInterruptReload = false;
+            Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Melee, f).Allowed, Is.False);
+            Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.FireRequest, f).Allowed, Is.False);
+        }
+        var blocked = Ready; blocked.Blocks = ControlBlockFlags.Shoot;
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Reload, blocked).Allowed, Is.False);
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Aim, blocked).Allowed, Is.False);
+        var sliding = Ready; sliding.Dashing = true;
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Reload, sliding).Allowed, Is.True,
+            "UpperBody reload coexists with Dash in either start order.");
+        sliding.FullBodyReloadConfigured = true;
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Reload, sliding).Allowed, Is.False);
+        Assert.That(CharacterActionPolicy.Evaluate(CharacterAction.Slide, sliding).Cancellations,
+            Is.EqualTo(ActionCancellation.Dash | ActionCancellation.Sprint));
     }
 
     public void TokensBeforeAwakeAndIndependentSources()
@@ -223,9 +311,29 @@ public sealed class StateHubArchitectureTests
         Assert.That(weapon.IsReloading, Is.True, "Held intent must not cancel reload.");
         yield return new WaitForSeconds(0.15f);
         Assert.That(weapon.IsReloading, Is.False);
-        Assert.That(weapon.IsFiringHeld, Is.True, "Held intent resumes after reload finishes.");
+        Assert.That(weapon.IsFiringHeld, Is.False, "A missing projectile must fail readiness without starting fire.");
+        weapon.projectilePrefab = gun.BulletPrefab;
+        yield return null;
+        Assert.That(weapon.IsFiringHeld, Is.True, "Held intent resumes when launch references are ready.");
         hub.RequestCanceledFire();
         // A subscriber cancels immediately: the routine handle must already exist and be stopped.
+        weapon.magazine = weapon.MagazineSize;
+        weapon.SetFiring(true);
+        bool held = weapon.IsFiringHeld;
+        weapon.TryReload();
+        Assert.That(weapon.IsReloading, Is.False, "Full magazine rejects reload.");
+        Assert.That(weapon.IsFiringHeld, Is.EqualTo(held), "Rejected reload does not cut firing.");
+        hub.RequestCanceledFire();
+        weapon.magazine = 3;
+        hub.RequestReload();
+        int menu = hub.AcquireUIStateToken(UIStateId.Inventory);
+        Assert.That(weapon.IsReloading, Is.True, "Menu preserves an accepted reload.");
+        Assert.That(hub.GetAdmission(CharacterAction.Reload).Allowed, Is.False);
+        yield return new WaitForSeconds(0.15f);
+        Assert.That(weapon.IsReloading, Is.False);
+        Assert.That(weapon.magazine, Is.EqualTo(weapon.MagazineSize));
+        hub.ReleaseUIStateToken(menu);
+        Assert.That(hub.DesiredFireHeld || weapon.IsAiming, Is.False);
         weapon.magazine = 3;
         int callbacks = 0;
         Action<float> cancelInCallback = _ => { callbacks++; weapon.CancelReload(); };
@@ -246,7 +354,7 @@ public sealed class StateHubArchitectureTests
             int lockToken = restriction == "ShootLock" ? hub.AcquireExternalControlBlockToken(ControlBlockFlags.Shoot) : 0;
             if (restriction == "Stun") hub.SetStatusEffectControlState(ControlBlockFlags.None, true);
             hub.RequestOnFire();
-            Assert.That(weapon.IsReloading, Is.True, restriction);
+            Assert.That(weapon.IsReloading, Is.EqualTo(restriction != "Stun"), restriction);
             Assert.That(hub.FireHeld, Is.False, restriction);
             hub.RequestCanceledFire(); weapon.CancelReload();
             hub.ReleaseUIStateToken(uiToken); hub.ReleaseExternalControlBlockToken(lockToken);

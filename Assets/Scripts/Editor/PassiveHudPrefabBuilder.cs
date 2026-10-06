@@ -95,7 +95,7 @@ public static class PassiveHudPrefabBuilder
             var count = Text("MomentumValue", root, "0", new Vector2(78, 36), new Vector2(-105, 0), 28, White);
             Text("MomentumLabel", root, "MOMENTUM", new Vector2(80, 16), new Vector2(-105, -24), 9, Mint);
             var sta = Text("StaminaValue", root, "STA  -- / --", new Vector2(195, 22), new Vector2(65, 30), 13, White, TextAlignmentOptions.Left);
-            var next = Text("NextAttack", root, "NEXT ATTACK  +0%", new Vector2(195, 25), new Vector2(65, 2), 14, Mint, TextAlignmentOptions.Left);
+            var next = Text("NextAttack", root, "BUILD MOMENTUM", new Vector2(195, 25), new Vector2(65, 2), 14, Mint, TextAlignmentOptions.Left);
             var damage = Text("LowStaminaDamage", root, "LOW STAMINA BONUS  --", new Vector2(195, 22), new Vector2(65, -26), 10, White, TextAlignmentOptions.Left);
             var feedback = Text("Feedback", root, "", new Vector2(324, 22), new Vector2(0, -70), 12, Mint);
             var so = new SerializedObject(view);

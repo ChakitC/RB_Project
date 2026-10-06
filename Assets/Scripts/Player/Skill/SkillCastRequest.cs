@@ -12,6 +12,7 @@ public readonly struct SkillCastRequest
     public readonly CharacterAnimDriver AnimationDriver;
     public readonly Func<bool> CanProceed;
     public readonly Action OnStarted;
+    public readonly Action OnAccepted;
     public readonly Action<ActiveSkillCastInfo> OnCommitted;
     public readonly Action<ActiveSkillCastInfo, SkillExecutionResult> OnExecutionFailed;
     public readonly Action<ActiveSkillCastInfo, SkillCastCancelReason> OnCancelled;
@@ -62,7 +63,8 @@ public readonly struct SkillCastRequest
         SkillFacingSnapshot facingSnapshot = default,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
         MeleeType meleeType = MeleeType.Light,
-        Vector2 meleeChainWindow = default)
+        Vector2 meleeChainWindow = default,
+        Action onAccepted = null)
     {
         ExecutionKind = executionKind;
         MeleeType = meleeType;
@@ -72,6 +74,7 @@ public readonly struct SkillCastRequest
         AnimationDriver = animationDriver;
         CanProceed = canProceed;
         OnStarted = onStarted;
+        OnAccepted = onAccepted;
         OnCommitted = onCommitted;
         OnExecutionFailed = onExecutionFailed;
         OnCancelled = onCancelled;

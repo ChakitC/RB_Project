@@ -1178,7 +1178,9 @@ public class AllyHelperManager : MonoBehaviour
         if (helperSkillManager == null)
             helperSkillManager = allyHelper.GetComponent<CharacterSkillManager>();
         SubscribeToHelperProcLoadout(helperSkillManager);
-        allyBehaviorTree = allyHelper.GetComponent<BehaviorTree>();
+        allyBehaviorTree = allyContext != null
+            ? allyContext.BehaviorTree
+            : allyHelper.GetComponent<BehaviorTree>();
 
         SubscribeToHelperPartyLoader(ResolveHelperPartyLoader());
 

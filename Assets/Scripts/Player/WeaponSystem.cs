@@ -152,6 +152,7 @@ public class WeaponSystem : MonoBehaviour
 
     bool reloadPerBullet = true;
     float startInsertDelay = 0f;
+    float reloadSpeedSnapshot = 1f;
     float perBulletInsertTime = 0f;
     float endInsertDelay = 0f;
     bool shootInterruptsReload = true;
@@ -492,7 +493,7 @@ public class WeaponSystem : MonoBehaviour
             startInsertDelay,
             perBulletInsertTime,
             endInsertDelay,
-            reloadTime);
+            reloadTime) / (isReloading ? reloadSpeedSnapshot : (statsHub != null ? statsHub.GetReloadSpeedMultiplier() : 1f));
     }
 
     void RefreshDerivedStats()
@@ -660,22 +661,25 @@ public class WeaponSystem : MonoBehaviour
 
     public void SetFiring(bool value)
     {
+        if (value) { TryStartFiring(true); return; }
         using (BeginStateChange())
         {
-            _isFiringHeld = value;
+            _isFiringHeld = false;
+            StopFiringState(clearHeld: false);
+        }
+    }
 
-            if (!value)
-            {
-                StopFiringState(clearHeld: false);
-                return;
-            }
-
-            bool hasWeapon = currentWeapon != null;
-            if (!fireController.CanStartFiring(hasWeapon, hasWeapon && CanShootNow()))
-                return;
-
-            if (fireController.ShouldCancelReload(isReloading, shootInterruptsReload))
-                CancelReload();
+    internal bool TryStartFiring(bool fresh)
+    {
+        using (BeginStateChange())
+        {
+            var hub = ctx != null ? ctx.stateHub : null;
+            if (hub == null) return false;
+            var decision = hub.GetAdmission(fresh ? CharacterAction.FireRequest : CharacterAction.Shoot);
+            if (!decision.Allowed || currentWeapon == null || !HasProjectileLaunchRefs() ||
+                GetWeaponTime() < nextFireTime) return false;
+            hub.ApplyAcceptedAction(decision);
+            _isFiringHeld = true;
 
             switch (fireController.ResolveStartAction(firingMode, isReloading, isBursting, burstCo != null))
             {
@@ -694,6 +698,7 @@ public class WeaponSystem : MonoBehaviour
                     isFiring = true;
                     break;
             }
+            return true;
         }
     }
 
@@ -748,6 +753,9 @@ public class WeaponSystem : MonoBehaviour
             if (!HasProjectileLaunchRefs())
                 return false;
 
+            var shotAdmission = ctx != null && ctx.stateHub != null
+                ? ctx.stateHub.GetAdmission(CharacterAction.Shoot)
+                : new ActionAdmissionResult(ActionBlockReason.MissingModule);
             nextFireTime = GetWeaponTime() + fireRate;
             int ammoBefore = magazine;
             bool ammoConsumed = !IsFreeAmmoActive;
@@ -760,6 +768,8 @@ public class WeaponSystem : MonoBehaviour
             build.Damage *= passiveReservation?.Multiplier ?? 1f;
             WeaponShotContext shot = SnapshotShot(build);
             if (!SpawnProjectile(shot)) return false;
+            if (ctx != null && ctx.stateHub != null)
+                ctx.stateHub.ApplyAcceptedAction(shotAdmission);
             passiveReservation?.Commit();
             weaponPhase?.Commit();
             ApplyThirdPersonShotFeedback();
@@ -989,10 +999,11 @@ public class WeaponSystem : MonoBehaviour
         {
             RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
 
-            if (IsReloadBlockedByActorState())
+            var hub = ctx != null ? ctx.stateHub : null;
+            if (hub == null) return;
+            var decision = hub.GetAdmission(CharacterAction.Reload);
+            if (!decision.Allowed || IsReloadBlockedByActorState() || currentWeapon == null)
                 return;
-
-            StopFiringState(clearHeld: false);
 
             if (isReloading || magazine >= MaxMagazine)
                 return;
@@ -1002,6 +1013,11 @@ public class WeaponSystem : MonoBehaviour
                 PlayWeaponCue(currentWeapon != null ? currentWeapon.emptyCue : null, false);
                 return;
             }
+
+            if (!reloadPerBullet && !magazineRelode) return;
+            reloadSpeedSnapshot = statsHub != null ? statsHub.GetReloadSpeedMultiplier() : 1f;
+            hub.ApplyAcceptedAction(decision);
+            StopFiringState(clearHeld: false);
 
             if (reloadRoutine != null)
                 StopCoroutine(reloadRoutine);
@@ -1106,7 +1122,7 @@ public class WeaponSystem : MonoBehaviour
         }
 
         if (startInsertDelay > 0f)
-            yield return WaitForWeaponSeconds(startInsertDelay);
+            yield return WaitForWeaponSeconds(startInsertDelay / reloadSpeedSnapshot);
 
         if (IsReloadBlockedByActorState())
         {
@@ -1135,13 +1151,13 @@ public class WeaponSystem : MonoBehaviour
             UpdateAmmoUI();
 
             if (perBulletInsertTime > 0f)
-                yield return WaitForWeaponSeconds(perBulletInsertTime);
+                yield return WaitForWeaponSeconds(perBulletInsertTime / reloadSpeedSnapshot);
             else
                 yield return null;
         }
 
         if (endInsertDelay > 0f)
-            yield return WaitForWeaponSeconds(endInsertDelay);
+            yield return WaitForWeaponSeconds(endInsertDelay / reloadSpeedSnapshot);
 
         if (IsReloadBlockedByActorState())
         {
@@ -1164,7 +1180,7 @@ public class WeaponSystem : MonoBehaviour
     IEnumerator ReloadFullMagRoutine()
     {
         isReloading = true;
-        yield return WaitForWeaponSeconds(reloadTime);
+        yield return WaitForWeaponSeconds(reloadTime / reloadSpeedSnapshot);
 
         if (IsReloadBlockedByActorState())
         {
@@ -1237,7 +1253,16 @@ public class WeaponSystem : MonoBehaviour
         burstCo = null;
     }
 
-    public void OnAim(bool value) => isAiming = value;
+    public void OnAim(bool value)
+    {
+        if (!value) { isAiming = false; return; }
+        var hub = ctx != null ? ctx.stateHub : null;
+        if (hub == null || currentWeapon == null) return;
+        var decision = hub.GetAdmission(CharacterAction.Aim);
+        if (!decision.Allowed) return;
+        hub.ApplyAcceptedAction(decision);
+        isAiming = true;
+    }
 
     bool UsesWorldSlow()
     {

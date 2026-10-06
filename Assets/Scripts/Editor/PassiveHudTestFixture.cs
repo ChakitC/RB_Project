@@ -111,4 +111,27 @@ public sealed class PassiveHudTestFixture
             "The passive spawn point must be directly editable under GameplayHUD.");
         Assert.That(AssetDatabase.GetDependencies(PassiveHudPrefabBuilder.ViewPath).Any(p => p.Contains("/Tests/")), Is.False);
     }
+
+    [Test] public void CombatSurgeHudShowsChargeReadyAndCountdown()
+    {
+        var actor = Actor();
+        actor.PassiveController.SetRuntimePassives(new[] { AssetDatabase.LoadAssetAtPath<PassiveDefinition>(RomaCombatSurgeAuthoring.Path) });
+        var runtime = Runtime(actor); var host = Host(actor);
+        var view = (RomaPassiveHudView)host.GetView(runtime);
+        actor.StaminaSystem.Spend(99);
+        Assert.That(view.DisplayedMomentum, Is.EqualTo(99)); Assert.That(view.IsMomentumReady, Is.False);
+        actor.StaminaSystem.Spend(1);
+        Assert.That(view.IsMomentumReady, Is.True);
+        var shot = new WeaponShotBuildContext { PassiveContext = actor.CombatEventBus.CreateExternalContext(PassiveEventType.ShotFired) };
+        using (var phase = actor.PassiveController.PrepareWeaponShot(ref shot)) phase.Commit();
+        Assert.That(view.IsMomentumReady, Is.False);
+        Assert.That(view.DisplayedMomentum, Is.Zero);
+        Assert.That(view.DisplayedSurgeRemaining, Is.EqualTo(5));
+        actor.PassiveController.Tick(2);
+        Assert.That(view.DisplayedSurgeRemaining, Is.EqualTo(3));
+        actor.PassiveController.Tick(3);
+        Assert.That(view.DisplayedSurgeRemaining, Is.Zero);
+        actor.StaminaSystem.Restore(100); actor.StaminaSystem.Spend(25);
+        Assert.That(view.DisplayedMomentum, Is.EqualTo(25));
+    }
 }

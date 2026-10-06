@@ -17,6 +17,13 @@ public sealed class SkillCastTransactionSmokeTests
 {
     readonly List<Object> createdObjects = new();
 
+    [SetUp]
+    public void SetUp()
+    {
+        FailingProbePayload.ExecutionCount = 0;
+        SucceedingProbePayload.ExecutionCount = 0;
+    }
+
     [TearDown]
     public void TearDown()
     {
@@ -364,6 +371,7 @@ public sealed class SkillCastTransactionSmokeTests
         var user = new ProbeSkillUser(100f);
 
         bool onStartedRan = false;
+        bool onAcceptedRan = false;
 
         // useAnimationDriver with no driver and no immediate fallback: nothing can accept this cast.
         SkillCastStartResult result = orchestrator.TryStartCast(new SkillCastRequest(
@@ -371,6 +379,7 @@ public sealed class SkillCastTransactionSmokeTests
             user,
             animationDriver: null,
             onStarted: () => onStartedRan = true,
+            onAccepted: () => onAcceptedRan = true,
             useAnimationDriver: true,
             allowImmediateFallback: false,
             debugSource: "test"));
@@ -378,6 +387,7 @@ public sealed class SkillCastTransactionSmokeTests
         Assert.That(result.Kind, Is.EqualTo(SkillCastStartKind.Rejected));
         Assert.That(onStartedRan, Is.False,
             "OnStarted has caster side effects, so it must not run for a cast nothing accepted.");
+        Assert.That(onAcceptedRan, Is.False, "Rejected readiness cannot cancel the previous action.");
         Assert.That(SucceedingProbePayload.ExecutionCount, Is.EqualTo(0));
         Assert.That(instance.CanCast(user), Is.True, "The reservation was rolled back.");
     }
@@ -403,6 +413,29 @@ public sealed class SkillCastTransactionSmokeTests
 
         Assert.That(result.Kind, Is.EqualTo(SkillCastStartKind.Rejected));
         Assert.That(instance.CanCast(user), Is.True);
+    }
+
+    [Test]
+    public void AcceptanceRunsOnceBeforeStartedAndRejectsReentrantCommands()
+    {
+        var owner = Track(new GameObject("acceptance_owner"));
+        var orchestrator = new SkillCastOrchestrator(owner.transform);
+        var def = CreateSkill("test.acceptance", manaCost: 0f, cooldown: 0f);
+        var instance = new SkillInstance { def = def };
+        instance.BindCharges(orchestrator.GetOrCreateCharges(def));
+        var user = new ProbeSkillUser(100f);
+        int accepts = 0;
+        var result = orchestrator.TryStartCast(new SkillCastRequest(instance, user,
+            useAnimationDriver: false,
+            onAccepted: () =>
+            {
+                accepts++;
+                var nested = orchestrator.TryStartCast(new SkillCastRequest(instance, user, useAnimationDriver: false));
+                Assert.That(nested.Started, Is.False);
+            },
+            onStarted: () => Assert.That(accepts, Is.EqualTo(1))));
+        Assert.That(result.Started, Is.True);
+        Assert.That(accepts, Is.EqualTo(1));
     }
 
     // ---- Payload results ----------------------------------------------------------------------------

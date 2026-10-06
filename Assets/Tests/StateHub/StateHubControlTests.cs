@@ -5,6 +5,8 @@ using NUnit.Framework;
 public sealed class StateHubControlTests
 {
     [TestCase("AdmissionMatrix")]
+    [TestCase("UnifiedPolicyGlobalsAndContinuation")]
+    [TestCase("UnifiedReloadCancellationMatrix")]
     [TestCase("TokensBeforeAwakeAndIndependentSources")]
     [TestCase("ReadOnlyViewsAndQueriesHaveNoSideEffects")]
     [TestCase("LifeCommandsPublishOnceBeforeReturning")]

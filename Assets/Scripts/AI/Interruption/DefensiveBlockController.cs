@@ -147,6 +147,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
 
     bool CanStartGuard(PlayerContext issuer, DefensiveBlockAttack source)
     {
+        if (ctx != null && ctx.stateHub != null && !ctx.stateHub.GetAdmission(CharacterAction.Block).Allowed) return false;
         if (!ResolveProfile()) return false;
         if (member == null && ctx != null) member = ctx.FieldAllyMember;
         return isActiveAndEnabled && !active && issuer != null && source != null && ctx != null &&
@@ -195,6 +196,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         ResolveActiveGuardOffset();
         ctx.AnimBrain.PlaybackEvent += OnPlayback;
         if (!ctx.AnimDriver.TryBeginBlock(id)) { Cancel(); return false; }
+        player?.interruptionCommand?.AcceptBlockCommand();
         Accepted?.Invoke(this);
         shotCamera = GameplayCameraController.Instance;
         TraceGuard("Accepted self guard");
@@ -320,6 +322,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         slideFootprint = placement.Footprint;
         ctx.AnimBrain.PlaybackEvent += OnPlayback;
         if (!ctx.AnimDriver.TryBeginBlock(id)) { Cancel(); return false; }
+        player?.interruptionCommand?.AcceptBlockCommand();
         Accepted?.Invoke(this);
         TraceGuard("Accepted companion; waiting for warp arrival");
         // Raise the guard while fading out, so the visual transition does not add another

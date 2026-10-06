@@ -100,18 +100,11 @@ public partial class PlayerMovementCC
     {
         if (crouchHeld || ownsCrouchBody || IsSliding) return false;
         if (!isActiveAndEnabled || _characteContext == null || stateHub == null ||
-            !stateHub.IsAlive || stateHub.Isdown || suspensionTokens.Count > 0 ||
+            suspensionTokens.Count > 0 ||
             _characterController == null || !_characterController.enabled ||
-            _characteContext.MovementMotor == null ||
-            GlobalTimeScaleManager.Instance.IsPaused)
+            _characteContext.MovementMotor == null)
             return false;
-        var facts = stateHub.GetActionFacts();
-        if (facts.UI != UIStateId.Normal || facts.Stunned || facts.Knockback ||
-            (facts.Blocks & ControlBlockFlags.Move) != 0 || facts.Melee || facts.Reloading ||
-            facts.SkillPlayback || facts.ShootBlockingPlayback ||
-            (_brain != null && _brain.RootMotionActive)) return false;
-        var weapon = _characteContext.WeaponSystem;
-        return weapon == null || (!weapon.IsAiming && !weapon.IsFiringActivity);
+        return stateHub.CanContinue(CharacterAction.Sprint);
     }
 
     void ValidateSprint()

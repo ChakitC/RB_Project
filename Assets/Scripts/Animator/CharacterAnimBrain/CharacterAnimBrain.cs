@@ -1094,7 +1094,8 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
         bool usePlanarRootMotion,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
-        Vector2 meleeChainWindow = default)
+        Vector2 meleeChainWindow = default,
+        Action onAccepted = null)
     {
         using var commandScope = signals.Begin();
         if (requestId <= 0)
@@ -1106,6 +1107,11 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
         if (!CanStartAnimation(executionKind == SkillExecutionKind.BasicMelee ? CharacterAnimationMode.Melee : CharacterAnimationMode.Skill, CharacterAnimationTransitionReason.NormalCommand))
             return false;
 
+        if (IsDowned || (locomotionSM.CurrentState != fullBodyReloadState &&
+            locomotionSM.CurrentState != skill && !locomotionSM.CurrentState.CanExitState)) return false;
+        try { presentation.PrepareLocomotionTransition(ResolveSkillClip(skillDef)); }
+        catch (ArgumentException) { return false; }
+        onAccepted?.Invoke();
         StopReloadAction();
         if (locomotionSM.CurrentState == skill) ForceSetLocomotionState(locomotion);
         ArmSkillRequest(
@@ -1160,6 +1166,12 @@ public sealed partial class CharacterAnimBrain : MonoBehaviour
 
         ClearActiveUtilityRequest();
         return false;
+    }
+
+    internal void StopOrdinaryActionPlayback()
+    {
+        if (IsChainPlaybackActive || IsStageIntroPlaybackActive || CutsceneDirector.IsCinematicPlaying) return;
+        CancelSkillCastRequest(_skillChannel.Request.RequestId);
     }
 
     public void CancelSkillCastRequest(int requestId)

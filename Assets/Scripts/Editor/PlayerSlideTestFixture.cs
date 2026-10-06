@@ -133,7 +133,49 @@ public sealed class PlayerSlideTestFixture
     public IEnumerator Run(string scenario)
     {
         yield return Setup(scenario == "NestedPeers" || scenario == "DashEntryNested" || scenario == "StaminaRates",
-            scenario == "RomaPrefab" || scenario == "DashEntryRoma" || scenario == "StaminaRoma");
+            scenario == "RomaPrefab" || scenario == "DashEntryRoma" || scenario == "StaminaRoma" ||
+            scenario == "ReloadRoma" || scenario == "ReloadEntryRoma");
+        if (scenario == "ReloadRoma" || scenario == "ReloadEntryRoma")
+        {
+            var weapon = ctx.WeaponSystem;
+            var gun = Own(Object.Instantiate(weapon.CurrentWeapon));
+            gun.reloadTime = 0.6f;
+            weapon.Equip(gun, null);
+            weapon.magazine = 0;
+            weapon.reserveAmmo = weapon.MagazineSize * 2;
+            Assert.That(ctx.baseStats.animProfile.reloadBodyMode,
+                Is.EqualTo(CharacterAnimProfileSO.ReloadBodyMode.UpperBody));
+            if (scenario == "ReloadEntryRoma")
+            {
+                ctx.moveInput = Vector2.up;
+                movement.SetDashHeld(true);
+                ctx.stateHub.RequestReload();
+                Assert.That(weapon.IsReloading, Is.True);
+                movement.SetCrouchHeld(true);
+                ctx.moveInput = Vector2.zero;
+            }
+            else
+            {
+                yield return BeginSlide();
+                Vector3 momentum = movement.PlanarVelocityWorld;
+                ctx.stateHub.RequestReload();
+                Assert.That(movement.PlanarVelocityWorld, Is.EqualTo(momentum));
+            }
+            Assert.That(weapon.IsReloading && movement.IsSliding, Is.True);
+            Vector3 start = root.transform.position;
+            float stamina = ctx.StaminaSystem.Current;
+            yield return new WaitForSeconds(0.15f);
+            Assert.That(weapon.IsReloading && movement.IsSliding, Is.True);
+            Assert.That(Vector3.Distance(root.transform.position, start), Is.GreaterThan(0.1f));
+            Assert.That(ctx.StaminaSystem.Current, Is.LessThan(stamina));
+            Assert.That(ctx.Visual.animancer.Layers[0].CurrentState.Clip.name, Is.EqualTo("Roma_Slide"));
+            Assert.That(ctx.AnimBrain.RootMotionActive, Is.False);
+            float deadline = Time.time + weapon.GetReloadAnimDuration() + 1f;
+            while (weapon.IsReloading && Time.time < deadline) yield return null;
+            Assert.That(weapon.IsReloading, Is.False);
+            Assert.That(weapon.CurrentAmmo, Is.EqualTo(weapon.MagazineSize), "Slide must not cancel ammo refill.");
+            yield break;
+        }
         if (scenario.StartsWith("Stamina"))
         {
             // Test-specific rates must never mutate the production CharacterStats asset.
@@ -410,6 +452,15 @@ public sealed class PlayerSlideTestFixture
             Assert.That(movement.IsSliding, Is.False);
             Assert.That(Mathf.Abs(root.transform.position.x - start.x), Is.LessThan(0.05f));
         }
+        else if (scenario == "Reload")
+        {
+            Vector3 momentum = movement.PlanarVelocityWorld;
+            ctx.stateHub.RequestReload(); // No weapon: rejected requests must also preserve Slide.
+            Assert.That(movement.IsSliding, Is.True);
+            Assert.That(movement.PlanarVelocityWorld, Is.EqualTo(momentum));
+            yield return null;
+            Assert.That(movement.IsSliding, Is.True);
+        }
         else if (scenario == "Fire")
         {
             ctx.stateHub.RequestOnFire();
@@ -470,7 +521,6 @@ public sealed class PlayerSlideTestFixture
         }
         else
         {
-            if (scenario == "Reload") ctx.stateHub.RequestReload();
             if (scenario == "Suspend") movement.AcquireSuspensionToken();
             if (scenario == "Ui") ctx.stateHub.AcquireUIStateToken(UIStateId.Inventory, "Slide test");
             if (scenario == "Stun") ctx.stateHub.SetStatusEffectControlState(ControlBlockFlags.Move, true);

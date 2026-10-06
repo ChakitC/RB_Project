@@ -11,6 +11,7 @@ public struct CharacterActionFacts
     public bool Reloading;
     public bool EmptyMagazine;
     public bool FullBodyReload;
+    public bool FullBodyReloadConfigured;
     public bool ShootBlockingPlayback;
     public bool SkillPlayback;
     public bool CanInterruptReload;
@@ -18,4 +19,12 @@ public struct CharacterActionFacts
     public bool HasDash;
     public bool HasMelee;
     public bool HasSkill;
+    public bool Paused;
+    public bool Aiming;
+    public bool Firing;
+    public bool Crouching;
+    public bool Sliding;
+    public bool RootMotion;
+    public bool ProtectedPlayback;
+    public bool MeleeCanInterruptReload;
 }

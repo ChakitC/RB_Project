@@ -59,14 +59,9 @@ public sealed class MeleeController : MonoBehaviour
         var combo = profile != null ? (meleeType == MeleeType.Light ? profile.lightMeleeSkill : profile.heavyMeleeSkill) : null;
         if (combo == null && profile != null) combo = profile.meleeSkill;
         if (combo == null || !combo.ValidateMelee(out _)) return false;
-        if (weaponSystem != null && weaponSystem.IsReloading && profile != null && !profile.meleeCanInterruptReload)
-            return false;
         CurrentMeleeType = meleeType;
         _session.Start(combo);
         if (!PlayCurrentStep()) return false;
-        weaponSystem?.CancelReload();
-        weaponSystem?.SetFiring(false);
-        stateHub.SetFireHeld(false);
         ActivityChanged?.Invoke();
         stateHub.ReportMeleeStarted(meleeType);
         return true;

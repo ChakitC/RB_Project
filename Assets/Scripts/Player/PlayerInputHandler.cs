@@ -99,7 +99,7 @@ public class PlayerInputHandler : MonoBehaviour
     public void OnAim(InputAction.CallbackContext c)
     {
         ResolveReferences();
-        if (c.performed) { ctx?.CancelSprint(); ctx?.WeaponSystem?.OnAim(true); }
+        if (c.performed) ctx?.WeaponSystem?.OnAim(true);
         if (c.canceled) ctx?.WeaponSystem?.OnAim(false);
         
     }
@@ -118,6 +118,7 @@ public class PlayerInputHandler : MonoBehaviour
         if (!c.performed)
             return;
 
+        if (ctx == null || ctx.stateHub == null || !ctx.stateHub.CanStartMelee()) return;
         ThirdPersonTargetingUtility.FacePlayerTowardSoftTarget(
             ctx,
             actionRange: meleeSearchDistance);
@@ -268,8 +269,6 @@ public class PlayerInputHandler : MonoBehaviour
             return;
 
         ResolveReferences();
-        ctx?.CancelSprint();
-        ctx?.CancelSlide();
         ctx?.SkillManager?.TryStartCastSlot(slotIndex);
     }
 
@@ -282,8 +281,6 @@ public class PlayerInputHandler : MonoBehaviour
         if (ctx?.interruptionCommand != null)
             ctx.interruptionCommand.BlockBindingLabel = c.action.GetBindingDisplayString();
         if (GlobalTimeScaleManager.Instance.IsPaused) return;
-        ctx?.CancelSprint();
-        ctx?.CancelSlide();
         ctx?.interruptionCommand?.TryExecuteBlockInput(c.time);
     }
 
@@ -320,8 +317,6 @@ public class PlayerInputHandler : MonoBehaviour
         if (ctx?.partyCommand == null)
             return;
 
-        ctx.CancelSprint();
-        ctx.CancelSlide();
         ctx.partyCommand.TryExecuteChainAttack(chainAttackDefinition);
     }
 }

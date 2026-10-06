@@ -218,11 +218,29 @@ fragment subassets; it does not reference the test fixture asset. Its definition
 ID is distinct from the example and its public ID is
 `passive.roma.stamina-momentum`.
 
-The initial live parameters match the proven example: Perfect Dash +10 stamina,
-regen bonus conversion 1:4, below-70% missing-stamina damage at 0.5% per missing
-1%, and Momentum capped at 100 with +2% next-normal-attack damage per point.
-These are the current starting balance values and can be tuned in the production
-recipe/fragments. The original example remains separate test data.
+Roma retains Perfect Dash +10 stamina, regen bonus conversion 1:4 and below-70%
+missing-stamina damage at 0.5% per missing 1%. Production Momentum now grants
+Combat Surge: each actual Stamina payment adds the amount paid, capped at 100.
+Partial charge and full readiness do not decay. The next successful normal weapon
+shot consumes 100 and activates a five-second buff: +30% reload speed and 50% less
+aim movement penalty. Failed shots, melee, Dash, reload, skills and generated shots
+do not activate it. Spending during the buff grants no Momentum; firing during it
+does not extend it. Expiry resumes accumulation from zero. Removing/disabling the
+grant clears its buff and charge; ordinary loadout refresh preserves the deadline.
+
+The recipe uses ShotCommitted, a `surge-active` variable, dynamic Equipped stat
+registrations and PassiveExpiryStep. ReloadSpeed is an appended stat with a 1.0
+baseline (+30 AddPercent gives 1.3); AimMovementPenaltyReduction is a clamped
+0-100 percentage-point stat. StatsHub interpolates the authored aim multiplier
+toward 1, so 0.6 becomes 0.8 at 50%. Firing, directional, crouch and sprint movement
+modifiers remain independent. WeaponSystem snapshots reload speed on an accepted
+reload: all magazine/per-bullet phases and animation duration divide by the same
+speed. A reload started during Surge retains that speed until completed/cancelled,
+even if Surge expires. No extra damage or fire-rate bonus comes from Momentum.
+
+Tune the production recipe directly; `RomaCombatSurgeAuthoring.Install()` reapplies
+these defaults while preserving the other three passive rules and asset identity.
+The original next-attack example remains separate regression-test data.
 ## Skill slots and preview
 
 Passives remain SkillDefinitionBase assets in CharacterStats.skillSlots, sharing
@@ -259,12 +277,16 @@ The existing `PassiveTriggered` API remains intact.
 
 Roma's production definition references
 `Assets/Character/Roma/Passive/UI/RomaPassiveHUD.prefab`. Its custom view displays
-Stamina, Momentum, the registered next-attack bonus and the grant's actual Damage
+Stamina, Momentum charge/readiness, Combat Surge time remaining and the grant's actual Damage
 AddPercent modifiers. The inner ring has a 70% presentation marker; amber follows
 the active damage bonus. Perfect Dash feedback displays the actual refund, including
 partial refunds near maximum. The two-ring artwork is editable uGUI vector geometry.
 The `momentumVariable` field binds the recipe's shared variable ID `momentum`.
 There is no gameplay formula or additional accumulator in the view.
+During Surge the Momentum ring drains with the grant deadline. `TimerChanged`
+and `GetVariableExpiryRemaining` provide presentation updates from PassiveTicker;
+the HUD adds no Update loop or independent gameplay clock. Legacy next-attack
+bindings remain supported for the original example.
 
 Create another character's view by deriving from `PassiveHudView`, assigning its
 local UI references and setting that character passive's `hudPrefab`. Subscribe and

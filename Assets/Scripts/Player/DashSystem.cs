@@ -188,11 +188,22 @@ public class DashSystem : MonoBehaviour
         SetDashing(false);
     }
 
+    bool startingDash;
     public bool TryDash()
     {
-        if (ctx == null || ctx.stateHub == null || ctx.cc == null || ctx.StaminaSystem == null || isDashing || ctx.stateHub.Isdown)
+        if (startingDash) return false;
+        startingDash = true;
+        try { return TryDashCore(); }
+        finally { startingDash = false; }
+    }
+
+    bool TryDashCore()
+    {
+        if (ctx == null || ctx.stateHub == null || ctx.cc == null || ctx.StaminaSystem == null || isDashing)
             return false;
 
+        var admission = ctx.stateHub.GetAdmission(CharacterAction.Dash);
+        if (!admission.Allowed) return false;
         if (!ctx.CanStandForDash()) return false;
 
         if (dashSetting == null)
@@ -252,6 +263,7 @@ public class DashSystem : MonoBehaviour
         if (!ctx.StaminaSystem.Spend(dashSetting.dashCost))
             return false;
 
+        ctx.stateHub.ApplyAcceptedAction(admission);
         ctx.PrepareForAcceptedDash();
 
         if (!ShouldUseBackwardDashAnimation(dashDirLocalBeforeTurn))

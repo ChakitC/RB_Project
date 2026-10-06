@@ -160,7 +160,12 @@ public sealed partial class CharacterAnimBrain
             : false;
     }
 
-    private bool TryPlayChainCutscene(int requestId, ClipTransition clip, CutsceneDef def)
+    internal bool TryPlayAcceptedChainCutscene(int requestId, CutsceneDef def, Action onAccepted)
+    {
+        return def != null && TryPlayChainCutscene(requestId, def.characterCutsceneClip, def, onAccepted);
+    }
+
+    private bool TryPlayChainCutscene(int requestId, ClipTransition clip, CutsceneDef def, Action onAccepted = null)
     {
         if (clip == null || !clip.IsValid) return false;
         if (requestId <= 0 || IsChainPlaybackActive) return false;
@@ -175,7 +180,7 @@ public sealed partial class CharacterAnimBrain
             requestAdvanceMoment: false,
             advancePointNormalized: 1f,
             usesRootMotion: UseRootMotionForChainPlayback,
-            usesPlanarRootMotion: false);
+            usesPlanarRootMotion: false, onAccepted: onAccepted);
         if (!started)
         {
             _activeChainCutsceneClip = null;
@@ -268,7 +273,8 @@ public sealed partial class CharacterAnimBrain
         bool requestAdvanceMoment,
         float advancePointNormalized,
         bool usesRootMotion,
-        bool usesPlanarRootMotion)
+        bool usesPlanarRootMotion,
+        Action onAccepted = null)
     {
         using var commandScope = signals.Begin();
         if (requestId <= 0)
@@ -280,6 +286,13 @@ public sealed partial class CharacterAnimBrain
         if (!CanStartAnimation(CharacterAnimationMode.Chain, CharacterAnimationTransitionReason.NormalCommand))
             return false;
 
+        if (onAccepted != null)
+        {
+            if (!locomotionSM.CurrentState.CanExitState) return false;
+            try { presentation.PrepareLocomotionTransition(_activeChainCutsceneClip); }
+            catch (ArgumentException) { return false; }
+            onAccepted();
+        }
         InterruptActiveSkillRequest();
         InterruptActiveUtilityRequest();
 

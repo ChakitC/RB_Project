@@ -7,6 +7,12 @@ Keep `WeaponSystem` as the facade until callers are intentionally migrated.
 Public mirror fields still exist for inspector/debug compatibility, but new
 code should read weapon state through explicit facade properties and methods.
 
+Combat Surge's `ReloadSpeed` modifier is sampled when a reload is accepted.
+WeaponSystem divides every magazine/per-bullet phase and `GetReloadAnimDuration`
+by this snapshot (1.3 for +30% speed). That reload keeps its speed if the buff
+expires; a later reload samples again. Existing `ReloadTime` modifiers still apply.
+See [Passives](PASSIVES.md) for Roma's charge, activation and expiry rules.
+
 ## Main Files
 
 - `Assets\Scripts\Player\WeaponSystem.cs`
@@ -480,15 +486,21 @@ of restarting `ShootPulse` every projectile.
 
 1. refreshes derived stats if dirty
 2. rejects when actor state blocks reload
-3. stops firing state but preserves held-fire intent
-4. rejects when already reloading or magazine is full
-5. plays empty cue when reserve ammo is unavailable
+3. rejects when already reloading or magazine is full
+4. plays empty cue and rejects when reserve ammo is unavailable; rejects unsupported reload modes
+5. applies accepted policy cancellations, stopping firing while preserving held-fire intent
 6. stops any previous reload routine
 7. starts per-bullet or full-magazine reload based on weapon config
 8. plays reload cue
 
 `CancelReload()` is responsible for stopping the reload state, animation/audio
 side effects, burst routine, and weapon instance sync.
+
+Reload and Aim now obey shared life, menu/pause, stun and Shoot-lock admission,
+including direct calls and auto-reload. Rejected reload does not stop firing or Sprint.
+TryStartFiring checks cadence and projectile launch references before canceling reload.
+Already accepted reload survives opening a menu, while stun cancels it. Closing the
+menu does not resume fire or aim automatically. Control-token composition is unchanged.
 
 A new `StateHub.RequestOnFire()` may cancel a reload when
 `WeaponSystem.CanInterruptReloadWithFire` is true: the weapon allows

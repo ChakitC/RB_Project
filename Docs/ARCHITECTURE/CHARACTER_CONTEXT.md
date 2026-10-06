@@ -17,8 +17,8 @@ CharacterAnimDriver to the Brain. Reference resolution and actor ownership remai
 query/cancellation contract. Their defaults are false/no-op. PlayerContext
 delegates to its existing `movement` binding; PlayerMovementCC owns all Sprint
 state. StateHub projects `MoveStateId.Sprint` (appended to preserve existing enum
-values) and exposes the read-only query to CharacterAnimDriver. Combat requests
-cancel Sprint before normal action admission. No extra peer lookup or prefab
+values) and exposes the read-only query to CharacterAnimDriver. Accepted combat actions
+cancel Sprint after readiness succeeds; rejected requests preserve locomotion. No extra peer lookup or prefab
 component is required. See `CHARACTER_MOVEMENT_REFACTOR_PLAN.md` for controls.
 
 `CharacteContext` is the shared base reference hub for character actors. The
@@ -282,6 +282,21 @@ History: see `CharacterContextCrossBind_Handoff.md` at the repo root for the bug
 rule and the evidence behind it.
 
 
+## Grouped Ally/Enemy consumers
+
+The six Ally/Enemy groups are sibling branches of the same actor. Helper caches
+the tree through `AllyContext.BehaviorTree`; AgentMoveDriver resolves context before
+using its StateHub binding. EnemyLevelSystem resolves its inactive owner and marks
+that context's StatsHub dirty rather than searching from the level's branch.
+EnemyDropper reads position and level through EnemyContext. StaggerMeter reads
+state, health, animation and navigation through the existing owner context, and
+only accepts a unique owner tree when no explicit tree binding exists. Its optional
+bar and navigation fallback use actor pose, not the Stats group transform.
+
+No new hub or serialized peer fields are needed. Original explicit bindings stay
+valid because native component moves retain local file IDs; variant-only systems
+remain overrides on their existing base prefab.
+
 ## Adding A Shared Module
 
 When adding a component/reference used by multiple character types:
@@ -423,11 +438,31 @@ not. Enable subscribes once and reconciles owner snapshots without reviving or
 restarting input. Before Awake, tokens and fire intent may be recorded, while
 all Can* queries reject actions. Owners releasing holds tolerate destroyed hubs.
 
-### Admission rules retained from the previous implementation
+### Unified action admission and acceptance (2026-10-06)
 
 CharacterActionPolicy evaluates a CharacterActionFacts value without side effects.
-ActionAdmissionResult reports the first rejection reason. Module-specific stamina,
-fire cadence, combo windows and ammo transactions remain in their owners.
+ActionAdmissionResult reports the first rejection reason and cancellation flags, applied
+only after owner readiness succeeds. Denied decisions have no cancellations. Precedence
+is initialization, life, UI/pause, stun/control flags, then playback/action conflicts.
+Stamina, fire cadence, combo windows and ammo transactions remain in their owners.
+
+StateHub.ApplyAcceptedAction applies the decision before start notifications and refuses
+reentrant commands during cancellation. Skill, Dash and manual Chain starts also guard
+preparation against reentry. Public owner commands and StateHub requests share the policy.
+CanContinue ignores menus and the action's own activity for accepted Reload/Skill/Melee/Block.
+Menus clear movement/fire/aim intent and Sprint/Slide. Stun cancels ordinary combat actions;
+active Chain/cinematic playback retains its existing authority. Down allows crawl/rotation;
+Dead allows neither. Root-motion and reaction displacement remain with their motor owners.
+
+The migration changes the following previously scattered behavior:
+
+| Before consolidation | Current contract |
+| --- | --- |
+| Input callbacks could cancel Sprint/Slide before a weapon/skill command was ready | Rejected starts preserve ongoing actions; cancellation occurs at owner acceptance |
+| Reload and Rotate could bypass menu admission | All new gameplay commands use the UI/pause gate, including direct owner calls |
+| Stun admission depended on individual control flags and owner cleanup | Stun denies every new action and cancels ordinary combat; protected playback keeps its priority |
+| Skill validity reused start gates during playback | Accepted casts use continuation admission, keeping their own playback and menu lifetime |
+| UpperBody Reload already coexisted with Slide | Preserved in both start orders, with Dash momentum transfer and FullBody restrictions tested |
 
 | Action | Shared restrictions and exceptions |
 | --- | --- |
@@ -435,10 +470,14 @@ fire cadence, combo windows and ammo transactions remain in their owners.
 | Dash | Alive; normal UI; no Move lock, stun, melee, dash or knockback; reload is allowed; only a successful dash cancels FullBody reload |
 | Fire request | Alive; normal UI; no Shoot lock, stun, melee, dash, knockback or blocking playback; fresh requests may cancel configured reload with loaded ammo |
 | Shoot | Same restrictions, always rejects live reload and empty magazine; WeaponSystem additionally checks weapon, cadence and launch references |
-| Reload | Alive; no blocking playback or knockback; historical menu/root/stun behavior remains; owner checks reserve/capacity |
+| Reload | Alive; normal UI; no stun, Shoot lock, melee, blocking playback or knockback; UpperBody may start during Dash; root alone permits reload; owner checks reserve/capacity/mode before stopping fire |
 | Skill | Alive; normal UI; no Skill lock, stun, melee, dash or knockback |
-| Melee | Alive; normal UI; no stun, dash, knockback or skill playback; Skill-only lock does not block basic melee; owner checks reload interrupt configuration |
-| Rotate | No stun or Rotate lock; historical life/UI freedom remains |
+| Melee | Alive; normal UI; no stun, dash, knockback or skill playback; Skill-only lock does not block basic melee; policy checks reload interrupt configuration |
+| Rotate | Alive or Down; normal UI; no stun, Rotate lock or protected playback |
+| Sprint | Locomotion restrictions plus no reload, aim, firing, crouch or slide; pending held-Dash completion may keep waiting for that Dash |
+| Crouch / Slide | Locomotion restrictions; UpperBody reload coexists; FullBody reload blocks; accepted Slide captures Dash velocity before cancellation |
+| Aim | Shared life/UI/stun rules and Shoot lock; accepted aim cancels Sprint, preserves Slide |
+| Block / Chain | Shared life/UI/stun rules; Chain uses Skill lock; existing target/window/party/presentation readiness stays with owners; accepted commands cancel Sprint/Slide |
 
 Initialized, enabled admission and required module availability are prerequisites.
 A held-fire resumption cannot cancel reload. A new request may cancel it and

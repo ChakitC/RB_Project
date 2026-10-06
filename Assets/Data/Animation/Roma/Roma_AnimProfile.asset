@@ -31,7 +31,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: 8221136704592694172, guid: 2023e436a8781b14f972fc8dd3e0f437, type: 3}
     _NormalizedStartTime: NaN
   crouchMove:
     _FadeDuration: 0.25
@@ -40,7 +40,7 @@ MonoBehaviour:
       _NormalizedTimes: []
       _Callbacks: []
       _Names: []
-    _Clip: {fileID: 0}
+    _Clip: {fileID: 6226944748583922729, guid: b053f8ccd55b9644aa4bccabb1593d79, type: 3}
     _NormalizedStartTime: NaN
   slide:
     _FadeDuration: 0.15

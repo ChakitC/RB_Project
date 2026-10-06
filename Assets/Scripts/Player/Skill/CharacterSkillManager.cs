@@ -208,8 +208,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         return slot != null &&
                slot.runtimeSkill != null &&
                skillUser != null &&
-               !CutsceneDirector.IsCinematicPlaying &&
-               !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                slot.runtimeSkill.CanCast(skillUser);
     }
@@ -239,8 +237,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
         return Loadout.HelperCommandSkillEntry.runtimeSkill != null &&
                skillUser != null &&
-               !CutsceneDirector.IsCinematicPlaying &&
-               !IsSkillStartBlockedByAnimation() &&
                !IsSkillUseBlocked() &&
                Loadout.HelperCommandSkillEntry.runtimeSkill.CanCast(skillUser);
     }
@@ -293,7 +289,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         EnsureRuntimeSkill(entry);
         if (entry == null || entry.runtimeSkill == null || entry.runtimeSkill.def == null || entry.runtimeSkill.def.IsCombo || skillUser == null)
             return false;
-        if (CutsceneDirector.IsCinematicPlaying || IsSkillStartBlockedByAnimation() || IsSkillUseBlocked())
+        if (IsSkillUseBlocked())
             return false;
         if (ignoreResourceCosts)
             return true;
@@ -486,7 +482,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (entry.runtimeSkill == null || skillUser == null)
             return false;
 
-        if (CutsceneDirector.IsCinematicPlaying || IsSkillStartBlockedByAnimation() || IsSkillUseBlocked())
+        if (IsSkillUseBlocked())
             return false;
 
         return entry.runtimeSkill.CanCast(skillUser, costPolicy, out _);
@@ -533,19 +529,15 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         SkillTargetHandle primaryTarget = null, Func<bool> additionalCanProceed = null)
     {
         CacheReferences();
+        var admission = ctx != null && ctx.stateHub != null ? ctx.stateHub.GetAdmission(CharacterAction.Skill) : new ActionAdmissionResult(ActionBlockReason.MissingModule);
+        if (!admission.Allowed) return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         if (IsPassiveSlot(slot))
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         EnsureCommandRuntimeSkill(slot);
 
-        if (CutsceneDirector.IsCinematicPlaying)
-            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
-
         if (slot == null || slot.runtimeSkill == null || skillUser == null)
-            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
-
-        if (IsSkillStartBlockedByAnimation())
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         EnsureCastOrchestrator();
@@ -558,11 +550,10 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
                 (additionalCanProceed == null || additionalCanProceed()),
             onStarted: () =>
             {
-                if (additionalCanProceed != null)
-                    StopWeaponActivityForSkillCast();
-                else
+                if (additionalCanProceed == null)
                     OnCommandSkillCastStarted(runtimeSkill);
             },
+            onAccepted: () => ctx.stateHub.ApplyAcceptedAction(admission),
             useAnimationDriver: true,
             allowImmediateFallback: true,
             debugSource: BuildSlotDebugSource(slot),
@@ -579,8 +570,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private void OnCommandSkillCastStarted(SkillInstance runtimeSkill)
     {
-        StopWeaponActivityForSkillCast();
-
         SkillGemDefinition skill = runtimeSkill?.def;
         if (skill == null ||
             skill.HelperFacingMode != SkillHelperFacingMode.FaceDetectedTargetOnCast ||
@@ -604,8 +593,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
     {
         CacheReferences();
         if (step.executionSkill == null || step.executionSkill.IsCombo || skillUser == null || animDriver == null ||
-            ctx == null || ctx.stateHub == null || !ctx.stateHub.CanStartMelee() ||
-            CutsceneDirector.IsCinematicPlaying)
+            ctx == null || ctx.stateHub == null || !ctx.stateHub.CanStartMelee())
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         CharacterSkillEntry entry = GetOrCreateExternalEntry(step.executionSkill);
@@ -613,9 +601,11 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (entry == null || entry.runtimeSkill == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
         EnsureCastOrchestrator();
+        var admission = ctx.stateHub.GetAdmission(CharacterAction.Melee);
         return castOrchestrator.TryStartCast(new SkillCastRequest(
             entry.runtimeSkill, skillUser, animDriver,
-            canProceed: () => isActiveAndEnabled && ctx != null && ctx.stateHub != null && ctx.stateHub.CanStartMelee(),
+            canProceed: () => isActiveAndEnabled && ctx != null && ctx.stateHub != null && ctx.stateHub.CanContinue(CharacterAction.Melee),
+            onAccepted: () => ctx.stateHub.ApplyAcceptedAction(admission),
             allowImmediateFallback: false, stampCooldown: false,
             costPolicy: SkillCastCostPolicy.IgnoreEnergyAndCharge,
             executionKind: SkillExecutionKind.BasicMelee, meleeType: meleeType,
@@ -643,9 +633,6 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         CacheReferences();
         EnsureRuntimeSkill(entry);
 
-        if (CutsceneDirector.IsCinematicPlaying)
-            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
-
         if (entry == null || entry.runtimeSkill == null || entry.runtimeSkill.def == null || entry.runtimeSkill.def.IsCombo || skillUser == null)
             return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
@@ -654,9 +641,8 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         // would be refused anyway, and the blocking playback we would be refused for is the very
         // animation this cast belongs to - so the guard has to stand down for that case only.
         bool attachToExternalAnimation = externalAnimationRequestId > 0;
-
-        if (!attachToExternalAnimation && IsSkillStartBlockedByAnimation())
-            return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
+        var admission = GetSkillStartAdmission(attachToExternalAnimation);
+        if (!admission.Allowed) return new SkillCastStartResult(SkillCastStartKind.Rejected, 0);
 
         EnsureCastOrchestrator();
         SkillInstance runtimeSkill = entry.runtimeSkill;
@@ -666,7 +652,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
             animationDriver: animDriver,
             canProceed: () => IsSkillEntryCastStillValid(entry, runtimeSkill) &&
                 (additionalCanProceed == null || additionalCanProceed()),
-            onStarted: StopWeaponActivityForSkillCast,
+            onAccepted: () => ctx.stateHub.ApplyAcceptedAction(admission),
             requestedId: externalAnimationRequestId,
             useAnimationDriver: !attachToExternalAnimation,
             allowImmediateFallback: true,
@@ -986,7 +972,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (slot.skillAsset != runtimeSkill.def)
             return false;
 
-        return !IsSkillUseBlocked();
+        return ctx != null && ctx.stateHub != null && ctx.stateHub.CanContinue(CharacterAction.Skill);
     }
 
     private bool IsSkillEntryCastStillValid(CharacterSkillEntry entry, SkillInstance runtimeSkill)
@@ -1000,7 +986,7 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
         if (entry.skillAsset != runtimeSkill.def)
             return false;
 
-        return !IsSkillUseBlocked();
+        return ctx != null && ctx.stateHub != null && ctx.stateHub.CanContinue(CharacterAction.Skill);
     }
 
     private static bool IsSkillEntryConfigured(CharacterSkillEntry entry)
@@ -1010,24 +996,17 @@ public class CharacterSkillManager : MonoBehaviour, IGameSaveAble, ISaveOrder
 
     private bool IsSkillUseBlocked()
     {
-        return ctx != null && ctx.stateHub != null && !ctx.stateHub.CanUseSkill();
+        return ctx == null || ctx.stateHub == null || !ctx.stateHub.CanUseSkill();
     }
 
-    private bool IsSkillStartBlockedByAnimation()
+    private ActionAdmissionResult GetSkillStartAdmission(bool attached)
     {
-        return animBrain != null && animBrain.IsShootBlockingPlaybackActive;
-    }
-
-    private void StopWeaponActivityForSkillCast()
-    {
-        if (weaponSystem == null)
-            weaponSystem = ctx != null ? ctx.WeaponSystem : GetComponent<WeaponSystem>();
-
-        weaponSystem?.SetFiring(false);
-        ctx?.stateHub?.SetFireHeld(false);
-
-        if (weaponSystem != null && weaponSystem.IsReloading)
-            weaponSystem.CancelReload();
+        if (ctx == null || ctx.stateHub == null) return new(ActionBlockReason.MissingModule);
+        if (!attached) return ctx.stateHub.GetAdmission(CharacterAction.Skill);
+        // The orchestrator verifies that this external request owns the existing playback.
+        var facts = ctx.stateHub.GetActionFacts();
+        facts.SkillPlayback = facts.ShootBlockingPlayback = false;
+        return CharacterActionPolicy.Evaluate(CharacterAction.Skill, facts);
     }
 
     private void OnCharacterDown()

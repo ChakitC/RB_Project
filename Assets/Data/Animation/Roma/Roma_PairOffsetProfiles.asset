@@ -121,3 +121,15 @@ MonoBehaviour:
       bonePath: root/c_traj/root.x/spine_01.x/spine_02.x
       localEulerOffset: {x: 81.19507, y: -48.34143, z: -51.27173}
       weight: 1
+  - enabled: 1
+    profileName: Roma_Slide + Roma_Relode
+    basePose: 0
+    upperAction: 0
+    baseClip: {fileID: 4008094416722107070, guid: 7f935d58dafaa654cb79a33eea4f5bf3, type: 3}
+    upperBodyClip: {fileID: 3744762482871154653, guid: c3112324236f1cb4295770ec4e8c8276, type: 3}
+    weight: 1
+    boneOffsets:
+    - enabled: 1
+      bonePath: root/c_traj/root.x/spine_01.x
+      localEulerOffset: {x: 77.890686, y: 0, z: -4.217163}
+      weight: 1

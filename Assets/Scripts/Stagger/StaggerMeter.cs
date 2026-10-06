@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Opsive.BehaviorDesigner.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -31,6 +32,8 @@ public sealed class StaggerMeter : MonoBehaviour
     // TODO(deprecate): Keep serialized Brain compatibility until prefabs are audited.
     [SerializeField] private CharacterAnimBrain animBrain;
     private CharacterAnimDriver animDriver;
+    private CharacteContext ctx;
+    private bool reportedAmbiguousTree;
     [SerializeField] private HealthSystem healthSystem;
     [SerializeField] private NavMeshAgent navMeshAgent;
     [SerializeField] private BehaviorTree behaviorTree;
@@ -196,6 +199,29 @@ public sealed class StaggerMeter : MonoBehaviour
 
     void ResolveRefs()
     {
+        if (ctx == null)
+            ctx = CharacterContextModuleLookup.ResolveContext(this);
+        if (ctx != null)
+        {
+            ctx.ResolveReferences();
+            if (!stateHub) stateHub = ctx.stateHub;
+            if (!animBrain) animBrain = ctx.AnimBrain;
+            if (!animDriver) animDriver = ctx.AnimDriver;
+            if (!healthSystem) healthSystem = ctx.HealthSystem;
+            if (!navMeshAgent) navMeshAgent = ctx.NavigationAgent;
+            if (!behaviorTree)
+            {
+                var trees = ctx.GetComponentsInChildren<BehaviorTree>(true)
+                    .Where(tree => CharacterContextModuleLookup.ResolveContext(tree) == ctx).ToArray();
+                if (trees.Length == 1) behaviorTree = trees[0];
+                else if (trees.Length > 1 && !reportedAmbiguousTree)
+                {
+                    reportedAmbiguousTree = true;
+                    Debug.LogError("[StaggerMeter] Multiple owner BehaviorTrees need an explicit binding.", this);
+                }
+            }
+            return;
+        }
         Transform actorRoot = ResolveActorRoot();
 
         if (!stateHub)
@@ -214,6 +240,11 @@ public sealed class StaggerMeter : MonoBehaviour
 
     Transform ResolveActorRoot()
     {
+        if (ctx != null)
+            return ctx.transform;
+        CharacteContext owner = CharacterContextModuleLookup.ResolveContext(this);
+        if (owner != null)
+            return owner.transform;
         if (stateHub != null)
             return stateHub.transform;
 
@@ -402,7 +433,7 @@ public sealed class StaggerMeter : MonoBehaviour
             resumeAgentUpdatePosition = navMeshAgent.updatePosition;
             resumeAgentUpdateRotation = navMeshAgent.updateRotation;
             resumeAgentHadPath = navMeshAgent.hasPath || navMeshAgent.pathPending;
-            resumeAgentDestination = navMeshAgent.isOnNavMesh ? navMeshAgent.destination : transform.position;
+            resumeAgentDestination = navMeshAgent.isOnNavMesh ? navMeshAgent.destination : ResolveActorRoot().position;
             agentOverrideActive = true;
         }
 
@@ -464,9 +495,9 @@ public sealed class StaggerMeter : MonoBehaviour
 
         var instance = Instantiate(
             staggerBarPrefab,
-            transform.position + Vector3.up * staggerBarHeight,
+            ResolveActorRoot().position + Vector3.up * staggerBarHeight,
             Quaternion.identity,
-            transform);
+            ResolveActorRoot());
 
         staggerBarSlider = instance.GetComponentInChildren<Slider>();
     }

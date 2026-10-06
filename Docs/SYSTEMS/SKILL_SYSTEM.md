@@ -1,5 +1,16 @@
 # Skill System
 
+## Action acceptance and continuation (2026-10-06)
+
+CharacterSkillManager obtains a CharacterActionPolicy decision before a new cast.
+SkillCastRequest.OnAccepted applies that decision once after readiness/reservation
+and animation preparation, before playback/start notifications. Rejected starts preserve
+Reload/Sprint/Slide/firing. OnStarted remains separate for post-start presentation.
+Continuation validates the same runtime skill and uses StateHub.CanContinue, so menus
+do not cancel accepted wind-ups and a cast cannot reject itself for its own playback.
+Stun/life loss still cancel ordinary casts. Later payload failure refunds resources under
+the existing settlement rules without restoring the previous character action.
+
 ## Runtime Responsibilities
 
 `CharacterSkillManager` is the component-facing API for player, AI, Helper and

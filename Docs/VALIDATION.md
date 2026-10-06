@@ -1,5 +1,210 @@
 # Validation
 
+## Roma Momentum Combat Surge (2026-10-06)
+
+- **Compilation:** required `CheckAssemblyBuild.ps1` passed with 0 errors and
+  110 warnings. The first sandbox attempt could not read the installed Windows
+  SDK directory; the approved retry passed. Unity compiled runtime and Editor
+  fixtures successfully. Existing AutodeskInteractive shadergraph import errors
+  remain unrelated to these changes.
+- **Automated tests:** EditMode `Passive` filter passed 133/133 (including typed
+  fixtures and their test-assembly wrappers). PlayMode `Passive` passed 4/4;
+  `Reload` passed 6/6. The final production Roma rerun with additional movement
+  consumer assertions passed 1/1. Evidence: `../BuildArtifacts/RomaCombatSurgeTests.json`
+  and `../BuildArtifacts/RomaCombatSurgeMovementTest.json`.
+- **Runtime checks:** the production Player/Roma loads the updated asset, retains
+  partial/full charge without attacking, rejects activation on failed shooting,
+  activates on a successful projectile, and reloads both magazine/per-bullet modes
+  in about 2 seconds versus authored 2.6 seconds. Animation duration resolves to
+  the same 2 seconds. The actual movement consumer uses aim multiplier 0.8 during
+  Surge and 0.6 after expiry. Tests verify no accumulation while active, expiry,
+  refresh retention, unequip cleanup and independent root/nested contexts.
+- **Visual checks:** inspected the ready and active HUD captures at 1920x1080;
+  labels fit and the ring changes to a countdown. Evidence:
+  `../BuildArtifacts/PassiveHud/RomaCombatSurge-ready.png` and
+  `../BuildArtifacts/PassiveHud/RomaCombatSurge-active.png`.
+  Combat balance, animation pose quality and other screen resolutions still need
+  playtesting; these tests do not establish that five seconds is the final balance.
+
+Updated passive, weapon and prefab-authoring documentation. Existing unrelated
+working-tree edits were preserved; no context lookup or character prefab changes.
+
+## Unified character action policy (2026-10-06)
+
+### Compilation
+
+`CheckAssemblyBuild.ps1` passed on the final runtime sources: **0 errors, 110 warnings**.
+Evidence: `../BuildArtifacts/ActionPolicyBuild.log`. Unity compiled the Editor/test
+assemblies; `EditorUtility.scriptCompilationFailed` is false. Console still reports
+the existing URP AutodeskInteractive shadergraph import errors. No generated projects,
+assembly definitions or validation tooling were changed.
+
+### Automated tests
+
+- Final EditMode run: **362/363 passed** across `StateHub.Tests`,
+  `SkillGemDefinition.Tests`, `PartyCommands.Tests` and `BlockReadyCue.Tests`.
+  The sole failure is the previously recorded
+  `PartyFollowUpRunnerTests.FollowUp.PartyHudTests.SeparatePrefabKeepsFourColumnsAndThreeHpOnlyAllies`
+  prefab expectation. Evidence: `../BuildArtifacts/ActionPolicyFinalEditTests.json`.
+- Final normal-time PlayMode run: **78/78 passed** across `StateHub.PlayMode.Tests`
+  and `AICombatP0.PlayMode.Tests`, with the time toolbar disabled and timeScale 1.
+  Evidence: `../BuildArtifacts/ActionPolicyFinalPlayTests.json`.
+- Slow/pause subset with the toolbar enabled at timeScale 0.1: **3/5 passed**.
+  `PlayerSlideTests.Pause` and both StateHub runtime cases passed; production
+  `ReloadRoma` and `ReloadEntryRoma` failed with the known null AvatarMask cleanup
+  exception described below. Evidence: `../BuildArtifacts/ActionPolicyFinalSlowPauseTests.json`.
+  The earlier five-case run used a disabled toolbar, which resets timeScale to 1
+  on Play entry; it is not slow-time evidence. Existing unrelated slow-time issues
+  were not changed. The original toolbar enabled/override settings, timeScale 0.1
+  and Editor play-mode options are restored after validation.
+- Policy matrices cover all appended actions, life/UI/pause/stun, individual and
+  combined control flags, rejection precedence, protected playback and both reload
+  modes. Denied results carry no cancellation flags. Runtime and cast fixtures cover
+  rejected starts, acceptance ordering/reentry, reservation settlement, menu continuation,
+  stun cancellation, persistent tokens and root/nested peers. Party command fixtures
+  now create the required StateHub; shared payload probes reset before each test.
+
+### Runtime checks and limitations
+
+The PlayMode suite exercises production Player/Roma, reload and slide in both start
+orders, FullBody reload versus accepted/rejected Dash, Dash-to-Slide momentum and
+invulnerability handoff, ceilings, held-fire resumption, UI/pause, lifecycle cleanup
+and AI combat fixtures. These are automated runtime assertions; no manual visual
+playthrough or full animation-pose review was performed.
+
+An additional `AllyEnemyPrefabGrouping.PlayMode.Tests` production reactivation run
+failed **0/1** in animation cleanup: `CharacterAnimationPresentation.DisposePresentationLayers`
+assigns a null AvatarMask, rejected by Animancer's layer mixer. This is the existing
+cleanup issue documented in the Sprint validation below, outside action-policy changes.
+The production prefab reactivation check is therefore not certified by this run.
+Evidence: `../BuildArtifacts/ActionPolicyPrefabRuntimeTests.json`.
+
+Updated Character Context, Animation Command Flow, movement, weapon, skill and melee
+docs with admission/acceptance/continuation contracts. No prefab migration, serialized
+field removal or reference-resolution changes are part of this implementation.
+
+## Reload during Slide (2026-10-06)
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed with 0 errors and 110 warnings
+  (`../BuildArtifacts/SlideReloadBuild.log`). Unity compilation passed; Console
+  still contains the existing URP AutodeskInteractive shadergraph import errors.
+- **Automated tests:** `StateHub.PlayMode.Tests` passed **67/67** with timeScale 1
+  (`../BuildArtifacts/SlideReloadPlayMode.json`). New production Roma cases cover
+  Reload during Slide and Slide during an ongoing Reload; the rejected Reload
+  request test now verifies that momentum is preserved. Existing FullBody Reload
+  movement ownership remains unchanged.
+- **Runtime checks:** production Player/Roma continues moving and spending Slide
+  stamina, keeps `Roma_Slide` on layer 0 without root motion, and completes the
+  weapon's magazine refill in both start orders. Manual upper-body pose quality
+  is not covered by these runtime assertions.
+- **Slow-time limitation:** the initial run inherited the Editor's timeScale 0.1.
+  Reload/Slide cases passed, but existing Diagonal, Duration and Sprint RomaPrefab
+  tests failed (Sprint admission, measured Slide duration, and Dash timeout).
+  The complete normal-time rerun passed. These slow-time failures are not repaired
+  by this scoped Reload change. Evidence: `../BuildArtifacts/SlideReloadSlowPlayMode.json`.
+  The user's timeScale 0.1 is restored after validation.
+
+Updated movement, animation-flow and prefab-authoring docs: UpperBody Reload and
+Slide coexist; authored FullBody Reload retains exclusive movement ownership.
+
+## Ally and Enemy prefab system grouping (2026-10-06)
+
+### Compilation
+
+Required `CheckAssemblyBuild.ps1` passed on the final runtime sources: **0 errors,
+110 warnings**. Unity compiled the Editor fixture and test assemblies; final
+`EditorUtility.scriptCompilationFailed` is false. The first final build attempt
+could not read the installed Windows SDK directories inside the shell sandbox;
+the retry with SDK access passed. Evidence: workspace-parent
+`BuildArtifacts/AllyEnemyPrefabGrouping/AssemblyBuildFinal.log`.
+
+### Prefabs and serialized data
+
+Enemy_Base, Ally_Helper and Ally_Stryker now have the six documented system groups.
+The four GameEnemy variants inherit those groups. Their four EnemyLevelSystem
+components and the two existing SpecialShootPointController components are moved
+into GamePlayStats_System and Combat_System respectively. They remain added
+component overrides with their original local file IDs. Native component moves
+were rejected by Unity's prefab-instance restructuring guard; the final migration
+changed the added-component host records and component GameObject references,
+then imported and validated each asset through Unity, without unpacking it.
+
+The final baseline audit covers all seven assets: **394 original non-Transform
+component IDs/types/values, 3,594 original non-null serialized reference records,
+412 surviving transform poses/parents, and all 163 original variant property
+overrides**. No unexpected differences were found. Asset GUIDs, nested model
+prefab sources, added-object topology and removed-object/component overrides are
+preserved. Removed transforms are the recorded obsolete system hosts/separators;
+model roots and positional anchors are retained. Previously null context bindings
+filled by resolution are listed separately in `Audit.json`.
+
+Evidence in the same artifact directory: `VariantMigration.json`, `Audit.json`,
+`ObjectAudit.json`, the seven `Before-*.json` snapshots and `Baseline/` assets.
+The temporary `__VariantMoveProbe` prefab and `GroupAllyEnemyPrefabs` Editor script
+were removed from Assets after archiving them under `ArchivedTemporary/`.
+
+### Automated tests
+
+| Run | Final result |
+| --- | --- |
+| AllyEnemyPrefabGrouping.Tests | Edit: 18/18 passed |
+| AITargetSensor.Tests | Edit: 26/26 passed |
+| AICombatP0.Tests | Edit: 13/13 passed |
+| PartyCommands.Tests | Edit: 37/37 passed |
+| PlayerPrefabGrouping.Tests | Edit: 5/5 passed |
+| Movement, formation, follow-up, DefensiveBlock and Special Shoot Point filters | Edit: 191/192 passed; HUD authoring failure below |
+| StateHub, AICombatP0, AITargetSensor, PlayerPrefabGrouping, UnifiedWeaponPassives and AllyEnemyPrefabGrouping Play Mode assemblies | 82/82 passed across final runs |
+| PartySpawnsWhenMarkerActivatesInPlayMode, isolated empty scene | 1/1 passed through the Edit runner's EnterPlayMode test |
+| PartyAuthoringAndEditModeCompositionAreValid | Failed on missing prefabs in State_1, below |
+
+Counts are runner cases, including bridges/repeated scenarios; do not sum these
+rows as unique gameplay scenarios. `Edit-Assemblies-Final.json` records the first
+five rows (99/99); `Edit-Regression-Final.json` records the 192-case filter run.
+`Play-Regression-Initial.json` records 80/81: LastObservation failed because its
+300-frame budget expired after roughly 1.5 seconds, before navigation arrived.
+Its fixture now waits up to ten real seconds with the same success assertions;
+`Play-AI-Final.json` records the complete 11/11 rerun. The other 70 Play cases
+passed in the initial run. `Play-Production-Final.json` adds the grouping case.
+
+Two broader authoring checks remain failing on unchanged assets:
+
+- `PartyHudTests.SeparatePrefabKeepsFourColumnsAndThreeHpOnlyAllies` expects the
+  separate PlayerUI_PartyHud's followUpRoot to be inactive, but it is active.
+  This also fails through its PartyFollowUp runner bridge.
+- Party scene validation logs missing legacy Enemy_N_GR_01, Enemy_N_GR_03 and
+  Enemy_NB_GR_02 prefab GUIDs while opening `State_1.unity`. These are not the
+  four migrated GameEnemy variants. See `Party-Authoring-Failures.json`.
+
+The initial broad PartySpawn run also failed when a marker was activated in the
+already populated BoosTest scene. Its isolated rerun passed; see
+`Party-Spawn-Isolated.json`. No gameplay scenes or HUD prefab were saved/changed
+to silence these failures.
+
+### Runtime checks and limits
+
+The production grouping fixture loads all seven prefabs, initializes their
+authored models, checks context-owned modules and reactivation, and verifies
+variant level changes reach the sibling Dropper. Rector and M_GR_01 start real
+Special Shoot Point rounds using their authored profiles/anchors, reach Active
+with hittable points, and cancel successfully. AI and locomotion suites exercise
+navigation, tree lifecycle, movement ownership, slow/pause, reload, party control
+and Player regressions. Grouping tests preserve owner motor/StateHub identity:
+Enemy_Base's existing Mons_GR01_MaleData model reference spawns an entire M_GR_01
+actor under VisualModel, whose separate motor must not be counted as the base's.
+That existing model configuration was retained rather than changing prefab data.
+
+This is automated runtime acceptance, not a visual combat playthrough. The
+isolated production/party fixtures report missing visual aim maps/VFX, hand
+bindings, absent SaveManager/NavMesh, and duplicate audio-listener warnings.
+Visual hiding, full production combat presentation and every gameplay scene are
+not certified. The existing URP AutodeskInteractive shadergraph error remains.
+Unity also crashed once while reading animation data after the first Edit run;
+the Editor reconnected and subsequent validation completed.
+
+Final state: Play Mode stopped, original clean `RectorDefensiveBlock.unity`
+restored, toolbar enable/override settings and time scale **0.1** restored, and
+the Test Runner's Enter Play Mode option change reverted to its original value.
+
 ## Player prefab system grouping (2026-10-05)
 
 - **Compilation:** CheckAssemblyBuild.ps1 passed on the final runtime sources:

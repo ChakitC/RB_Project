@@ -47,6 +47,7 @@ public sealed class SkillCastOrchestrator
 
     private PendingCastContext pendingCast;
     private int nextCastRequestId = 1;
+    private bool startingCast;
 
     public SkillCastOrchestrator(Component owner) : this(owner, new SkillChargeRegistry())
     {
@@ -124,6 +125,14 @@ public sealed class SkillCastOrchestrator
 
     public SkillCastStartResult TryStartCast(in SkillCastRequest request)
     {
+        if (startingCast) return Rejected();
+        startingCast = true;
+        try { return StartCast(request); }
+        finally { startingCast = false; }
+    }
+
+    private SkillCastStartResult StartCast(in SkillCastRequest request)
+    {
         if (pendingCast != null)
             return Rejected();
 
@@ -158,6 +167,14 @@ public sealed class SkillCastOrchestrator
             return Rejected();
         }
 
+        bool accepted = false;
+        Action onAccepted = request.OnAccepted;
+        void Accept()
+        {
+            if (accepted) return;
+            accepted = true;
+            onAccepted?.Invoke();
+        }
         try
         {
             if (request.UseAnimationDriver && executionAnimDriver != null)
@@ -185,7 +202,7 @@ public sealed class SkillCastOrchestrator
                     context.SkillDef,
                     context.CastPointNormalized,
                     context.TimelineEventNames,
-                    request.UsePlanarRootMotion, request.ExecutionKind, request.MeleeChainWindow);
+                    request.UsePlanarRootMotion, request.ExecutionKind, request.MeleeChainWindow, Accept);
 
                 if (started)
                 {
@@ -232,6 +249,7 @@ public sealed class SkillCastOrchestrator
                 return Rejected();
             }
 
+            Accept();
             request.OnStarted?.Invoke();
 
             ActiveSkillCastInfo immediateInfo = new ActiveSkillCastInfo(

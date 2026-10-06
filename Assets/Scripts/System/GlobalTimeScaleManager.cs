@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 public sealed class GlobalTimeScaleManager : MonoBehaviour
 {
     static GlobalTimeScaleManager _instance;
+    public static bool IsCurrentlyPaused => _instance != null && _instance.IsPaused;
 
     [SerializeField] AnimationCurve _defaultHitLagShape;
 

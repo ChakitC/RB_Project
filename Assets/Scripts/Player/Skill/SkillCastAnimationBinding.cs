@@ -18,8 +18,8 @@ internal sealed class SkillCastAnimationBinding
 
     public bool TryPlaySkill(CharacterAnimDriver driver, int id, SkillGemDefinition skill,
         float castPoint, List<CombatTimelineEventName> events, bool planarRootMotion,
-        SkillExecutionKind executionKind, Vector2 meleeChainWindow)
-        => driver.TryPlaySkill(id, skill, castPoint, events, planarRootMotion, executionKind, meleeChainWindow);
+        SkillExecutionKind executionKind, Vector2 meleeChainWindow, Action onAccepted = null)
+        => driver.TryPlaySkill(id, skill, castPoint, events, planarRootMotion, executionKind, meleeChainWindow, onAccepted);
 
     public bool HasActiveExecutionContext(CharacterAnimDriver driver, int id)
         => driver != null && driver.Brain != null && id > 0 &&

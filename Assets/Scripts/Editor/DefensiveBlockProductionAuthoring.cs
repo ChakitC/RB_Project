@@ -70,14 +70,16 @@ public static class DefensiveBlockProductionAuthoring
             EditPrefab(path, root =>
             {
                 var ctx = root.GetComponentInChildren<AllyContext>(true);
-                if (ctx.GetComponent<DefensiveBlockController>() == null) ctx.gameObject.AddComponent<DefensiveBlockController>();
+                ctx.ResolveReferences();
+                if (ctx.DefensiveBlock == null) CombatHost(ctx, "Ally").AddComponent<DefensiveBlockController>();
                 ctx.ResolveReferences();
             });
         EditPrefab(RectorPath, root =>
         {
             var ctx = root.GetComponentInChildren<EnemyContext>(true);
             ctx.baseStats = AssetDatabase.LoadAssetAtPath<CharacterStats>("Assets/Scripts/CharacterStats/Enemy/Stats_NB_GR_02_Rector.asset");
-            if (ctx.GetComponent<DefensiveBlockAttack>() == null) ctx.gameObject.AddComponent<DefensiveBlockAttack>();
+            ctx.ResolveReferences();
+            if (ctx.DefensiveBlockAttack == null) CombatHost(ctx, "Enemy").AddComponent<DefensiveBlockAttack>();
             ctx.ResolveReferences();
             if (ctx.KnockbackMotor != null)
             {
@@ -87,6 +89,19 @@ public static class DefensiveBlockProductionAuthoring
             }
         });
         foreach (var asset in new UnityEngine.Object[] { actor, aires.animProfile, skill, aires }) AssetDatabase.SaveAssetIfDirty(asset);
+    }
+
+    static GameObject CombatHost(CharacteContext ctx, string kind)
+    {
+        var systems = ctx.transform.Find("------------ " + kind + "_System ------------");
+        var combat = systems != null ? systems.Find("Combat_System") : null;
+        if (systems == null) return ctx.gameObject;
+        if (combat == null)
+        {
+            combat = new GameObject("Combat_System").transform;
+            combat.SetParent(systems, false);
+        }
+        return combat.gameObject;
     }
 
     static T GetOrCreate<T>(string name) where T : ScriptableObject

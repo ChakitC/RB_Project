@@ -770,6 +770,19 @@ public class StatsHub : MonoBehaviour
             Mathf.Max(0f, baseDuration)));
     }
 
+    public float GetReloadSpeedMultiplier()
+    {
+        EnsureCacheFresh(GetCurrentWeapon());
+        return Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadSpeed, 1f));
+    }
+
+    public float GetAimMovementMultiplier(float baseMultiplier)
+    {
+        EnsureCacheFresh(GetCurrentWeapon());
+        float reduction = Mathf.Clamp01(ApplyStatusModifiers(_modifierBuffer, StatType.AimMovementPenaltyReduction, 0f) * 0.01f);
+        return Mathf.Lerp(baseMultiplier, 1f, reduction);
+    }
+
     public float GetStability(GunConfig w)
     {
         GunConfig current = GetCurrentWeapon();

@@ -388,7 +388,8 @@ public sealed class CharacterAnimDriver : MonoBehaviour
         IReadOnlyList<CombatTimelineEventName> timelineEventNames,
         bool usePlanarRootMotion,
         SkillExecutionKind executionKind = SkillExecutionKind.StandardSkill,
-        Vector2 meleeChainWindow = default)
+        Vector2 meleeChainWindow = default,
+        System.Action onAccepted = null)
     {
         return CanIssueCommand(nameof(TryPlaySkill)) &&
                brain.TryPlaySkill(
@@ -396,7 +397,7 @@ public sealed class CharacterAnimDriver : MonoBehaviour
                    skillDef,
                    castPointNormalized,
                    timelineEventNames,
-                   usePlanarRootMotion, executionKind, meleeChainWindow);
+                   usePlanarRootMotion, executionKind, meleeChainWindow, onAccepted);
     }
 
     public bool TryPlayUtilityWarpOut(int requestId)
@@ -503,6 +504,12 @@ public sealed class CharacterAnimDriver : MonoBehaviour
     {
         return CanIssueCommand(nameof(TryPlayChainCutscene)) &&
                brain.TryPlayChainCutscene(requestId, cutsceneDef);
+    }
+
+    internal bool TryPlayAcceptedChainCutscene(int requestId, CutsceneDef cutsceneDef, System.Action onAccepted)
+    {
+        return CanIssueCommand(nameof(TryPlayChainCutscene)) &&
+               brain.TryPlayAcceptedChainCutscene(requestId, cutsceneDef, onAccepted);
     }
 
     public bool TryPlayChainCutscene(int requestId, Animancer.ClipTransition clip)

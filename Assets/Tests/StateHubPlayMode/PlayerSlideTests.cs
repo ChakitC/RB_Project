@@ -30,6 +30,8 @@ public sealed class PlayerSlideTests
     [UnityTest] public IEnumerator AngledWall() => PlayerLocomotionTestRunner.Run("AngledWall");
     [UnityTest] public IEnumerator Fire() => PlayerLocomotionTestRunner.Run("Fire");
     [UnityTest] public IEnumerator Reload() => PlayerLocomotionTestRunner.Run("Reload");
+    [UnityTest] public IEnumerator ReloadRoma() => PlayerLocomotionTestRunner.Run("ReloadRoma");
+    [UnityTest] public IEnumerator ReloadEntryRoma() => PlayerLocomotionTestRunner.Run("ReloadEntryRoma");
     [UnityTest] public IEnumerator Suspend() => PlayerLocomotionTestRunner.Run("Suspend");
     [UnityTest] public IEnumerator Ui() => PlayerLocomotionTestRunner.Run("Ui");
     [UnityTest] public IEnumerator Stun() => PlayerLocomotionTestRunner.Run("Stun");

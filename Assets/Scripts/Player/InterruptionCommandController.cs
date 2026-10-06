@@ -165,6 +165,27 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
 
     public InterruptionCommandResult TryExecuteInterruptionCommand()
     {
+        if (blockCommandActive || playerContext == null || playerContext.stateHub == null)
+            return InterruptionCommandResult.SkillRejected;
+        blockAdmission = playerContext.stateHub.GetAdmission(CharacterAction.Block);
+        if (!blockAdmission.Allowed) return InterruptionCommandResult.SkillRejected;
+        blockCommandActive = true;
+        blockCommandAccepted = false;
+        try { return ExecuteInterruptionCommand(); }
+        finally { blockCommandActive = false; }
+    }
+
+    bool blockCommandActive, blockCommandAccepted;
+    ActionAdmissionResult blockAdmission;
+    internal void AcceptBlockCommand()
+    {
+        if (!blockCommandActive || blockCommandAccepted) return;
+        blockCommandAccepted = true;
+        playerContext.stateHub.ApplyAcceptedAction(blockAdmission);
+    }
+
+    InterruptionCommandResult ExecuteInterruptionCommand()
+    {
         if (ActiveCooperativeBlock != null)
         {
             return ActiveCooperativeBlock.Press() ? InterruptionCommandResult.Success : InterruptionCommandResult.SkillRejected;
@@ -273,6 +294,7 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
 
         string playerName = playerContext != null ? playerContext.transform.name : name;
         string targetName = targetCtx.Transform != null ? targetCtx.Transform.name : "<unknown>";
+        AcceptBlockCommand();
         CommandStarted?.Invoke(new InterruptionCommandExecution
         {
             AllyName = playerName,
@@ -339,6 +361,7 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
 
         string allyName = allyMember.TransformRef != null ? allyMember.TransformRef.name : allyMember.name;
         string targetName = targetCtx.Transform != null ? targetCtx.Transform.name : "<unknown>";
+        AcceptBlockCommand();
         CommandStarted?.Invoke(new InterruptionCommandExecution
         {
             AllyName = allyName,
@@ -525,6 +548,7 @@ public sealed partial class InterruptionCommandController : MonoBehaviour
 
     InterruptionCommandResult Finish(int attemptId, InterruptionCommandResult result, string details)
     {
+        if (result == InterruptionCommandResult.Success) AcceptBlockCommand();
         LogDefensiveBlock($"Attempt {attemptId} result={result}; {details}");
         CommandFinished?.Invoke(result);
         bool warning = result == InterruptionCommandResult.MissingConfiguration

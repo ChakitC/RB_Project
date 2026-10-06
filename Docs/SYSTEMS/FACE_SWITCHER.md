@@ -1,5 +1,21 @@
 # Face Switcher Visibility
 
+## Cycles on selector curves (add-on 2.7.1)
+
+ARP Action export accepts Constant face selectors with Cycles in Repeat/Mirror
+mode, including finite counts, disabled before/after cycling and restricted ranges.
+It evaluates these curves throughout the actual export range at ARP's sampling
+step and embeds discrete Visibility keys. Ordinary curves keep exact key times.
+Source curves/modifiers are not changed. Muted modifiers are ignored. Active
+non-Cycles modifiers and Repeat with Offset report specific errors. Evaluated
+fractional/unknown IDs and overlapping groups report the affected frame.
+
+`tests/test_cycles.py` checks evaluated tracks against Blender, including cycles
+outside the original key range and fractional sampling. `test_cycles_arp_live.py`
+exports the existing Roma action and a disposable looping action copy to artifacts,
+then checks the sidecar and embedded FBX visibility values/Constant flags and source
+preservation. Tests run through the existing Blender MCP instance.
+
 ## Exclusive expression groups (add-on 2.7.0)
 
 Selecting an expression activates its group and sets all other selectors to -1

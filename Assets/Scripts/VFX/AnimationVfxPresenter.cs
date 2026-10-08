@@ -24,14 +24,22 @@ public readonly struct AnimationVfxSessionToken : IEquatable<AnimationVfxSession
 [DisallowMultipleComponent]
 public sealed class AnimationVfxPresenter : MonoBehaviour
 {
+    readonly struct ActiveLoop
+    {
+        public readonly VfxLease Lease;
+        public readonly VfxSessionEndMode EndMode;
+        public ActiveLoop(GameObject instance, IAnimationVfxCue cue)
+        { Lease = new VfxLease(instance); EndMode = cue.SessionEndMode; }
+    }
+
     sealed class Session
     {
         public readonly IAnimationVfxCueSource Source;
         public readonly AnimationVfxAnchorContext Anchors;
         public readonly int LayerOverride;
         public readonly bool UseWorldTimeScale;
-        public readonly Dictionary<string, List<GameObject>> ActiveLoops =
-            new Dictionary<string, List<GameObject>>(StringComparer.Ordinal);
+        public readonly Dictionary<string, List<ActiveLoop>> ActiveLoops =
+            new Dictionary<string, List<ActiveLoop>>(StringComparer.Ordinal);
 
         public Session(
             IAnimationVfxCueSource source,
@@ -161,23 +169,24 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
         Transform anchor = AnimationVfxAnchorResolver.Resolve(session.Anchors, cue);
         AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out Vector3 position, out Quaternion rotation);
-        GameObject instance = spawner.SpawnVfx(
-            cue.Prefab,
-            position,
-            rotation,
-            cue.ExtraLife,
-            minimumLifetime: GetAnimClipLifetime(cue.AnimClip));
-        if (instance == null)
-            return;
-
-        if (session.LayerOverride >= 0)
-            SetLayerRecursive(instance.transform, session.LayerOverride);
-        SetWorldTimeScaleMode(instance, session.UseWorldTimeScale);
-
-        ApplyFollowMode(instance, anchor, cue);
-
-        ApplyScale(instance, cue.LocalScale);
+        GameObject instance = spawner.SpawnVfx(cue.Prefab, position, rotation, cue.ExtraLife,
+            minimumLifetime: GetAnimClipLifetime(cue.AnimClip),
+            lifetimeMode: cue.LifetimeMode, explicitLifetime: cue.ExplicitLifetime,
+            useWorldTimeScale: session.UseWorldTimeScale,
+            configure: spawned => ConfigureInstance(spawned, session, anchor, cue));
         PlayAnimClip(instance, cue.AnimClip);
+    }
+
+    static void ConfigureInstance(GameObject instance, Session session, Transform anchor, IAnimationVfxCue cue)
+    {
+        if (anchor != null) instance.GetComponent<PooledVfxHandle>().SetOwnerScene(anchor.gameObject.scene.handle);
+        if (session.LayerOverride >= 0) SetLayerRecursive(instance.transform, session.LayerOverride);
+        if (anchor != null && cue.Action == AnimationVfxAction.StartLoop &&
+            cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor &&
+            cue.Anchor != AnimationVfxAnchor.GenericBone && cue.SessionEndMode == VfxSessionEndMode.FinishParticles)
+            instance.transform.localScale = Vector3.Scale(instance.transform.localScale, anchor.lossyScale);
+        ApplyScale(instance, cue.LocalScale);
+        ApplyFollowMode(instance, anchor, cue);
     }
 
     void StartLoop(Session session, IAnimationVfxCue cue)
@@ -192,30 +201,22 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         string key = cue.LoopKey.Trim();
         Transform anchor = AnimationVfxAnchorResolver.Resolve(session.Anchors, cue);
         AnimationVfxAnchorResolver.ResolvePose(anchor, cue, out Vector3 position, out Quaternion rotation);
-        bool usesGenericBoneFollower = UsesGenericBoneFollower(cue);
-        Transform parent = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor && !usesGenericBoneFollower
-            ? anchor
-            : null;
-        GameObject instance = spawner.SpawnLoopingVfx(cue.Prefab, position, rotation, parent);
-        if (instance == null)
-            return;
-
-        if (usesGenericBoneFollower)
-            ConfigureGenericBoneFollower(instance, anchor, cue);
-        SetWorldTimeScaleMode(instance, session.UseWorldTimeScale);
-        ApplyScale(instance, cue.LocalScale);
+        Transform parent = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor &&
+            !UsesGenericBoneFollower(cue) && cue.SessionEndMode == VfxSessionEndMode.Immediate ? anchor : null;
+        GameObject instance = spawner.SpawnLoopingVfx(cue.Prefab, position, rotation,
+            parent: parent,
+            useWorldTimeScale: session.UseWorldTimeScale,
+            configure: spawned => ConfigureInstance(spawned, session, anchor, cue));
+        if (instance == null) return;
         PlayAnimClip(instance, cue.AnimClip);
 
-        if (!session.ActiveLoops.TryGetValue(key, out List<GameObject> instances))
+        if (!session.ActiveLoops.TryGetValue(key, out List<ActiveLoop> instances))
         {
-            instances = new List<GameObject>();
+            instances = new List<ActiveLoop>();
             session.ActiveLoops.Add(key, instances);
         }
 
-        if (session.LayerOverride >= 0)
-            SetLayerRecursive(instance.transform, session.LayerOverride);
-
-        instances.Add(instance);
+        instances.Add(new ActiveLoop(instance, cue));
     }
 
     void StopLoop(Session session, string loopKey, bool allowParticlesToFinish, float extraLife)
@@ -224,12 +225,12 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
             return;
 
         string key = loopKey.Trim();
-        if (!session.ActiveLoops.TryGetValue(key, out List<GameObject> instances))
+        if (!session.ActiveLoops.TryGetValue(key, out List<ActiveLoop> instances))
             return;
 
         session.ActiveLoops.Remove(key);
         for (int i = 0; i < instances.Count; i++)
-            StopLoopInstance(instances[i], allowParticlesToFinish, extraLife);
+            instances[i].Lease.Stop(allowParticlesToFinish, extraLife);
     }
 
     void StopAllLoops(Session session)
@@ -237,26 +238,14 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         if (session == null || session.ActiveLoops.Count == 0)
             return;
 
-        var groups = new List<List<GameObject>>(session.ActiveLoops.Values);
+        var groups = new List<List<ActiveLoop>>(session.ActiveLoops.Values);
         session.ActiveLoops.Clear();
         for (int i = 0; i < groups.Count; i++)
         {
-            List<GameObject> instances = groups[i];
+            List<ActiveLoop> instances = groups[i];
             for (int j = 0; j < instances.Count; j++)
-                StopLoopInstance(instances[j], allowParticlesToFinish: false, extraLife: 0f);
+                instances[j].Lease.Stop(instances[j].EndMode == VfxSessionEndMode.FinishParticles);
         }
-    }
-
-    void StopLoopInstance(GameObject instance, bool allowParticlesToFinish, float extraLife)
-    {
-        if (instance == null)
-            return;
-
-        VfxSpawner spawner = VfxSpawner.Instance;
-        if (spawner != null)
-            spawner.StopLoopingVfx(instance, allowParticlesToFinish, extraLife);
-        else
-            Destroy(instance);
     }
 
     static void SetLayerRecursive(Transform t, int layer)
@@ -264,16 +253,6 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
         t.gameObject.layer = layer;
         foreach (Transform child in t)
             SetLayerRecursive(child, layer);
-    }
-
-    static void SetWorldTimeScaleMode(GameObject instance, bool useWorldTimeScale)
-    {
-        if (instance == null)
-            return;
-
-        WorldTimeScaledVfx scaler = instance.GetComponent<WorldTimeScaledVfx>();
-        if (scaler != null)
-            scaler.SetUseWorldTimeScale(useWorldTimeScale);
     }
 
     static void ApplyScale(GameObject instance, Vector3 scaleMultiplier)
@@ -290,6 +269,13 @@ public sealed class AnimationVfxPresenter : MonoBehaviour
 
         if (UsesGenericBoneFollower(cue))
             ConfigureGenericBoneFollower(instance, anchor, cue);
+        else if (cue.Action == AnimationVfxAction.StartLoop && cue.SessionEndMode == VfxSessionEndMode.FinishParticles)
+        {
+            var follower = instance.GetComponent<AnimationVfxFollowAnchor>();
+            if (follower == null) follower = instance.AddComponent<AnimationVfxFollowAnchor>();
+            follower.enabled = true;
+            follower.Configure(anchor, cue.LocalPosition, Quaternion.Euler(cue.LocalEulerAngles), followScale: true);
+        }
         else
             instance.transform.SetParent(anchor, true);
     }

@@ -652,6 +652,20 @@ public class SetAnimationVfxData : MonoBehaviour
 #endif
     }
 
+    public void CompleteTimelineVfxPreviewSession()
+    {
+#if UNITY_EDITOR
+        foreach (var entry in timelinePreviewEntries)
+            if (entry != null) entry.CompleteSessionVisualPreview();
+        timelinePreviewEntries.Clear();
+        nextTimelinePreviewEntries.Clear();
+        timelinePreviewSamples.Clear();
+        timelinePreviewLoopGroups.Clear();
+        activePreviewLoops.Clear();
+        timelinePreviewModeActive = false;
+#endif
+    }
+
     public void SampleTimelineVfx(
         float playheadTime,
         IReadOnlyList<float> markerTimes,

@@ -77,12 +77,16 @@ public enum PassiveActionType
 [Serializable]
 public sealed class PassiveStatModifier
 {
+    [Sirenix.OdinInspector.ValidateInput(nameof(HasValidScope), "WeaponOnly is not supported for this stat.")]
+    public StatModifierScope scope;
+    [NonSerialized] public string weaponInstanceId;
+    bool HasValidScope() => StatModifierRules.IsValidScope(statType, scope);
     [Tooltip("Stat affected by this modifier. Stability is authored as a final percentage from 0 to 100.")]
     public StatType statType;
 
     [Tooltip("For Stability, Flat adds percentage points. Example: 30 Stability + 10 Flat = 40%.")]
     public ModifierOp operation = ModifierOp.Flat;
 
-    [Tooltip("For Stability with Flat, enter percentage points rather than a 0-1 ratio.")]
+    [Tooltip(StatModifierRules.ValueTooltip)]
     public float value;
 }

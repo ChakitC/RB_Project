@@ -65,8 +65,13 @@ MonoBehaviour:
   perBulletInsertTime: 0
   endInsertDelay: 0
   shootInterruptsReload: 0
-  baseSwaySpeed: 20
-  baseMaxSwayAngle: 5
-  baseReturnSpeed: 1
+  hipSpreadDegrees: 2.2
+  aimSpreadDegrees: 0.35
+  moveSpreadPenaltyDegrees: 1
+  spreadPerShotDegrees: 0.45
+  maximumSpreadBloomDegrees: 3
+  spreadRecoveryDegreesPerSecond: 3.5
+  cameraRecoilPitch: 1.1
+  cameraRecoilYaw: 0.45
   burstCount: 3
   burstInterval: 0.08

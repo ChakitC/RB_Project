@@ -8,9 +8,53 @@
                 "xp": 0,
                 "unlocked": false,
                 "selectedSkillOptions": [],
-                "skillPoints": 29,
+                "skillPoints": 17,
                 "skillProgressInitialized": true,
-                "activeSkillTrees": [],
+                "activeSkillTrees": [
+                    {
+                        "slotId": "roma.passive.stamina-momentum",
+                        "optionId": "roma.stamina-momentum",
+                        "treeId": "roma.passive.stamina-momentum.tree.v1",
+                        "unlockedNodes": [
+                            {
+                                "nodeId": "roma.passive.perfect-recovery",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.fast-hands",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.deep-reserve",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.desperate-power",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.mobile-aim",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.stamina-reserve",
+                                "paidCost": 1
+                            },
+                            {
+                                "nodeId": "roma.passive.slip-reload",
+                                "paidCost": 2
+                            },
+                            {
+                                "nodeId": "roma.passive.keep-the-pressure",
+                                "paidCost": 2
+                            },
+                            {
+                                "nodeId": "roma.passive.redline",
+                                "paidCost": 2
+                            }
+                        ]
+                    }
+                ],
                 "combatLoadoutMigrationVersion": 0
             }
         },

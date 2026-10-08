@@ -480,6 +480,7 @@ public class StatsHub : MonoBehaviour
             hash = CombineHash(hash, GetCharacterMaxStaminaBase());
             hash = CombineHash(hash, GetCharacterMaxEnergyBase());
 
+            hash = CombineHash(hash, GetWeaponInstanceId(w));
             hash = CombineHash(hash, w ? w.GetInstanceID() : 0);
             hash = CombineHash(hash, w ? w.damage : 0f);
             hash = CombineHash(hash, w ? w.critRate : 0f);
@@ -518,6 +519,8 @@ public class StatsHub : MonoBehaviour
                 hash = CombineHash(hash, (int)modifier.Operation);
                 hash = CombineHash(hash, modifier.Value);
                 hash = CombineHash(hash, modifier.ModifierKey);
+                hash = CombineHash(hash, (int)modifier.Scope);
+                hash = CombineHash(hash, modifier.WeaponInstanceId);
             }
 
             return hash;
@@ -551,7 +554,8 @@ public class StatsHub : MonoBehaviour
             CharacterMaxHealth = GetCharacterMaxHealthBase(),
             CharacterMaxStamina = GetCharacterMaxStaminaBase(),
             CharacterMaxEnergy = GetCharacterMaxEnergyBase(),
-            Weapon = w
+            Weapon = w,
+            WeaponInstanceId = GetWeaponInstanceId(w)
         };
     }
 
@@ -623,70 +627,27 @@ public class StatsHub : MonoBehaviour
         return null;
     }
 
-    float GetDamageInternal(GunConfig w)
+    string GetWeaponInstanceId(GunConfig w)
     {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.Damage, (w ? w.damage : 0f) + GetCharacterDamageBase()));
+        return w != null && weapon != null && weapon.CurrentWeapon == w
+            ? weapon.CurrentWeaponInstance?.instanceId : null;
     }
 
-    float GetCritRatePercentInternal(GunConfig w)
+    CharacterStatTotals GetWeaponTotals(GunConfig w)
     {
         EnsureCacheFresh(GetCurrentWeapon());
-        float baseValue = (w ? w.critRate : 0f) + GetCharacterCritRateBase();
-        return Mathf.Clamp(ApplyStatusModifiers(_modifierBuffer, StatType.CritRate, baseValue), 0f, 100f);
+        return CharacterStatFormula.Compute(BuildStatInputs(w), _modifierBuffer);
     }
 
-    float GetCritMultiplierInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        float weaponMult = w ? Mathf.Max(1f, w.critMultiplier) : BASE_CRIT_MULT;
-        float charBonus = GetCharacterCritMultiplierBase() - BASE_CRIT_MULT;
-        return Mathf.Max(1f, ApplyStatusModifiers(_modifierBuffer, StatType.CritMultiplier, weaponMult + charBonus));
-    }
-
-    float GetFireIntervalInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.FireInterval, w ? w.fireRate : 0f));
-    }
-
-    float GetReloadTimeInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadTime, w ? w.reloadTime : 0f));
-    }
-
-    float GetStabilityInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Clamp(
-            ApplyStatusModifiers(_modifierBuffer, StatType.Stability, w ? w.stability : 0f),
-            MIN_STABILITY_PERCENT,
-            MAX_STABILITY_PERCENT);
-    }
-
-    float GetBulletSpeedInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(_modifierBuffer, StatType.BulletSpeed, w ? w.BulletSpeed : 0f));
-    }
-
-    int GetMaxMagazineInternal(GunConfig w)
-    {
-        EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxMagazine, w ? w.maxMagazine : 0f)));
-    }
-
-    int GetMaxReserveAmmoInternal(GunConfig w)
-    {
-        if (!w || w.infiniteReserveAmmo)
-            return 0;
-
-        EnsureCacheFresh(GetCurrentWeapon());
-        int maxMagazine = GetMaxMagazine(w);
-        int baseValue = WeaponInstanceFactory.ResolveMaxReserveAmmo(w, maxMagazine);
-        return Mathf.Max(0, Mathf.RoundToInt(ApplyStatusModifiers(_modifierBuffer, StatType.MaxReserveAmmo, baseValue)));
-    }
+    float GetDamageInternal(GunConfig w) => GetWeaponTotals(w).Damage;
+    float GetCritRatePercentInternal(GunConfig w) => GetWeaponTotals(w).CritRatePercent;
+    float GetCritMultiplierInternal(GunConfig w) => GetWeaponTotals(w).CritMultiplier;
+    float GetFireIntervalInternal(GunConfig w) => GetWeaponTotals(w).FireInterval;
+    float GetReloadTimeInternal(GunConfig w) => GetWeaponTotals(w).ReloadTime;
+    float GetStabilityInternal(GunConfig w) => GetWeaponTotals(w).Stability;
+    float GetBulletSpeedInternal(GunConfig w) => GetWeaponTotals(w).BulletSpeed;
+    int GetMaxMagazineInternal(GunConfig w) => GetWeaponTotals(w).MaxMagazine;
+    int GetMaxReserveAmmoInternal(GunConfig w) => GetWeaponTotals(w).MaxReserveAmmo;
 
     public GunConfig CurrentWeapon => GetCurrentWeapon();
 
@@ -763,17 +724,20 @@ public class StatsHub : MonoBehaviour
 
     public float GetReloadDuration(float baseDuration)
     {
+        return GetReloadDuration(baseDuration, GetCurrentWeapon());
+    }
+
+    public float GetReloadDuration(float baseDuration, GunConfig w)
+    {
         EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0f, ApplyStatusModifiers(
-            _modifierBuffer,
-            StatType.ReloadTime,
-            Mathf.Max(0f, baseDuration)));
+        return Mathf.Max(0f, CharacterStatFormula.ApplyWeaponModifiers(_modifierBuffer, StatType.ReloadTime,
+            Mathf.Max(0f, baseDuration), weaponInstanceId: GetWeaponInstanceId(w), hasWeapon: w != null));
     }
 
     public float GetReloadSpeedMultiplier()
     {
         EnsureCacheFresh(GetCurrentWeapon());
-        return Mathf.Max(0.01f, ApplyStatusModifiers(_modifierBuffer, StatType.ReloadSpeed, 1f));
+        return Mathf.Max(0.01f, CharacterStatFormula.ApplyWeaponModifiers(_modifierBuffer, StatType.ReloadSpeed, 1f, weaponInstanceId: GetWeaponInstanceId(GetCurrentWeapon()), hasWeapon: GetCurrentWeapon() != null));
     }
 
     public float GetAimMovementMultiplier(float baseMultiplier)

@@ -118,6 +118,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957242
@@ -174,6 +175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.ExecutionFeed.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.execution_feed.v1
   displayName: Execution Feed
   description: Execution Feed

@@ -15,7 +15,7 @@ public sealed class CooperativeBlockSession
     DefensiveBlockApproachMotor motor;
     CooperativeBlockMeter meter;
     GameplayCameraController camera;
-    GameObject contactVfx;
+    VfxLease contactVfx;
     PlayerScreenEffectHandle struggleWind;
     GlobalTimeScaleManager clock;
     TimeSlowManager slow;
@@ -146,7 +146,7 @@ public sealed class CooperativeBlockSession
                     Vector3 windDirection = caster.transform.position - Player.transform.position;
                     struggleWind = Player.UIManager?.BeginScreenWindFullscreenEffect(windDirection, settings.duration);
                     Vector3 contactPoint = (playerGuard.GuardCenter + allyGuard.GuardCenter) * .5f;
-                    contactVfx = playerGuard.SpawnImpactVfx(contactPoint);
+                    contactVfx = new VfxLease(playerGuard.SpawnImpactVfx(contactPoint));
                     playerGuard.PlayImpactCue(contactPoint);
                     Player.AnimDriver.BeginCooperativeStruggle(request); Ally.AnimDriver.BeginCooperativeStruggle(request);
                 }
@@ -270,8 +270,8 @@ public sealed class CooperativeBlockSession
         if (cleaned) return;
         cleaned = true;
         struggleWind?.Dispose(); struggleWind = null;
-        if (contactVfx != null) UnityEngine.Object.Destroy(contactVfx);
-        contactVfx = null;
+        contactVfx.Stop();
+        contactVfx = default;
         playerGuard?.Cancel(); allyGuard?.Cancel();
         motor?.Release(); motor = null;
         ReleaseProtection();

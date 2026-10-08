@@ -100,6 +100,17 @@ public static class PassiveRecipeValidator
                 Steps(branch.whenFalse, stack, ids, parameters, variables, errors, trigger, falseReachable);
                 continue;
             }
+            if (step is PassiveExpiryEventStep once)
+            {
+                if (!variables.Contains(once.timerVariable) || once.identity == PassiveOnceScope.None)
+                    errors.Add(step.id + ": invalid expiry event gate");
+                if (trigger == PassiveRuleTrigger.BeforeShot) errors.Add(step.id + ": expiry event gate cannot reserve a shot");
+                Steps(once.steps, stack, ids, parameters, variables, errors, trigger, reachable);
+                continue;
+            }
+            if (step is PassiveExtendExpiryStep extension && !variables.Contains(extension.timerVariable)) errors.Add(step.id + ": undeclared timer variable");
+            if (step is PassiveDynamicModifierStep floor && !string.IsNullOrEmpty(floor.minimumVariable) && !variables.Contains(floor.minimumVariable))
+                errors.Add(step.id + ": undeclared modifier floor");
             if (step is PassiveModifierStep { whileEquipped: true } modifier && modifier.target.mode != PassiveTargetMode.Self) errors.Add(step.id + ": equipped modifier must target owner");
             if (step is PassiveDynamicModifierStep dynamic) CheckCondition(dynamic.condition, errors, new HashSet<PassiveCondition>());
             if (step is PassivePickupStep pickup && pickup.pickupPrefab == null) errors.Add(step.id + ": missing pickup prefab");
@@ -117,6 +128,20 @@ public static class PassiveRecipeValidator
                 errors.Add(step.id + ": persistent registration requires Equipped trigger");
             if (step is PassiveStatusStep status && string.IsNullOrEmpty(status.statusParameter) && status.spec?.effect == null) errors.Add(step.id + ": missing status");
             if (step is PassiveStatusStep ps && !string.IsNullOrEmpty(ps.statusParameter) && (parameters == null || !parameters.TryGetValue(ps.statusParameter, out var pk) || pk != PassiveParameterKind.Status)) errors.Add(step.id + ": unknown status parameter");
+            if (step is PassiveDynamicModifierStep scopedDynamic && !StatModifierRules.IsValidScope(scopedDynamic.stat, scopedDynamic.scope))
+                errors.Add(step.id + ": unsupported WeaponOnly stat " + scopedDynamic.stat);
+            if (step is PassiveModifierStep scopedModifier && scopedModifier.modifier?.modifiers != null)
+                foreach (var stat in scopedModifier.modifier.modifiers)
+                    if (stat != null && !StatModifierRules.IsValidScope(stat.statType, stat.scope))
+                        errors.Add(step.id + ": unsupported WeaponOnly stat " + stat.statType);
+            if (step is PassiveStatusStep scopedStatus && scopedStatus.spec != null)
+            {
+                var statusModifiers = scopedStatus.spec.HasModifierOverride ? scopedStatus.spec.modifiers :
+                    string.IsNullOrEmpty(scopedStatus.statusParameter) ? scopedStatus.spec.effect?.modifiers : null;
+                if (statusModifiers != null) foreach (var stat in statusModifiers)
+                    if (stat != null && !StatModifierRules.IsValidScope(stat.statType, stat.scope))
+                        errors.Add(step.id + ": unsupported WeaponOnly stat " + stat.statType);
+            }
             ScanValues(step, parameters, variables, errors, new HashSet<object>());
         }
     }

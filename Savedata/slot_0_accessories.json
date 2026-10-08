@@ -31,7 +31,7 @@
                 {
                     "instanceId": "acc_56c1f169f89b4e5dbdaff0474e8de9b8",
                     "accessoryId": "Accessory.PointedLeatherShoes",
-                    "modifierId": "",
+                    "modifierId": "Modifier.Fleet",
                     "upgradeLevel": 0
                 }
             ]

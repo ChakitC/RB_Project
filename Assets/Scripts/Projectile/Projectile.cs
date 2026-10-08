@@ -39,7 +39,7 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
     public CombatAttributionSnapshot Attribution => _attribution;
 
     ProjectilePool _pool;
-    GameObject _ballVfxInstance;
+    VfxLease _ballVfxInstance;
     bool _deferredSpawnSetupPending;
 
     bool _overrideVelThisFrame;
@@ -805,16 +805,14 @@ public class Projectile : MonoBehaviour, IBarrierBlockableProjectile
         StopBallVfx();
         if (!ballVfxPrefab) return;
         if (VfxSpawner.Instance == null) return;
-        _ballVfxInstance = VfxSpawner.Instance.SpawnLoopingVfx(
-            ballVfxPrefab, transform.position, Quaternion.identity, transform, vfxScale);
+        _ballVfxInstance = new VfxLease(VfxSpawner.Instance.SpawnLoopingVfx(
+            ballVfxPrefab, transform.position, Quaternion.identity, transform, vfxScale));
     }
 
     void StopBallVfx()
     {
-        if (_ballVfxInstance == null) return;
-        if (VfxSpawner.Instance != null)
-            VfxSpawner.Instance.StopLoopingVfx(_ballVfxInstance, allowParticlesToFinish: false);
-        _ballVfxInstance = null;
+        _ballVfxInstance.Stop();
+        _ballVfxInstance = default;
     }
 
     void PlayHitCue(Vector3 hitPosition)

@@ -199,8 +199,12 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
 
         if (_activeLoops.TryGetValue(instance, out ActiveLoop existing))
         {
-            existing.ApplyStackScale(instance.CurrentStacks);
-            return;
+            if (existing.Lease.IsValid)
+            {
+                existing.ApplyStackScale(instance.CurrentStacks);
+                return;
+            }
+            _activeLoops.Remove(instance);
         }
 
         Transform anchor = ResolveAnchor(cue, out Vector3 fallbackOffset);
@@ -228,16 +232,8 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
         if (!activeLoop.Root)
             return;
 
-        if (VfxSpawner.Instance != null)
-        {
-            VfxSpawner.Instance.StopLoopingVfx(
-                activeLoop.Root,
-                allowParticlesToFinish,
-                activeLoop.Cue != null ? activeLoop.Cue.extraLife : 0f);
-            return;
-        }
-
-        Destroy(activeLoop.Root, allowParticlesToFinish ? 2f : 0f);
+        activeLoop.Lease.Stop(allowParticlesToFinish,
+            activeLoop.Cue != null ? activeLoop.Cue.extraLife : 0f);
     }
 
     void StopAllLoops(bool allowParticlesToFinish)
@@ -287,32 +283,13 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
         if (!prefab)
             return null;
 
-        if (VfxSpawner.Instance != null)
-            return VfxSpawner.Instance.SpawnVfx(prefab, position, rotation, extraLife, scale, parent: parent);
-
-        if (warnWhenSpawnerMissing)
-            Debug.LogWarning($"{nameof(StatusEffectVfxPresenter)} could not find {nameof(VfxSpawner)}. Falling back to local VFX spawn.", this);
-
-        GameObject vfx = Instantiate(prefab, position, rotation, parent);
-        vfx.transform.localScale *= scale;
-        Destroy(vfx, 2f + Mathf.Max(0f, extraLife));
-        return vfx;
+        return VfxSpawner.Instance?.SpawnVfx(prefab, position, rotation, extraLife, scale, parent: parent);
     }
 
     GameObject SpawnLoop(GameObject prefab, Vector3 position, Quaternion rotation, Transform parent, float scale)
     {
-        if (!prefab)
-            return null;
-
-        if (VfxSpawner.Instance != null)
-            return VfxSpawner.Instance.SpawnLoopingVfx(prefab, position, rotation, parent, scale);
-
-        if (warnWhenSpawnerMissing)
-            Debug.LogWarning($"{nameof(StatusEffectVfxPresenter)} could not find {nameof(VfxSpawner)}. Falling back to local loop spawn.", this);
-
-        GameObject vfx = Instantiate(prefab, position, rotation, parent);
-        vfx.transform.localScale *= scale;
-        return vfx;
+        return VfxSpawner.Instance?.SpawnLoopingVfx(prefab, position, rotation, parent, scale,
+            followWithoutParent: true);
     }
 
     Transform ResolveAnchor(StatusEffectVfxCue cue, out Vector3 fallbackOffset)
@@ -409,14 +386,15 @@ public sealed class StatusEffectVfxPresenter : MonoBehaviour
 
     sealed class ActiveLoop
     {
-        public readonly GameObject Root;
+        public readonly VfxLease Lease;
+        public GameObject Root => Lease.Instance;
         public readonly StatusEffectVfxProfile Profile;
         public readonly StatusEffectVfxCue Cue;
         readonly Vector3 _baseLocalScale;
 
         public ActiveLoop(GameObject root, StatusEffectVfxProfile profile, StatusEffectVfxCue cue, Vector3 baseLocalScale)
         {
-            Root = root;
+            Lease = new VfxLease(root);
             Profile = profile;
             Cue = cue;
             _baseLocalScale = baseLocalScale;

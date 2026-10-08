@@ -236,10 +236,7 @@ public class GrenadeExplodeModule : ProjectileModule
     // ---- VFX ----
     if (usedVfxPrefab != null)
     {
-        if (VfxSpawner.Instance != null)
-            VfxSpawner.Instance.SpawnVfx(usedVfxPrefab, center, Vector3.up, 1.0f, usedVfxScale);
-        else
-            Object.Instantiate(usedVfxPrefab, center, Quaternion.identity);
+        VfxSpawner.Instance?.SpawnVfx(usedVfxPrefab, center, Vector3.up, 1.0f, usedVfxScale);
     }
 
     var cols = Physics.OverlapSphere(center, usedRadius, damageMask, queryTriggers);

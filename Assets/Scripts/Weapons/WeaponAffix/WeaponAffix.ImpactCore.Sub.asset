@@ -31,6 +31,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.ImpactCore.Sub
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.sub.stagger_power.v1
   displayName: Impact Core
   description: Impact Core
@@ -223,6 +224,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957209
@@ -235,6 +237,7 @@ MonoBehaviour:
         id: step-0
         successSignal: 
         successValueVariable: 
+        scope: 0
         condition:
           kind: 0
           eventTarget: 0
@@ -268,6 +271,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 19
         operation: 1
@@ -284,3 +288,4 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
+        minimumVariable: 

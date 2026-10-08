@@ -483,7 +483,7 @@ public sealed class PassiveCompositionTestFixture
     {
         var a = Actor(); Equip(a, Roma());
         var weapon = a.gameObject.AddComponent<WeaponSystem>(); a.WeaponSystem = weapon;
-        weapon.firePoint = a.transform; Call(weapon, "Awake"); weapon.damage = 100;
+        WeaponAimTestSource.Bind(weapon, a.transform); Call(weapon, "Awake"); weapon.damage = 100;
         a.StaminaSystem.Spend(10);
         using var reservation = a.PassiveController.ReserveNextAttack("shot");
         var prepare = typeof(WeaponSystem).GetMethod("CreateWeaponShotContext", BindingFlags.Instance | BindingFlags.NonPublic);

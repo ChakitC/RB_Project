@@ -122,6 +122,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957192
@@ -226,6 +227,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children:
       - kind: 21
         eventTarget: 0
@@ -259,6 +261,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
       - kind: 14
         eventTarget: 0
@@ -292,6 +295,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
     steps:
     - rid: 3342399495413957195
@@ -349,6 +353,7 @@ MonoBehaviour:
         variables:
         - stacks
         expirySignal: Expired
+        cancelOnUpgradeChange: 0
     - rid: 3342399495413957195
       type: {class: PassiveShotModifierStep, ns: , asm: Assembly-CSharp}
       data:
@@ -401,6 +406,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.MarkedQuarry.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.marked_quarry.v1
   displayName: Marked Quarry
   description: Marked Quarry

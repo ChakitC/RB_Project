@@ -380,6 +380,24 @@ guard timeout is suspended only while the timed approach owns the session.
 
 ## Shared runtime flow
 
+Defender recoil is authored per incoming **Skill > Defensive Block > Defender Recoil
+(Player and Ally)**: `slideDistance` (default 1.5 m; zero disables movement) and
+`slideSeconds` (default 0.35 s; positive). Self guard, Ally guard and both Cooperative
+guards snapshot these values when accepted, so changes during a block affect only
+subsequent guards. Normal Ally Block still moves the Player by the Ally's actual
+collision-limited displacement. Enemy `knockbackDistance`/`knockbackSeconds` remain
+separate. Actor-profile recoil fields have been removed; recoil is authored only
+on the incoming skill. Existing skills without these fields use the defaults above.
+
+Validation (2026-10-07): required Assembly-CSharp check passed with 0 errors /
+110 warnings; Unity recompilation passed. All 7
+`DefensiveBlockPlayerRecoilRunnerTests` Edit Mode cases passed, covering per-guard
+snapshots, settings copy/validation, movement, walls, NavMesh limits and cleanup.
+The four enabled Block skill assets loaded 1.5 m / 0.35 s through AssetDatabase.
+Full Play Mode combat/animation was not replayed in this settings-ownership change;
+movement checks above ran in Edit Mode. Console still reports the previously
+documented AutodeskInteractive shadergraph import error.
+
 `SkillGemDefinition.defensiveBlock` selects an attack profile. `DefensiveBlockAttack`
 subscribes to actual casts and binds caster, life generation and request ID to the
 released hitbox execution. `InterruptionCommandController` selects an active member
@@ -454,13 +472,38 @@ Console still reported the existing URP AutodeskInteractive shadergraph load
 error and a TimeSlowManager cleanup error on leaving Play Mode; these remain
 outside the facing change.
 
+Ready and unavailable cues use separate prefabs on `DefensiveBlockReadyCue`:
+`cuePrefab` is the gold `BlockReadyFlare`; `unavailableCuePrefab` is a smaller,
+dim blue cross flare, matching the approved reference. Its asset retains the
+legacy `BlockUnavailableRing` name to preserve references, but no longer draws a ring.
+The blue flare uses `unavailableScreenSize` (fraction of screen height, default 0.55)
+and `unavailableBrightness` (default 0.25), preserving the ready flare's aspect ratio.
+Both production Player/Combat_System and Player.Test bind the two prefabs.
+Each unavailable-to-ready transition restarts the gold entry flash; remaining
+ready does not repeat it. The existing ready sound still plays at most once per
+attack window, and unavailable warnings remain silent. Cached instances swap
+without leaving both symbols visible. A missing unavailable prefab hides the
+warning rather than displaying an ambiguous gold flare.
+
+Validated 2026-10-07: default assembly build passed (0 errors, 110 warnings);
+all 8 `BlockReadyCueTests` Edit Mode tests passed. In the Rector test scene,
+reserving defenders changed a visible ready flare to the stationary unavailable
+warning; releasing reservations restarted the gold appearance and hid the warning.
+Evidence: `../BuildArtifacts/BlockCueRuntime.txt` and the Unity-rendered visual
+comparison `../BuildArtifacts/BlockCueStates.png`. Full combat regression and
+physical keyboard input were not rerun for this presentation-only change.
+The subsequent blue-flare revision passed the same 8 Edit Mode tests and the
+assembly build (0 errors, 110 warnings). Its shader compiled without errors and
+was rendered in Unity: `../BuildArtifacts/BlockCueBlueStates.png`. Play Mode was
+not repeated after this color/shape/size revision; the transition logic is unchanged.
+
 The bright ready flare and input use the same eligibility query. Range is 8 m in XZ,
 height difference at most 1 m, with world LOS, NavMesh, placement and reservation
 checks. Selection does not spend resources or reserve the ally; acceptance repeats
 the checks and takes actor/landing reservations for the companion. Self guard takes
 the Player reservation and control tokens, faces the attacker and stays in place;
 it does not teleport or fade. A bright flare means input is
-available, not guaranteed interception. No key prompt is displayed. A dim flare warns of
+available, not guaranteed interception. No key prompt is displayed. A dim blue flare warns of
 the incoming attack even when neither actor can guard. `TrySelectDefensiveBlockThreat`
 uses the attack window and incoming lane without receiver/range availability gates.
 
@@ -491,7 +534,7 @@ passed (0 failed, 0 skipped; 0.30 seconds). Post-change gameplay/rendering remai
 unverified; these tests validate presentation state and recovery, not rendered pixels.
 
 `GuardSetting.readyCue` plays `RB_Project_BlockOpen_SFX` through the Sfx mix when
-the actionable flare becomes visible. Dim unavailable threats and offscreen flares
+the actionable flare becomes visible. Unavailable blue flares and offscreen flares
 are silent. The local cue remembers the last announced caster/request/life so it
 does not repeat every frame or when the same selected attack flickers with range
 or camera visibility; a new request or newly selected attack can announce again.

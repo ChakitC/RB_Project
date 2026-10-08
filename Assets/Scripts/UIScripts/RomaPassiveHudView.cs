@@ -97,6 +97,11 @@ public sealed class RomaPassiveHudView : PassiveHudView
     }
     void OnEffect(PassiveStep step, PassiveResult result, PassiveEventContext evt)
     {
+        if (HasLiveRuntime && result.Status == PassiveOutcome.Succeeded && result.Amount > 0)
+        {
+            if (step is PassiveReserveAmmoStep) { ShowFeedback($"SLIP RELOAD  +{result.Amount:0} AMMO"); return; }
+            if (step is PassiveExtendExpiryStep) { ShowFeedback($"PRESSURE  +{result.Amount:0.#}s"); return; }
+        }
         if (!HasLiveRuntime || evt.Type != PassiveEventType.PerfectDodge ||
             step is not PassiveResourceStep resource || resource.operation != PassiveResourceOperation.RestoreStamina ||
             result.Status != PassiveOutcome.Succeeded || result.Amount <= 0 || result.Target != Runtime.Controller.Owner) return;

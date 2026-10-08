@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.PointedLeatherShoes
   displayName: Pointed Leather Shoes
-  description: Polished shoes for getting in and out fast. Increases movement speed by 3% and maximum stamina by 6%.
-  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
+  description: Polished shoes for getting in and out fast. Increases movement speed
+    by 3% and maximum stamina by 6%.
+  icon: {fileID: 21300000, guid: b0ee5b562417f6847a3c001af19d9cda, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -29,6 +30,7 @@ MonoBehaviour:
   - Movement
   - Stamina
   - Mafia
+  uniqueEquip: 0
   statModifiers:
   - statType: 8
     operation: 1

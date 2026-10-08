@@ -10,16 +10,21 @@ public interface IStatModifierProvider
 
 public readonly struct RuntimeStatModifier
 {
-    public RuntimeStatModifier(StatType statType, ModifierOp operation, float value, string modifierKey = null)
+    public RuntimeStatModifier(StatType statType, ModifierOp operation, float value, string modifierKey = null,
+        StatModifierScope scope = StatModifierScope.Global, string weaponInstanceId = null)
     {
         StatType = statType;
         Operation = operation;
         Value = value;
         ModifierKey = modifierKey;
+        Scope = scope;
+        WeaponInstanceId = scope == StatModifierScope.WeaponOnly ? weaponInstanceId : null;
     }
 
     public StatType StatType { get; }
     public ModifierOp Operation { get; }
     public float Value { get; }
     public string ModifierKey { get; }
+    public StatModifierScope Scope { get; }
+    public string WeaponInstanceId { get; }
 }

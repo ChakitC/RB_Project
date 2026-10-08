@@ -2,6 +2,7 @@
 /// Final stat values produced by <see cref="CharacterStatFormula.Compute"/>.
 /// Mirrors every stat <see cref="StatsHub"/> caches.
 /// </summary>
+[System.Serializable]
 public struct CharacterStatTotals
 {
     public float Damage;

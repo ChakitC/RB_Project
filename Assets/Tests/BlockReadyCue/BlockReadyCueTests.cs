@@ -24,13 +24,21 @@ public sealed class BlockReadyCueTests
         prefab = GameObject.CreatePrimitive(PrimitiveType.Quad);
         created.Add(prefab);
         Set(cue, "cuePrefab", prefab);
+        Set(cue, "displayedReady", true);
+        var unavailable = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        unavailable.name = "Unavailable ring test";
+        created.Add(unavailable);
+        Set(cue, "unavailableCuePrefab", unavailable);
     }
 
     [TearDown]
     public void TearDown()
     {
-        var instance = Get(cue, "cue") as Transform;
-        if (instance != null) Object.DestroyImmediate(instance.gameObject);
+        foreach (var field in new[] { "readyCue", "unavailableCue" })
+        {
+            var instance = Get(cue, field) as Transform;
+            if (instance != null) Object.DestroyImmediate(instance.gameObject);
+        }
         for (int i = created.Count - 1; i >= 0; i--) Object.DestroyImmediate(created[i]);
         created.Clear();
     }
@@ -104,5 +112,39 @@ public sealed class BlockReadyCueTests
         Call(cue, "ReportPresentation", "Offscreen");
         LogAssert.NoUnexpectedReceived();
         Set(cue, "logPresentation", false);
+    }
+
+    [Test]
+    public void SwitchingReadinessReusesDistinctInstancesAndHidesPreviousSymbol()
+    {
+        Call(cue, "PrepareCue");
+        var ready = (Transform)Get(cue, "cue");
+        Call(cue, "SetPresentationReady", false);
+        Assert.That(Call(cue, "PrepareCue"), Is.True);
+        var unavailable = (Transform)Get(cue, "cue");
+        Assert.That(unavailable, Is.Not.SameAs(ready));
+        Assert.That(ready.gameObject.activeSelf, Is.False);
+        Assert.That(unavailable.gameObject.activeSelf, Is.True);
+        Assert.That(Get(cue, "phase").ToString(), Is.EqualTo("Holding"));
+        Call(cue, "SetPresentationReady", true);
+        Call(cue, "PrepareCue");
+        Assert.That(Get(cue, "cue"), Is.SameAs(ready));
+        Assert.That(unavailable.gameObject.activeSelf, Is.False);
+        Assert.That(Get(cue, "phase").ToString(), Is.EqualTo("Appearing"));
+        Call(cue, "AdvanceAnimation", 0.09f);
+        var elapsed = Get(cue, "phaseTime");
+        Call(cue, "SetPresentationReady", true);
+        Assert.That(Get(cue, "phaseTime"), Is.EqualTo(elapsed), "Holding readiness must not restart the flash every frame.");
+        Call(cue, "SetPresentationReady", false);
+        Assert.That(Get(cue, "intensity"), Is.EqualTo(1f));
+        Assert.That(Get(cue, "readyWeight"), Is.EqualTo(Get(cue, "unavailableBrightness")));
+    }
+
+    [Test]
+    public void MissingUnavailablePrefabDoesNotShowReadyFlareAsWarning()
+    {
+        Set(cue, "unavailableCuePrefab", null);
+        Call(cue, "SetPresentationReady", false);
+        Assert.That(Call(cue, "PrepareCue"), Is.False);
     }
 }

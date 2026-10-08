@@ -122,6 +122,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957232
@@ -224,6 +225,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957233
@@ -237,6 +239,7 @@ MonoBehaviour:
         id: step-0
         successSignal: 
         successValueVariable: 
+        scope: 0
         condition:
           kind: 14
           eventTarget: 0
@@ -270,6 +273,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 16
         operation: 0
@@ -286,6 +290,7 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
+        minimumVariable: 
     - rid: 3342399495413957233
       type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
       data:
@@ -329,6 +334,342 @@ MonoBehaviour:
         variables:
         - active
         expirySignal: Expired
+        cancelOnUpgradeChange: 0
+--- !u!114 &-4052262159086644833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive recipe (Weapon scopes)
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: roll
+    kind: 0
+    number: 10
+    status: {fileID: 0}
+  variables:
+  - id: active
+    persistent: 0
+    initial: 0
+    maximum: 1
+  rules:
+  - id: rule-0
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 3342399495413957232
+  - id: rule-1
+    trigger: 0
+    eventType: 7
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 3342399495413957233
+    - rid: 3342399495413957234
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957232
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        scope: 1
+        condition:
+          kind: 14
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 1
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 5
+            value: 0
+            reference: active
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children: []
+        stat: 16
+        operation: 0
+        value:
+          source: 1
+          value: 0
+          reference: roll
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        minimumVariable: 
+    - rid: 3342399495413957233
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        variable: active
+        operation: 2
+        amount:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 3342399495413957234
+      type: {class: PassiveExpiryStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-1
+        successSignal: Activated
+        successValueVariable: 
+        duration:
+          source: 0
+          value: 3
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        variables:
+        - active
+        expirySignal: Expired
+        cancelOnUpgradeChange: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -341,6 +682,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.ReloadStability.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.reload_stability.v1
   displayName: Steady Reload
   description: Completing a reload temporarily improves weapon stability.
@@ -349,7 +691,7 @@ MonoBehaviour:
   weight: 1
   allowedWeaponTypes: 02000000030000000400000005000000
   rootBehavior: {fileID: 7842977404881609138}
-  passiveDefinition: {fileID: 7116870507758030692}
+  passiveDefinition: {fileID: 815765129315560517}
   rollSpec:
     valueKind: 0
     minimum: 10
@@ -379,6 +721,25 @@ MonoBehaviour:
   specialProjectilePrefab: {fileID: 0}
   specialProjectileDamageMultiplier: 1
   specialProjectileSpeedMultiplier: 1
+--- !u!114 &815765129315560517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977e63054233f2041b66a0125929398e, type: 3}
+  m_Name: Steady Reload Passive (Weapon scopes)
+  m_EditorClassIdentifier: 
+  passiveId: weapon.main.reload_stability.v1
+  icon: {fileID: 0}
+  description: Completing a reload temporarily improves weapon stability.
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: -4052262159086644833}
+  hudPrefab: {fileID: 0}
+  definitionId: 07c50cd8a6777dc479c63565ce82f3a1
 --- !u!114 &7116870507758030692
 MonoBehaviour:
   m_ObjectHideFlags: 0

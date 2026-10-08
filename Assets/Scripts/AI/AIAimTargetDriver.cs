@@ -2,7 +2,7 @@ using UnityEngine;
 
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(-108)]
-public sealed class AIAimTargetDriver : MonoBehaviour
+public sealed class AIAimTargetDriver : WeaponAimSource
 {
     const string DefaultAimTargetName = "Aim Target";
 
@@ -25,9 +25,51 @@ public sealed class AIAimTargetDriver : MonoBehaviour
     bool _hasOverridePoint;
     bool _preferChainAttackPoint;
     CharacteContext _context;
+    AITargetHandle _overrideHandle;
+    bool _overrideIsActor;
 
     public Transform AimTarget => aimTarget;
     public bool HasOverride => _overrideTarget != null || _hasOverridePoint;
+
+    public override CharacteContext OwnerContext => _context;
+    public override float MovementSpreadFactor
+    {
+        get
+        {
+            var agent = _context != null ? _context.NavigationAgent : null;
+            return agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh && agent.speed > 0.001f
+                ? Mathf.Clamp01(Vector3.ProjectOnPlane(agent.velocity, Vector3.up).magnitude / agent.speed)
+                : 0f;
+        }
+    }
+
+    public override bool TryGetAimSample(out WeaponAimSample sample)
+    {
+        sample = default;
+        if (!isActiveAndEnabled) return false;
+        CacheReferences();
+        Vector3 point;
+        if (_overrideTarget != null)
+        {
+            if (_overrideIsActor && !_overrideHandle.IsLive) return false;
+            if (!TryResolveTargetPoint(_overrideTarget, _preferChainAttackPoint, out point)) return false;
+        }
+        else if (_hasOverridePoint)
+            point = _overridePoint;
+        else
+        {
+            if (_overrideIsActor) return false;
+            AITargetSnapshot state = sensor != null ? sensor.ReadSnapshot : AITargetSnapshot.Empty;
+            if (!state.HasLiveTarget || !state.Target.IsLive) return false;
+            point = followLastSeenPosition && state.Reason == AITargetSelectionReason.Memory
+                ? state.LastSeenPosition : state.AimPosition;
+        }
+        Transform reference = forwardReference != null ? forwardReference : (_context != null ? _context.transform : transform);
+        // The AI's sight line replaces the player's camera ray; facing admission stays in AI tasks.
+        sample = new WeaponAimSample(point, point - reference.position);
+        if (aimTarget != null) aimTarget.position = point;
+        return sample.IsValid;
+    }
 
     void Awake()
     {
@@ -48,6 +90,11 @@ public sealed class AIAimTargetDriver : MonoBehaviour
 
     void OnDisable()
     {
+        _overrideTarget = null;
+        _overrideHandle = default;
+        _overrideIsActor = false;
+        _hasOverridePoint = false;
+        _preferChainAttackPoint = false;
         if (bindSkillUserAimTransform && skillUserSystem != null)
             skillUserSystem.ClearRuntimeAimTransformOverride(aimTarget);
     }
@@ -55,6 +102,9 @@ public sealed class AIAimTargetDriver : MonoBehaviour
     public void SetOverrideTarget(Transform target, bool preferChainAttackPoint = false)
     {
         _overrideTarget = target;
+        CharacteContext targetContext = target != null ? CharacterContextModuleLookup.ResolveContext(target) : null;
+        _overrideIsActor = targetContext != null;
+        _overrideHandle = new AITargetHandle(targetContext);
         _overridePoint = Vector3.zero;
         _hasOverridePoint = false;
         _preferChainAttackPoint = preferChainAttackPoint;
@@ -64,6 +114,8 @@ public sealed class AIAimTargetDriver : MonoBehaviour
     public void SetOverridePoint(Vector3 worldPoint)
     {
         _overrideTarget = null;
+        _overrideIsActor = false;
+        _overrideHandle = default;
         _overridePoint = worldPoint;
         _hasOverridePoint = true;
         _preferChainAttackPoint = false;
@@ -73,6 +125,8 @@ public sealed class AIAimTargetDriver : MonoBehaviour
     public void ClearOverride()
     {
         _overrideTarget = null;
+        _overrideIsActor = false;
+        _overrideHandle = default;
         _overridePoint = Vector3.zero;
         _hasOverridePoint = false;
         _preferChainAttackPoint = false;
@@ -105,7 +159,7 @@ public sealed class AIAimTargetDriver : MonoBehaviour
             skillUserSystem = GetComponentInChildren<SkillUserSystem>(true);
 
         if (forwardReference == null)
-            forwardReference = transform;
+            forwardReference = _context != null ? _context.transform : transform;
 
         if (!IsModuleCompatibleAimTarget(aimTarget))
             aimTarget = ResolveOrCreateAimTarget();

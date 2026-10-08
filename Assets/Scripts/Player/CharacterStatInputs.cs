@@ -18,6 +18,7 @@ public struct CharacterStatInputs
 
     /// <summary>Equipped weapon, or null for an unarmed character.</summary>
     public GunConfig Weapon;
+    public string WeaponInstanceId;
 
     public float WeaponDamage => Weapon ? Weapon.damage : 0f;
     public float WeaponCritRate => Weapon ? Weapon.critRate : 0f;

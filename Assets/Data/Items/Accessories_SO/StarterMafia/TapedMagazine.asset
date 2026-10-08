@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.TapedMagazine
   displayName: Taped Magazine
-  description: A spare magazine taped for a quick swap. Increases magazine capacity by 5% but increases reload time by 2%.
-  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
+  description: A spare magazine taped for a quick swap. Increases magazine capacity
+    by 5% but increases reload time by 2%.
+  icon: {fileID: 21300000, guid: c15963f2a194a0347b8cae7c6ca065ec, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -29,6 +30,7 @@ MonoBehaviour:
   - Magazine
   - Reload
   - Improvised
+  uniqueEquip: 0
   statModifiers:
   - statType: 18
     operation: 1

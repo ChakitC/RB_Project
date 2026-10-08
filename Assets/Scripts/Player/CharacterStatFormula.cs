@@ -32,6 +32,29 @@ public static class CharacterStatFormula
     /// </summary>
     public static float ApplyModifiers(List<RuntimeStatModifier> modifiers, StatType statType, float baseValue)
     {
+        return ApplyFloor(statType, baseValue, ApplyLayer(modifiers, statType, baseValue, StatModifierScope.Global, null));
+    }
+
+    // Apply the weapon layer without clamping or rounding, then the global layer exactly once.
+    public static float ApplyWeaponModifiers(List<RuntimeStatModifier> modifiers, StatType statType,
+        float weaponBase, float characterBase = 0f, string weaponInstanceId = null, bool hasWeapon = true)
+    {
+        float weaponValue = hasWeapon
+            ? ApplyLayer(modifiers, statType, weaponBase, StatModifierScope.WeaponOnly, weaponInstanceId)
+            : weaponBase;
+        float result = ApplyLayer(modifiers, statType, weaponValue + characterBase, StatModifierScope.Global, null);
+        return ApplyFloor(statType, weaponBase + characterBase, result);
+    }
+
+    static float ApplyFloor(StatType statType, float baseValue, float result)
+    {
+        return MinFractionOfBase.TryGetValue(statType, out float fraction)
+            ? Mathf.Max(result, baseValue * fraction) : result;
+    }
+
+    static float ApplyLayer(List<RuntimeStatModifier> modifiers, StatType statType, float baseValue,
+        StatModifierScope scope, string weaponInstanceId)
+    {
         float flat = 0f;
         float addPercent01 = 0f;
         float multiply = 1f;
@@ -41,7 +64,10 @@ public static class CharacterStatFormula
             for (int i = 0; i < modifiers.Count; i++)
             {
                 var modifier = modifiers[i];
-                if (modifier.StatType != statType)
+                if (modifier.StatType != statType || modifier.Scope != scope ||
+                    !StatModifierRules.IsValidScope(statType, scope) ||
+                    (scope == StatModifierScope.WeaponOnly && !string.IsNullOrEmpty(modifier.WeaponInstanceId) &&
+                     !System.String.Equals(modifier.WeaponInstanceId, weaponInstanceId, System.StringComparison.Ordinal)))
                     continue;
 
                 switch (modifier.Operation)
@@ -61,35 +87,33 @@ public static class CharacterStatFormula
             }
         }
 
-        float result = (baseValue + flat) * (1f + addPercent01) * multiply;
-
-        if (MinFractionOfBase.TryGetValue(statType, out float minFraction))
-            result = Mathf.Max(result, baseValue * minFraction);
-
-        return result;
+        return (baseValue + flat) * (1f + addPercent01) * multiply;
     }
 
     public static CharacterStatTotals Compute(in CharacterStatInputs inputs, List<RuntimeStatModifier> modifiers)
     {
         GunConfig w = inputs.Weapon;
         var totals = new CharacterStatTotals();
+        string weaponId = inputs.WeaponInstanceId;
+        float Weapon(StatType stat, float value, float character = 0f) =>
+            ApplyWeaponModifiers(modifiers, stat, value, character, weaponId, w != null);
 
-        totals.Damage = Mathf.Max(0f, ApplyModifiers(modifiers, StatType.Damage, inputs.WeaponDamage + inputs.CharacterDamage));
+        totals.Damage = Mathf.Max(0f, Weapon(StatType.Damage, inputs.WeaponDamage, inputs.CharacterDamage));
         totals.Armor = Mathf.Max(0f, ApplyModifiers(modifiers, StatType.Armor, inputs.CharacterArmor));
         totals.MoveSpeed = Mathf.Max(0f, ApplyModifiers(modifiers, StatType.MoveSpeed, inputs.CharacterMoveSpeed));
-        totals.CritRatePercent = Mathf.Clamp(ApplyModifiers(modifiers, StatType.CritRate, inputs.WeaponCritRate + inputs.CharacterCritRate), 0f, 100f);
-        totals.CritMultiplier = Mathf.Max(1f, ApplyModifiers(modifiers, StatType.CritMultiplier, inputs.WeaponCritMultiplier + (inputs.CharacterCritMultiplier - BaseCritMultiplier)));
-        totals.FireInterval = Mathf.Max(0.01f, ApplyModifiers(modifiers, StatType.FireInterval, inputs.WeaponFireInterval));
-        totals.ReloadTime = Mathf.Max(0f, ApplyModifiers(modifiers, StatType.ReloadTime, inputs.WeaponReloadTime));
+        totals.CritRatePercent = Mathf.Clamp(Weapon(StatType.CritRate, inputs.WeaponCritRate, inputs.CharacterCritRate), 0f, 100f);
+        totals.CritMultiplier = Mathf.Max(1f, Weapon(StatType.CritMultiplier, inputs.WeaponCritMultiplier, inputs.CharacterCritMultiplier - BaseCritMultiplier));
+        totals.FireInterval = Mathf.Max(0.01f, Weapon(StatType.FireInterval, inputs.WeaponFireInterval));
+        totals.ReloadTime = Mathf.Max(0f, Weapon(StatType.ReloadTime, inputs.WeaponReloadTime));
         totals.Stability = Mathf.Clamp(
-            ApplyModifiers(modifiers, StatType.Stability, inputs.WeaponStability),
+            Weapon(StatType.Stability, inputs.WeaponStability),
             MinStabilityPercent,
             MaxStabilityPercent);
-        totals.BulletSpeed = Mathf.Max(0f, ApplyModifiers(modifiers, StatType.BulletSpeed, inputs.WeaponBulletSpeed));
-        totals.MaxMagazine = Mathf.Max(0, Mathf.RoundToInt(ApplyModifiers(modifiers, StatType.MaxMagazine, inputs.WeaponMagazine)));
+        totals.BulletSpeed = Mathf.Max(0f, Weapon(StatType.BulletSpeed, inputs.WeaponBulletSpeed));
+        totals.MaxMagazine = Mathf.Max(0, Mathf.RoundToInt(Weapon(StatType.MaxMagazine, inputs.WeaponMagazine)));
         int weaponReserveAmmo = w ? WeaponInstanceFactory.ResolveMaxReserveAmmo(w, totals.MaxMagazine) : 0;
         totals.MaxReserveAmmo = w && !w.infiniteReserveAmmo
-            ? Mathf.Max(0, Mathf.RoundToInt(ApplyModifiers(modifiers, StatType.MaxReserveAmmo, weaponReserveAmmo)))
+            ? Mathf.Max(0, Mathf.RoundToInt(Weapon(StatType.MaxReserveAmmo, weaponReserveAmmo)))
             : 0;
         totals.MaxHealth = Mathf.Max(1f, ApplyModifiers(modifiers, StatType.MaxHP, inputs.CharacterMaxHealth));
         totals.MaxStamina = Mathf.Max(1f, ApplyModifiers(modifiers, StatType.MaxStamina, inputs.CharacterMaxStamina));

@@ -42,6 +42,9 @@ public sealed class SkillVfxEvent : IAnimationVfxCue
     public string loopKey;
     [Min(0f)]
     public float extraLife;
+    public VfxLifetimeMode lifetimeMode;
+    [Min(0f)] public float explicitLifetime;
+    public VfxSessionEndMode sessionEndMode;
     public bool allowParticlesToFinish = true;
     public AnimationClip animClip;
 
@@ -60,6 +63,9 @@ public sealed class SkillVfxEvent : IAnimationVfxCue
     Vector3 IAnimationVfxCue.LocalEulerAngles => localEulerAngles;
     Vector3 IAnimationVfxCue.LocalScale => localScale;
     string IAnimationVfxCue.LoopKey => loopKey;
+    VfxLifetimeMode IAnimationVfxCue.LifetimeMode => lifetimeMode;
+    float IAnimationVfxCue.ExplicitLifetime => explicitLifetime;
+    VfxSessionEndMode IAnimationVfxCue.SessionEndMode => sessionEndMode;
     float IAnimationVfxCue.ExtraLife => extraLife;
     bool IAnimationVfxCue.AllowParticlesToFinish => allowParticlesToFinish;
     AnimationClip IAnimationVfxCue.AnimClip => animClip;

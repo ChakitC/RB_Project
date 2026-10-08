@@ -183,6 +183,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         bool movementWasEnabled = issuer.movement != null && issuer.movement.enabled;
         if (!member.TryBeginTransientExecution(this, protectActor: false, allowCollisionOverride: false)) return false;
         attack = source; player = issuer; request = id; life = ctx.LifeGeneration;
+        CaptureRecoil(source);
         playerLife = player.LifeGeneration; sessionDefinition = ctx.baseStats;
         active = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         arrived = true; pendingPlacement = null; slideFootprint = footprint;
@@ -219,13 +220,20 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
         guardCenterHeight = next.guardCenterHeight;
         guardForwardOffset = next.guardForwardOffset; timeoutSeconds = next.timeoutSeconds;
         activeGuardForwardOffset = guardForwardOffset;
-        slideDistance = next.slideDistance; slideSeconds = next.slideSeconds;
         warpFadeOutSeconds = next.warpFadeOutSeconds; warpFadeInSeconds = next.warpFadeInSeconds;
         impactVfx = next.impactVfx;
         impactVfxLifetime = next.impactVfxLifetime;
         hitLagDuration = next.hitLagDuration; hitLagTimeScale = next.hitLagTimeScale;
         hitLagShape = next.hitLagShape != null && next.hitLagShape.length > 0 ? next.hitLagShape : null;
         return true;
+    }
+
+    void CaptureRecoil(DefensiveBlockAttack source)
+    {
+        // Freeze the accepted skill's values for this guard, including cooperative recovery.
+        var settings = source.skill.defensiveBlock;
+        slideDistance = settings.slideDistance;
+        slideSeconds = settings.slideSeconds;
     }
 
     bool TryResolveBeginPose(PlayerContext protectedPlayer, DefensiveBlockAttack source,
@@ -315,6 +323,7 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
             return false;
         }
         attack = source; player = protectedPlayer; request = id; life = ctx.LifeGeneration;
+        CaptureRecoil(source);
         playerLife = player.LifeGeneration; sessionDefinition = ctx.baseStats;
         active = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         arrived = false;
@@ -394,9 +403,9 @@ public sealed partial class DefensiveBlockController : MonoBehaviour
     internal GameObject SpawnImpactVfx(Vector3 position)
     {
         if (impactVfx == null || ctx == null) return null;
-        GameObject effect = Instantiate(impactVfx, position, ctx.transform.rotation);
-        Destroy(effect, impactVfxLifetime);
-        return effect;
+        return VfxSpawner.Instance?.SpawnVfx(impactVfx, position, ctx.transform.rotation,
+            lifetimeMode: VfxLifetimeMode.Explicit, explicitLifetime: impactVfxLifetime,
+            useWorldTimeScale: false);
     }
     void Update()
     {

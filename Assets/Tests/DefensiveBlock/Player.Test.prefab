@@ -4072,6 +4072,7 @@ MonoBehaviour:
     rarity: 0
     mainAffix:
       affixId: 
+      grantId: 
       hasPrimaryValue: 0
       primaryValue: 0
       hasSecondaryValue: 0
@@ -4617,6 +4618,7 @@ MonoBehaviour:
     rarity: 0
     mainAffix:
       affixId: 
+      grantId: 
       hasPrimaryValue: 0
       primaryValue: 0
       hasSecondaryValue: 0
@@ -4631,7 +4633,6 @@ MonoBehaviour:
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
     affixRuntimeStates: []
-  firePoint: {fileID: 5607669806866160208}
   gunType: 0
   damage: 0
   fireRate: 0
@@ -5977,6 +5978,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74693da67cbdf8b4a998084988f3c2da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  crouchSpeedMultiplier: 0.45
+  crouchHeightMultiplier: 0.6
   actorRoot: {fileID: 8781927710104648223}
   stateHub: {fileID: 3729903319867311853}
   fallbackMoveSpeed: 6
@@ -5994,6 +5997,18 @@ MonoBehaviour:
   characterSeparationLayers:
     serializedVersion: 2
     m_Bits: 1536
+  slideEntrySpeedMultiplier: 1.15
+  slideExitSpeedMultiplier: 0.6
+  slideFriction: 0.75
+  slideBrake: 1
+  slideLateralAcceleration: 0.8
+  slideMaxTurnSpeed: 45
+  slideReleaseSeconds: 0.15
+  sprintSpeedMultiplier: 1.6
+  sprintAccelerationSeconds: 0.2
+  sprintReleaseSeconds: 0.12
+  sprintTurnSmoothTime: 0.25
+  sprintMaxTurnSpeed: 360
 --- !u!114 &4712651075002478625
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6415,7 +6430,6 @@ Transform:
   - {fileID: 3770683475142122694}
   - {fileID: 4701829176082220205}
   - {fileID: 8848649973265238730}
-  - {fileID: 5607669806866160208}
   - {fileID: 6629620386904557335}
   - {fileID: 7833856121833163485}
   m_Father: {fileID: 0}
@@ -6515,10 +6529,14 @@ MonoBehaviour:
   cc: {fileID: 9033674979099169186}
   NavigationAgent: {fileID: 0}
   MovementMotor: {fileID: 0}
+  AITargetSensor: {fileID: 0}
+  AgentMoveDriver: {fileID: 0}
+  AimAxisDriver: {fileID: 0}
   TargetInfo: {fileID: 8753886701453289215}
   Equipment: {fileID: 4335221016054077744}
   AccessoryLoadout: {fileID: 7994141003199985968}
   WeaponSystem: {fileID: 6230920573825478580}
+  WeaponAim: {fileID: 635731883552270740}
   AnimBrain: {fileID: 9088983150859356461}
   AnimDriver: {fileID: 3598859405551259371}
   RootMotionDriver: {fileID: 0}
@@ -6550,12 +6568,14 @@ MonoBehaviour:
   lookInput: {x: 0, y: 0}
   playerUIContext: {fileID: 0}
   movement: {fileID: 1633073149967450595}
+  inputHandler: {fileID: 0}
+  interruptionController: {fileID: 0}
   allyHelper: {fileID: 1701165575660238625}
   fieldAllyManager: {fileID: 1425400900397367388}
   partyFormation: {fileID: 3418451509727270529}
   chainAttackCoordinator: {fileID: 1443108891937971459}
-  partyComboController: {fileID: 1292365898347132238}
-  partyComboExecutor: {fileID: 4089854031537365991}
+  partyFollowUpController: {fileID: 1292365898347132238}
+  partyFollowUpExecutor: {fileID: 4089854031537365991}
   partyCommand: {fileID: 1737474279501911135}
   interruptionCommand: {fileID: 4689047042536000953}
   thirdPersonAim: {fileID: 635731883552270740}
@@ -6964,7 +6984,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characteContext: {fileID: 6530838784543232739}
   statsHub: {fileID: 3474070079822634325}
-  castOrigin: {fileID: 5607669806866160208}
+  castOrigin: {fileID: 0}
+  useWeaponMuzzleForCastOrigin: 1
   aimTransform: {fileID: 6629620386904557335}
   maximumEnergy: 0
   currentEnergy: 0
@@ -7137,6 +7158,11 @@ MonoBehaviour:
   statusEffectController: {fileID: 5037510039682522691}
   runtimePassives: []
   extraPassives: []
+  runtimeGrantIds: []
+  extraGrantIds: []
+  runtimeGrantDefinitions: []
+  extraGrantDefinitions: []
+  diagnostics: 0
   maxEventDepth: 8
   chainStateTtlSeconds: 10
 --- !u!81 &6367896716729881245
@@ -7205,12 +7231,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0c4d2965dc340d9bf32989360ea1415, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerContext: {fileID: 0}
   aimCollisionMask:
     serializedVersion: 2
     m_Bits: 4194303
-  maximumAimDistance: 250
   muzzleProbeRadius: 0.045
+  playerContext: {fileID: 0}
+  maximumAimDistance: 250
 --- !u!114 &5910928853809233979
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7385,6 +7411,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cuePrefab: {fileID: 5435443050003699240, guid: 3f852a332e086634482335636652c270, type: 3}
+  unavailableCuePrefab: {fileID: 5435443050003699240, guid: ba9d53857f4f9f746a66f1a3c8e9eda0, type: 3}
+  unavailableScreenSize: 0.55
   targetOffset: {x: 0, y: 2.6, z: 0}
   screenWidth: 1.2
   screenHeight: 0.85
@@ -8708,37 +8736,6 @@ Transform:
   - {fileID: 6841737758058255873}
   m_Father: {fileID: 4770219327174173931}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &7121670226915360126
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5607669806866160208}
-  m_Layer: 6
-  m_Name: FirePoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5607669806866160208
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7121670226915360126}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 1, z: 1.2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8781927710104648223}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7190951023954188828
 GameObject:
   m_ObjectHideFlags: 0
@@ -10039,11 +10036,6 @@ MonoBehaviour:
   leftLocalPos: {x: 0, y: 0.28, z: -0.03}
   leftLocalRotEuler: {x: 0, y: 0, z: 90}
   leftLocalScale: {x: 1.5, y: 1.5, z: 1.5}
-  firePointName: FirePoint
-  firePointBoneName: c_traj
-  firePointLocalPos: {x: 0, y: 1, z: 1.2}
-  firePointLocalRotEuler: {x: -90, y: 0, z: 0}
-  firePointLocalScale: {x: 1, y: 1, z: 1}
   healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 2
   healthBarBoneName: c_traj

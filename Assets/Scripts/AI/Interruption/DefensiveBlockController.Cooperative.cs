@@ -44,6 +44,7 @@ public sealed partial class DefensiveBlockController
         cooperativePlayerReservation = self;
         cooperativeSession = owner;
         attack = source; player = issuer; request = source.RequestId; life = ctx.LifeGeneration;
+        CaptureRecoil(source);
         playerLife = issuer.LifeGeneration; sessionDefinition = ctx.baseStats;
         active = true; arrived = true; impact = false; elapsed = slideElapsed = slideApplied = 0f;
         slideFootprint = placement.Footprint;

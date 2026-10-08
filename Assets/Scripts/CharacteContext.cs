@@ -25,6 +25,7 @@ public abstract class CharacteContext : MonoBehaviour
     public CharacterEquipment Equipment;
     public AccessoryLoadout AccessoryLoadout;
     public WeaponSystem WeaponSystem;
+    public WeaponAimSource WeaponAim;
     public CharacterAnimBrain AnimBrain;
     public CharacterAnimDriver AnimDriver;
     public RootMotionCCDriver RootMotionDriver;
@@ -164,6 +165,7 @@ public abstract class CharacteContext : MonoBehaviour
             AccessoryLoadout = gameObject.AddComponent<AccessoryLoadout>();
         }
         WeaponSystem = ResolveStatePeer(WeaponSystem);
+        WeaponAim = ResolveStatePeer(WeaponAim);
         if (Equipment == null && Application.isPlaying && AutoCreatesRuntimeEquipment &&
             (currentWeapon != null || WeaponSystem != null))
             Equipment = gameObject.AddComponent<CharacterEquipment>();

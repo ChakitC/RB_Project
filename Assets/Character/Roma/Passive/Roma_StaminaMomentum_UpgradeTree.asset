@@ -1,0 +1,150 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d06f32d492f4804f8492c1cb1ad3ca4, type: 3}
+  m_Name: Roma_StaminaMomentum_UpgradeTree
+  m_EditorClassIdentifier: 
+  treeId: roma.passive.stamina-momentum.tree.v1
+  displayName: Roma / Combat Surge
+  description: Three independent paths. Unlock all nine nodes for 12 shared skill
+    points.
+  nodes:
+  - nodeId: roma.passive.perfect-recovery
+    displayName: Perfect Recovery
+    description: Perfect Dash restores 15 Stamina instead of 10 (once per Dash).
+    icon: {fileID: 21300000, guid: 8149cdf957d609644a2e72f38a24f410, type: 3}
+    uiPosition: {x: -320, y: 190}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds: []
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.perfect-recovery
+  - nodeId: roma.passive.stamina-reserve
+    displayName: Stamina Reserve
+    description: +10 maximum Stamina.
+    icon: {fileID: 21300000, guid: 10d4b9671a53fef47bf0f6f00df125be, type: 3}
+    uiPosition: {x: -320, y: 0}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.perfect-recovery
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.stamina-reserve
+  - nodeId: roma.passive.slip-reload
+    displayName: Slip Reload
+    description: During Combat Surge, Perfect Dash transfers 25% magazine capacity
+      (rounded up) from reserve. Once per Dash; up to 2 successful transfers per
+      Surge. Does not trigger Reload effects.
+    icon: {fileID: 21300000, guid: e55d30b61481aa648bcd1e2638d84901, type: 3}
+    uiPosition: {x: -320, y: -190}
+    visualScale: 1.5
+    cost: 2
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.stamina-reserve
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.slip-reload
+  - nodeId: roma.passive.fast-hands
+    displayName: Fast Hands
+    description: Combat Surge grants +40% reload speed instead of +30%.
+    icon: {fileID: 21300000, guid: f56f556a4d4547f459ab02c0327fcb3e, type: 3}
+    uiPosition: {x: 0, y: 190}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds: []
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.fast-hands
+  - nodeId: roma.passive.mobile-aim
+    displayName: Mobile Aim
+    description: Combat Surge reduces aim movement penalty by 65% instead of 50%.
+    icon: {fileID: 21300000, guid: 776300975d7e66e499e9f18138d7e07c, type: 3}
+    uiPosition: {x: 0, y: 0}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.fast-hands
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.mobile-aim
+  - nodeId: roma.passive.keep-the-pressure
+    displayName: Keep the Pressure
+    description: During Combat Surge, every 5 normal shots that damage enemies extend
+      Surge by 1 second, up to +3 seconds. Each shot counts once, including piercing
+      hits.
+    icon: {fileID: 21300000, guid: 34d2bfe6139c67c42853f26af603a567, type: 3}
+    uiPosition: {x: 0, y: -190}
+    visualScale: 1.5
+    cost: 2
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.mobile-aim
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.keep-the-pressure
+  - nodeId: roma.passive.deep-reserve
+    displayName: Deep Reserve
+    description: Convert each +1 Stamina Regen bonus into +5 Max Stamina instead
+      of +4.
+    icon: {fileID: 21300000, guid: efbacefcb87c5074e9c3d8bc6a11b02c, type: 3}
+    uiPosition: {x: 320, y: 190}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds: []
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.deep-reserve
+  - nodeId: roma.passive.desperate-power
+    displayName: Desperate Power
+    description: Below 70% Stamina, gain +0.6% Damage per 1% missing Stamina instead
+      of +0.5%.
+    icon: {fileID: 21300000, guid: 1cc7081bbb4a4894abea9320a39333c4, type: 3}
+    uiPosition: {x: 320, y: 0}
+    visualScale: 1
+    cost: 1
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.deep-reserve
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.desperate-power
+  - nodeId: roma.passive.redline
+    displayName: Redline
+    description: Opening Combat Surge locks your current low-Stamina Damage bonus
+      as a minimum until Surge ends. Recovering Stamina cannot reduce it; a higher
+      live bonus still applies without stacking.
+    icon: {fileID: 21300000, guid: 54b4c392b6b387f45bcdd4bd8839f408, type: 3}
+    uiPosition: {x: 320, y: -190}
+    visualScale: 1.5
+    cost: 2
+    requiredCharacterLevel: 1
+    requiredNodeIds:
+    - roma.passive.desperate-power
+    mutuallyExclusiveNodeIds: []
+    statModifiers: []
+    grantedUpgradeIds:
+    - roma.passive.redline

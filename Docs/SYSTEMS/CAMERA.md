@@ -75,7 +75,8 @@ Do not impose a minimum convergence distance on these hits: extending the point
 past a nearby arm or other small hurtbox makes the trajectory miss the reticle.
 Only when the Aim Point is level with or behind the muzzle does the weapon
 extend it along the camera ray to one world unit ahead, preventing backwards
-shots. The muzzle-blocked probe uses the same aim point as the unspread shot.
+shots. The shared muzzle-blocked probe uses the same aim point as the unspread shot.
+Camera and AI sources share the convergence/spread algorithm through `WeaponAimSource`.
 Spread and intervening physical cover can still cause a shot to miss the reticle.
 The original `AimPoint` and `PlayerContext.aimTarget` remain the camera hit for
 visual aiming and projectile skills. This does not move the projectile spawn
@@ -114,11 +115,10 @@ Pitch is clamped by `maximumUpperBodyPitch` (default `55` degrees) and
 distributed across only the resolved Spine, Chest, and UpperChest bones.
 It is applied after `CharacterPairOffsetApplier`, so authored locomotion/action
 pair corrections remain part of the final pose.
-When the model's configured fire-point bone is outside that torso hierarchy,
-the controller creates a runtime pivot and carries `WeaponSystem.FirePoint`
-through the same blended pitch around the resolved chest. Projectile direction
-is still resolved independently from the resulting muzzle position toward the
-existing Aim Point, including spread and muzzle-obstruction handling.
+The muzzle is authored on the weapon model and follows the animated hand/model
+directly. The rig no longer creates a FirePoint pivot or changes muzzle transforms.
+`WeaponAimResolver` computes trajectory independently from that muzzle to the
+source's aim point. AI uses the same resolver with its own target, without a camera.
 Rotation-locking states and exclusive full-body animation playback suppress the
 procedural pose and blend it out. `maximumUpperBodyYaw` remains serialized for
 compatibility but is not used by the pitch-only controller.

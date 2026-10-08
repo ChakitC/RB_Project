@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.TrunkAmmoBox
   displayName: Trunk Ammo Box
-  description: Emergency ammunition kept in the crew's car. Increases reserve ammo capacity by 15%.
-  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
+  description: Emergency ammunition kept in the crew's car. Increases reserve ammo
+    capacity by 15%.
+  icon: {fileID: 21300000, guid: 73669b12e25c9d8429903c045d52d39c, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -29,6 +30,7 @@ MonoBehaviour:
   - Ammo
   - Reserve
   - Crew
+  uniqueEquip: 0
   statModifiers:
   - statType: 21
     operation: 1

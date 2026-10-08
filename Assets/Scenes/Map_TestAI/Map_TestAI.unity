@@ -4408,6 +4408,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config: {fileID: 11400000, guid: f4a5840605bc56540bf1f4ab1f47a913, type: 2}
   spawnOnAwake: 1
+  definitionOverrides: []
 --- !u!4 &953402082
 Transform:
   m_ObjectHideFlags: 0

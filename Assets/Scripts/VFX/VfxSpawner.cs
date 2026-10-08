@@ -109,13 +109,18 @@ public class VfxSpawner : MonoBehaviour
         float extraLife = 0f,
         float scale = 1f,
         float minimumLifetime = 0f,
-        Transform parent = null)
+        Transform parent = null,
+        VfxLifetimeMode lifetimeMode = VfxLifetimeMode.Auto,
+        float explicitLifetime = 0f,
+        bool useWorldTimeScale = true,
+        System.Action<GameObject> configure = null)
     {
         Quaternion rot = normal.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(normal.normalized)
             : Quaternion.identity;
 
-        return SpawnVfx(prefab, pos, rot, extraLife, scale, minimumLifetime, parent);
+        return SpawnVfx(prefab, pos, rot, extraLife, scale, minimumLifetime, parent,
+            lifetimeMode, explicitLifetime, useWorldTimeScale, configure);
     }
 
     public GameObject SpawnVfx(
@@ -125,31 +130,55 @@ public class VfxSpawner : MonoBehaviour
         float extraLife = 0f,
         float scale = 1f,
         float minimumLifetime = 0f,
-        Transform parent = null)
+        Transform parent = null,
+        VfxLifetimeMode lifetimeMode = VfxLifetimeMode.Auto,
+        float explicitLifetime = 0f,
+        bool useWorldTimeScale = true,
+        System.Action<GameObject> configure = null)
     {
         if (!spawnVfx) return null;
         if (prefab == null) return null;
 
-        GameObject vfx = InstantiateVfx(prefab, pos, rotation, parent, scale);
-
-        PooledVfxHandle handle = vfx.GetComponent<PooledVfxHandle>();
-        float duration = handle != null
-            ? CalculateLifetimeAndDisableLoops(handle.ParticleSystems, handle.TrailRenderers)
-            : CalculateLifetimeAndDisableLoops(vfx);
-        duration = Mathf.Max(duration, Mathf.Max(0f, minimumLifetime)) + Mathf.Max(0f, extraLife);
-
-        DestroyVfxWithWorldTime(vfx, duration);
-        return vfx;
+        return EnsurePool().Get(prefab, pos, rotation, parent, scale, vfx =>
+        {
+            var handle = vfx.GetComponent<PooledVfxHandle>();
+            float estimate = CalculateLifetime(handle.ParticleSystems, handle.TrailRenderers,
+                disableLoops: lifetimeMode == VfxLifetimeMode.Auto);
+            float duration = CalculateOneShotLifetime(estimate, minimumLifetime, extraLife, lifetimeMode, explicitLifetime);
+            var scaler = EnsureWorldTimeScaler(vfx);
+            scaler.SetUseWorldTimeScale(useWorldTimeScale);
+            scaler.DestroyAfterWorldSeconds(duration);
+            configure?.Invoke(vfx);
+        });
     }
 
-    public GameObject SpawnLoopingVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent = null, float scale = 1f)
+    public GameObject SpawnLoopingVfx(GameObject prefab, Vector3 pos, Quaternion rotation,
+        Transform parent = null, float scale = 1f, bool useWorldTimeScale = true,
+        System.Action<GameObject> configure = null, bool followWithoutParent = false)
     {
-        if (!spawnVfx) return null;
-        if (prefab == null) return null;
+        if (!spawnVfx || prefab == null) return null;
+        return EnsurePool().Get(prefab, pos, rotation, followWithoutParent ? null : parent, scale, vfx =>
+        {
+            EnsureWorldTimeScaler(vfx).SetUseWorldTimeScale(useWorldTimeScale);
+            if (followWithoutParent && parent != null)
+            {
+                vfx.GetComponent<PooledVfxHandle>().SetOwnerScene(parent.gameObject.scene.handle);
+                vfx.transform.localScale = Vector3.Scale(vfx.transform.localScale, parent.lossyScale);
+                var follower = vfx.GetComponent<AnimationVfxFollowAnchor>();
+                if (follower == null) follower = vfx.AddComponent<AnimationVfxFollowAnchor>();
+                follower.Configure(parent, parent.InverseTransformPoint(pos),
+                    Quaternion.Inverse(parent.rotation) * rotation, followScale: true);
+            }
+            configure?.Invoke(vfx);
+        });
+    }
 
-        GameObject vfx = InstantiateVfx(prefab, pos, rotation, parent, scale);
-        EnsureWorldTimeScaler(vfx);
-        return vfx;
+    public static float CalculateOneShotLifetime(float estimate, float minimumLifetime, float extraLife,
+        VfxLifetimeMode mode = VfxLifetimeMode.Auto, float explicitLifetime = 0f)
+    {
+        if (mode == VfxLifetimeMode.Explicit)
+            return float.IsFinite(explicitLifetime) ? Mathf.Max(0f, explicitLifetime) : 0f;
+        return Mathf.Max(estimate, Mathf.Max(0f, minimumLifetime)) + Mathf.Max(0f, extraLife);
     }
 
     public void StopLoopingVfx(GameObject vfx, bool allowParticlesToFinish = true, float extraLife = 0f)
@@ -157,6 +186,7 @@ public class VfxSpawner : MonoBehaviour
         if (vfx == null) return;
 
         PooledVfxHandle handle = vfx.GetComponent<PooledVfxHandle>();
+        if (handle != null && !handle.BeginStop()) return;
 
         if (!allowParticlesToFinish)
         {
@@ -167,6 +197,12 @@ public class VfxSpawner : MonoBehaviour
             return;
         }
 
+        if (handle != null) handle.DetachForTail();
+        else vfx.transform.SetParent(null, true);
+
+        var scaler = EnsureWorldTimeScaler(vfx);
+        // Lifetime is measured in the selected clock already; don't count world slow twice.
+        scaler.RestoreBaseSpeeds();
         float duration;
         if (handle != null)
         {
@@ -179,8 +215,8 @@ public class VfxSpawner : MonoBehaviour
             StopParticleEmission(vfx);
         }
         duration += Mathf.Max(0f, extraLife);
-
-        DestroyVfxWithWorldTime(vfx, duration);
+        scaler.RestoreClockScale();
+        scaler.DestroyAfterWorldSeconds(duration);
     }
 
     public void SpawnDamageNumber(Vector3 position, float number, IDamageable target)
@@ -205,11 +241,6 @@ public class VfxSpawner : MonoBehaviour
                targetContext.TargetIdentity == AITargetIdentity.Companion;
     }
 
-    GameObject InstantiateVfx(GameObject prefab, Vector3 pos, Quaternion rotation, Transform parent, float scale)
-    {
-        return EnsurePool().Get(prefab, pos, rotation, parent, scale);
-    }
-
     VfxPool EnsurePool()
     {
         if (_pool != null)
@@ -220,14 +251,6 @@ public class VfxSpawner : MonoBehaviour
             _pool = gameObject.AddComponent<VfxPool>();
 
         return _pool;
-    }
-
-    void DestroyVfxWithWorldTime(GameObject vfx, float duration)
-    {
-        if (vfx == null)
-            return;
-
-        EnsureWorldTimeScaler(vfx).DestroyAfterWorldSeconds(duration);
     }
 
     WorldTimeScaledVfx EnsureWorldTimeScaler(GameObject vfx)
@@ -346,7 +369,7 @@ public class VfxSpawner : MonoBehaviour
         {
             ParticleSystemCurveMode.Constant => curve.constant,
             ParticleSystemCurveMode.TwoConstants => curve.constantMax,
-            ParticleSystemCurveMode.Curve => curve.curve != null ? curve.curve.keys[curve.curve.length - 1].value * curve.curveMultiplier : curve.curveMultiplier,
+            ParticleSystemCurveMode.Curve => EvaluateCurveMax(curve.curve, curve.curveMultiplier),
             ParticleSystemCurveMode.TwoCurves => Mathf.Max(
                 EvaluateCurveMax(curve.curveMin, curve.curveMultiplier),
                 EvaluateCurveMax(curve.curveMax, curve.curveMultiplier)),

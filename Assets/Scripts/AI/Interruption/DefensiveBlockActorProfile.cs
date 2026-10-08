@@ -22,9 +22,6 @@ public sealed class DefensiveBlockActorProfile : ScriptableObject
     [Min(0f)] public float guardHalfDepth = 0.05f;
     [Min(0f)] public float guardForwardOffset = 1.4f;
     [Min(0.1f)] public float timeoutSeconds = 2f;
-    [Header("Recoil")]
-    [Min(0f)] public float slideDistance = 1.5f;
-    [Min(0.01f)] public float slideSeconds = 0.35f;
     [Header("Warp presentation")]
     [Min(0f)] public float warpFadeOutSeconds = 0.04f;
     [Min(0f)] public float warpFadeInSeconds = 0.08f;
@@ -79,6 +76,6 @@ public sealed class DefensiveBlockActorProfile : ScriptableObject
     [Min(0f)] public float cooperativeSuccessShakeFrequency = 20f;
     public bool IsConfigured =>
         minimumStandAhead > 0f && standAhead >= minimumStandAhead && guardHalfWidth > 0f && guardHalfHeight > 0f &&
-        timeoutSeconds > 0f && slideDistance >= 0f && slideSeconds > 0f && guardCenterHeight >= 0f &&
+        timeoutSeconds > 0f && guardCenterHeight >= 0f &&
         impactVfxLifetime > 0f && hitLagDuration >= 0f && hitLagTimeScale >= 0.01f && hitLagTimeScale <= 1f;
 }

@@ -4,6 +4,8 @@ using NUnit.Framework;
 public sealed class DefensiveBlockPlayerRecoilRunnerTests
 {
     [TestCase("FollowsRequestedPlanarDistance")]
+    [TestCase("SkillRecoilIsSharedAndCapturedPerGuard")]
+    [TestCase("SkillRecoilCopyAndValidation")]
     [TestCase("WallStopsPlayerBeforePenetration")]
     [TestCase("NavMeshEdgeCapsRecoil")]
     [TestCase("MissingNavMeshDoesNotMovePlayer")]

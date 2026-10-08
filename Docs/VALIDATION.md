@@ -4178,3 +4178,198 @@ existing URP import error did not fail the sensor tests; they were not repaired
 by this validation run. No source code changed in the final rerun, so the
 previous assembly-build result remains applicable. Unity reports no compilation
 failure and has exited Play Mode; `RectorDefensiveBlock.unity` is clean.
+
+## Roma Combat Surge upgrade tree (2026-10-06)
+
+Compilation: `CheckAssemblyBuild.ps1` passed with 0 errors and 110 warnings.
+Unity recompiled runtime and Editor sources with no compiler errors. The existing
+URP `AutodeskInteractive.shadergraph` AssetDatabase import error remains in the
+Console; it is not a C# compilation failure and was not changed by this work.
+
+Automated Unity Test Runner results (filters overlap; do not sum as unique tests):
+
+| Mode / filter | Passed |
+| --- | --- |
+| Edit / RomaPassiveTree | 6/6 |
+| Edit / Passive | 139/139 |
+| Edit / Upgrade | 15/15 |
+| Play / Passive | 5/5 |
+| Play / RomaPassiveTree, final UI check | 1/1 |
+| Play / Reload | 6/6 |
+
+`RomaPassiveTreeTestFixture` covers nine-node/12-point prerequisites, all branches,
+progress JSON save/restore/refund, independent minor upgrades/reset on root and
+nested actor layouts, reserve conservation and rounding, full/empty/partial and
+infinite reserve, Dash deduplication, successful-transfer quota and weapon switch.
+It checks unique/out-of-order AttackIds, excluded hit sources, hits 5/10/15,
+extension cap/expiry boundary, Redline threshold/floor/live damage/cleanup, ordinary
+refresh and upgrade-change cancellation with idle Momentum preservation.
+
+Runtime/UI: `RomaPassiveTreePlayModeTests.ProductionRomaTreeAndCombinedUpgrades`
+loads the production Player/Roma fixture and an isolated in-memory progression
+model. It fires the real weapon, runs full-magazine and per-bullet reload routines
+with reserve transfer during reload, checks combined upgrade stats, pause/slow
+time and disable/reactivate cleanup. Hit and PerfectDodge combat events are
+supplied by the fixture; this is not an unrestricted combat playthrough. Existing
+Passive and Reload Play Mode fixtures provide base-passive and movement/reload
+regression coverage. The user's progression save is not modified.
+
+The actual ActiveSkillScreen prefab was rendered at 1920x1080 with nine connected
+nodes in three columns. All nine descriptions pass TMP overflow checks, and the
+selected major-node drawer was visually inspected. The test writes
+`../BuildArtifacts/RomaPassiveTree/Tree.png`; raw test results are in `Results.json`
+beside it, and the assembly log is `../BuildArtifacts/RomaPassiveTreeBuild.log`.
+Repeated authoring installation retained the definition GUID, stable tree/node
+IDs, nine distinct rules and five distinct variables without duplicate nodes or
+lost upgrade rules. Unity managed-reference serialization IDs can change when
+the helper regenerates its recipe; those are not progression IDs.
+
+Manual live combat, final node artwork, other screen sizes, animation feel and
+balance remain for playtesting. The agreed numeric values are initial tuning.
+The Editor was returned to Edit Mode and its previous time-scale setting.
+
+## Shared weapon aim and model muzzles (2026-10-07)
+
+Compilation: `CheckAssemblyBuild.ps1` passed with 0 errors and 110 warnings.
+Unity finished compiling the Editor bridges and test assemblies without script
+compilation errors. The build log is
+`../../BuildArtifacts/WeaponAimMigration/final-build.log`.
+
+Automated coverage:
+
+| Suite | Result |
+| --- | --- |
+| Edit: WeaponAim, AICombatP0, StateHub, UnifiedWeaponPassives | 62/62 |
+| Edit: PlayerPrefabGrouping, AllyEnemyPrefabGrouping | 23/23 |
+| Final Edit rerun: WeaponAim | 6/6 |
+| Play: WeaponAim, AICombatP0, StateHub, UnifiedWeaponPassives, PlayerPrefabGrouping, AllyEnemyPrefabGrouping | 85 distinct tests pass after targeted rerun |
+
+The last combined Play run passed 84/85. One zero-spread assertion used
+`Vector3.Angle` below float acos resolution; it was changed to compare normalized
+vectors within 0.0001. All four WeaponAim Play tests then passed. Earlier AI
+navigation deadlines were affected by the user's 0.1x toolbar time scale; they
+passed at 1x after synthetic weapon fixtures also rebound their muzzle after Start.
+The user's 0.1x setting and original scene were restored after testing.
+
+`WeaponAimTestFixture` covers near/high/low aim convergence, shared Player/AI
+spread, stability/movement/bloom, invalid or pooled target rejection, and the
+existing 14 owner/hurtbox/world-cover cases. Production prefab Play tests equip
+five configured guns on Player, Ally, Enemy and integrated turret; inspect real
+projectile position/direction, require no ammo loss for missing muzzle/aim, check
+left-hand/both-hands selection, unequip, and disable/reactivate rebinding. Model
+replacement/restoration is exercised on visual-model definitions; an Enemy
+definition referencing a complete actor prefab is not passed as a visual form.
+The integrated turret also rejects incomplete guns instead of borrowing its muzzle.
+
+Authoring: the five referenced weapon prefabs and turret visual have explicit
+model-root `WeaponMuzzleBinding` components. Fourteen actor/test prefabs resolve
+their aim source and no longer contain the retired actor FirePoint. Native asset
+saves removed retired sway/anchor fields while preserving current serialized
+values; the turret's retired bone-name override was removed explicitly.
+`Tools > RB > Weapons > Validate Weapon Muzzles` reports exactly the four agreed
+incomplete GunConfigs, with no other binding issues. These entries remain in the
+project, and Rifle_GR02 remains in its shop catalog.
+
+Runtime evidence is automated prefab simulation with navigation/input disabled
+in weapon-specific cases, plus the existing AI/navigation suites. Gun geometry
+was inspected to place muzzle transforms. Full manual combat, final animation
+feel, balance, and shots while an animated barrel penetrates cover remain for
+playtesting; projectile collision still owns cover impact. Raw final test evidence
+is `../../BuildArtifacts/WeaponAimMigration/test-results.json`.
+
+
+## VFX lifetime, pooling and session completion (2026-10-07)
+
+Gameplay impact paths for DefensiveBlock and TargetedDelivery now use VfxSpawner,
+with positive explicit lifetimes on the normal game clock. Grenade, pre-cast and
+status fallback spawns no longer bypass it. Retained animation/status/projectile/
+pre-cast/cooperative-block references use VfxLease generation checks. Existing
+animation cues default to Auto lifetime and Immediate session completion.
+
+The pool stages clones inactive, resets rental state and applies configuration
+before activation. It owns native particle stop actions and Cartoon FX clear
+behavior on clones. IPooledVfxLifecycle supports effect-owned custom state;
+VfxRigSpawnPlayer caches/releases its override controller. FinishParticles loops
+can outlive a disabled/destroyed owner, detach without losing world pose and return
+on their selected clock. Scene unload/pool disable cleans active rentals and tails.
+Returns during parent disable defer hierarchy changes until LateUpdate. Tail
+estimation uses base simulation/trail speeds to avoid applying world slow twice.
+
+### Compilation
+
+- Required CheckAssemblyBuild.ps1: **0 errors, 110 warnings**. Final log:
+  `P:/Game_RB_Project/BuildArtifacts/VfxLifecycleBuild.log`.
+- Unity compiled runtime, Editor and test assemblies. Final native probe reports
+  `isCompiling=false`, `scriptCompilationFailed=false` and Play Mode stopped.
+- Console is not clean: passive serialization-depth warnings, URP
+  AutodeskInteractive.shadergraph load messages and an MCP reconnect warning
+  remain outside this change. Snapshot is in `BuildArtifacts/VfxLifecycle/Console.json`.
+
+### Automated tests
+
+- **Edit Mode: 200/200 passed, zero skipped**. Includes 11 new VfxLifecycleTests
+  plus AnimationTransitionRegressionRunnerTests, CommanBlockRunnerTests and
+  SkillCastArchitectureTests. Final job: `48e9c8a156514619a163fdc6d8fb7fa2`.
+- **Play Mode: 4/4 passed, zero skipped** in VfxLifecyclePlayMode.Tests. Final job:
+  `117e3294d99a40efaab8289efc48d9e7`.
+- New coverage includes exact/estimated/clip lifetime, authoring round-trip and
+  validation, preview deadline/session end, inactive configuration before OnEnable,
+  reset/reuse and stale leases, repeated stops, loop groups/replacement, session
+  isolation, anchor scale and status multipliers, migrated block/targeted spawn
+  paths, spawn disable, owner destruction, pool/parent disable, originating-scene
+  unload, pause/world slow and base-speed tail calculation.
+- Early failures exposed a real hierarchy mutation during owner OnDisable; detached
+  graceful followers and deferred returns resolve it. Edit-only lifecycle assertions
+  were moved to Play Mode. A fixture's abstract context was replaced with EnemyContext.
+  Production render capture uses game-time waits for game-time lifetimes, avoiding
+  wall-clock/frame-delta mismatch around the render stall. No assertions were skipped.
+- JSON evidence: `P:/Game_RB_Project/BuildArtifacts/VfxLifecycle/EditMode.json`
+  and `PlayMode.json`. Tests are bridged from a dedicated test assembly to the
+  default Editor fixture, matching existing project test organization.
+
+### Runtime and visual checks
+
+Play Mode rendered and reused actual Hit 11 orange arrow (block impact), CFXR
+Lightning Impact and backlight_health.Aires_drop (targeted impact) prefabs. All
+returned to the pool at their authored test deadline and reused the same instance.
+The production Cartoon FX source's clear behavior remained unchanged across ten
+rent/return cycles. Image: `P:/Game_RB_Project/BuildArtifacts/VfxLifecycle/production-vfx.png`.
+
+The original RectorDefensiveBlock scene was restored with `isDirty=false`; no scene
+or production prefab was saved by this change. Full combat input playtesting and
+art approval of each existing skill are not claimed: runtime checks used isolated
+production effects and automated lifecycle/gameplay-entry fixtures. Newly exposed
+Inspector controls and cutscene-to-main preview handoff still need a manual authoring
+UI pass; data round-trip, entry preview and Editor compilation are automated above.
+
+Documentation updated: PREFABS_AND_AUTHORING.md and SYSTEMS/SKILL_SYSTEM.md describe
+lifetime precedence, session-end policy, pooling callbacks/leases and migration.
+
+## Stat modifier scopes and shared stack math (2026-10-08)
+
+### Compilation
+
+- Required `CheckAssemblyBuild.ps1`: **0 errors, 110 warnings**. Existing compiler/dependency warnings remain; log: `P:/Game_RB_Project/BuildArtifacts/StatScopes/assembly-build.log`.
+- Unity recompiled runtime, Editor and test assemblies successfully. The final native probe reported `isCompiling=false` and `scriptCompilationFailed=false`.
+- Console still contains the existing URP AutodeskInteractive.shadergraph load errors. The two `Faulting life presentation` / `Faulting state view listener` exceptions are intentional exception-isolation assertions in `StateHubArchitectureTests`, matched with `LogAssert.Expect`; they are not compilation errors.
+
+### Automated tests
+
+- **Edit Mode: 104/104 passed**, zero failures or skips, across `StatScopes.Tests`, `PassiveComposition.Tests`, `UnifiedWeaponPassives.Tests` and `StateHub.Tests`. This includes 16 new scope/stack tests. Evidence: `P:/Game_RB_Project/BuildArtifacts/StatScopes/edit-mode-final.json`.
+- **Play Mode: 16 distinct relevant tests passed across two runs.** The initial run passed 9/10; Roma's production passive reload test exceeded its real-time deadline with the user's `Time.timeScale=0.1`. Rerunning Roma and Reload groups at time scale 1 passed **8/8**, including two overlapping cases and six additional reload cases. Time scale was restored to **0.1**. Evidence: `play-mode-initial.json` and `play-mode-reload.json` in the same directory. The initial timeout is retained in the report.
+- `ActiveSkillStatusEffectAuthoringSmokeTests.RunFromCommandLine()` also passed, covering status authoring round-trip and override channels.
+- Coverage includes attack **163.8** and skill base **39**, modifier order, weapon binding/cache invalidation, layered crit and weapon stats, floor/caps/ammo rounding, shared stack math, status expiry/refresh/independent groups, dynamic passive stack handling, runtime/preview parity and repeatable migration. Scope validation also checks inherited status modifiers without rejecting an intentional zero Multiply.
+
+### Runtime and prefab checks
+
+- The production Player fixture fired a projectile with damage 163.8 and checked skill base 39; switching to another instance of the same GunConfig produced 143, and expiry/unequip returned damage to 100. Bound reload bonuses did not leak to the other instance.
+- The upgrade milestone reload status applied its +50% bonus (attack 156, skill base 20), then correctly cleared on expiry/switch. Item removal, weapon changes and disable/enable were exercised without duplicate bonuses.
+- WeaponAim Play Mode tests exercised Player, Ally, Enemy and Turret switching/pooling. A separate Unity MCP audit verified context-bound StatsHub and weapon references on `Assets/Prefab/Player/Player.prefab`, `Assets/Prefab/Player/Ally_Stryker.prefab` and `Assets/Prefab/GameEnemy/Enemy_Base.prefab`. Root/nested peer layouts are covered by the scope fixtures.
+- The final native probe reported GameSetup scene unchanged (`isDirty=false`), Play Mode stopped and project scope validation returning no errors. The subsequent MCP editor-state resource was stale; it is retained as supporting evidence, not treated as a fresh readiness assertion.
+
+### Migration and remaining checks
+
+- Editor serialization migrated **28 assets** (one upgrade curve and 27 affix assets). Weapon-specific graph copies preserve original shared recipes/fragments and stable identifiers. A second apply and preview each reported **0 changes**, and scope validation returned **0 errors**.
+- Before/after values are recorded in [migration-applied.json](../../BuildArtifacts/StatScopes/migration-applied.json); migration never compensates balance values automatically. Triggered kill/reload buffs are excluded from idle samples.
+- This validates isolated runtime fixtures and representative prefab references, not a full manually played match or balance review. Newly exposed Inspector controls still need a manual visual authoring pass. Existing unrelated shader errors remain unresolved.
+- Documentation updated: `SYSTEMS/WEAPON_SYSTEM.md`, `SYSTEMS/PASSIVES.md`, `PREFABS_AND_AUTHORING.md` and this validation record.

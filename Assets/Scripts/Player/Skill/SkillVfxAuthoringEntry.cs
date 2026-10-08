@@ -102,6 +102,13 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     [PropertyTooltip("ถ้า VFX ไม่มี Particle System, Trail Renderer และ Animation Clip ค่านี้คืออายุรวมทั้งหมด มิฉะนั้นจะเป็นเวลาที่บวกเพิ่มก่อนทำลาย")]
     private float extraLife;
 
+    [SerializeField, ShowIf(nameof(ShowLifetime))]
+    private VfxLifetimeMode lifetimeMode;
+    [SerializeField, Min(0f), ShowIf(nameof(ShowExplicitLifetime))]
+    private float explicitLifetime;
+    [SerializeField, ShowIf(nameof(ShowSessionEnd))]
+    private VfxSessionEndMode sessionEndMode;
+
     [SerializeField, ShowIf(nameof(ShowStopOptions))]
     [PropertyTooltip("เปิดไว้เพื่อหยุดปล่อยอนุภาคใหม่และรอให้อนุภาคเดิมเล่นจนจบ ปิดไว้เพื่อลบ VFX ทันที")]
     private bool allowParticlesToFinish = true;
@@ -131,6 +138,10 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
     public bool ParentToAnchor => parentToAnchor;
     public string LoopKey => loopKey;
     public float ExtraLife => extraLife;
+    public VfxSessionEndMode SessionEndMode => sessionEndMode;
+    private bool ShowLifetime => action == AnimationVfxAction.OneShot;
+    private bool ShowExplicitLifetime => ShowLifetime && lifetimeMode == VfxLifetimeMode.Explicit;
+    private bool ShowSessionEnd => action == AnimationVfxAction.StartLoop;
     public bool AllowParticlesToFinish => allowParticlesToFinish;
     public bool RequiresPrefab => action != AnimationVfxAction.StopLoop;
     public AnimationClip AnimClip => animClip;
@@ -145,7 +156,7 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         ? "Generic Bone Path"
         : "Custom Anchor Path";
     private bool ShowHumanoidBone => RequiresPrefab && anchor == AnimationVfxAnchor.HumanoidBone;
-    private bool ShowExtraLife => action == AnimationVfxAction.OneShot || action == AnimationVfxAction.StopLoop;
+    private bool ShowExtraLife => (action == AnimationVfxAction.OneShot && lifetimeMode == VfxLifetimeMode.Auto) || action == AnimationVfxAction.StopLoop;
     private bool ShowStopOptions => action == AnimationVfxAction.StopLoop;
 
     void OnAnchorChanged()
@@ -192,6 +203,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         humanoidBone = cue.HumanoidBone;
         parentToAnchor = cue.AnchorMode == AnimationVfxAnchorMode.FollowAnchor;
         loopKey = cue.LoopKey;
+        lifetimeMode = cue.LifetimeMode;
+        explicitLifetime = cue.ExplicitLifetime;
+        sessionEndMode = cue.SessionEndMode;
         extraLife = cue.ExtraLife;
         allowParticlesToFinish = cue.AllowParticlesToFinish;
         animClip = cue.AnimClip;
@@ -214,6 +228,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             humanoidBone = humanoidBone,
             anchorMode = AnimationAnchorMode,
             loopKey = loopKey,
+            lifetimeMode = lifetimeMode,
+            explicitLifetime = explicitLifetime,
+            sessionEndMode = sessionEndMode,
             extraLife = extraLife,
             allowParticlesToFinish = allowParticlesToFinish,
             animClip = animClip,
@@ -233,8 +250,12 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             humanoidBone = humanoidBone,
             parentToAnchor = parentToAnchor,
             loopKey = loopKey,
+            lifetimeMode = lifetimeMode,
+            explicitLifetime = explicitLifetime,
+            sessionEndMode = sessionEndMode,
             extraLife = extraLife,
             allowParticlesToFinish = allowParticlesToFinish,
+            animClip = animClip,
             localScale = Vector3.one,
         };
     }
@@ -355,12 +376,13 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
                 continue;
 
             ParticleSystem.MainModule main = particleSystem.main;
-            main.loop = action == AnimationVfxAction.StartLoop && visualPreviewOriginalLooping[i];
+            main.loop = (action == AnimationVfxAction.StartLoop ||
+                (action == AnimationVfxAction.OneShot && lifetimeMode == VfxLifetimeMode.Explicit)) && visualPreviewOriginalLooping[i];
             particleSystem.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
             particleSystem.Simulate(0.0001f, withChildren: false, restart: true, fixedTimeStep: false);
         }
 
-        visualPreviewActive = visualPreviewParticleSystems.Length > 0;
+        visualPreviewActive = visualPreviewRoot != null && (visualPreviewDuration > 0f || action == AnimationVfxAction.StartLoop);
         visualPreviewLooping = action == AnimationVfxAction.StartLoop;
         visualPreviewStopping = false;
         visualPreviewElapsedTime = 0.0001f;
@@ -435,10 +457,9 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         timelinePreviewStopExtraLife = clampedExtraLife;
         visualPreviewFollowAnchor?.ApplyNow();
 
-        bool anyAlive = HasAliveTimelineParticles();
         bool shouldRemainVisible = clampedStopTime < 0f
-            ? action == AnimationVfxAction.StartLoop || anyAlive || sampleTime <= visualPreviewDuration
-            : anyAlive || sampleTime - clampedStopTime <= visualPreviewDuration + timelinePreviewStopExtraLife;
+            ? action == AnimationVfxAction.StartLoop || sampleTime < visualPreviewDuration
+            : sampleTime - clampedStopTime < visualPreviewDuration + timelinePreviewStopExtraLife;
         if (!shouldRemainVisible)
         {
             ReleasePlaybackPreview();
@@ -501,7 +522,6 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         lastPreviewUpdateTime = editorTime;
         visualPreviewElapsedTime += deltaTime;
 
-        bool anyAlive = false;
         for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
         {
             ParticleSystem particleSystem = visualPreviewParticleSystems[i];
@@ -511,18 +531,15 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             if (deltaTime > 0f)
                 particleSystem.Simulate(deltaTime, withChildren: false, restart: false, fixedTimeStep: false);
 
-            if (particleSystem.IsAlive(withChildren: false))
-                anyAlive = true;
         }
 
         SamplePreviewAnimClip(visualPreviewElapsedTime);
 
         if (visualPreviewStopping)
-            visualPreviewActive = anyAlive || editorTime < visualPreviewStopDeadline;
+            visualPreviewActive = editorTime < visualPreviewStopDeadline;
         else
             visualPreviewActive = visualPreviewLooping ||
-                                  visualPreviewElapsedTime < visualPreviewDuration ||
-                                  anyAlive;
+                                  visualPreviewElapsedTime < visualPreviewDuration;
 
         if (!visualPreviewActive)
             ReleasePlaybackPreview();
@@ -530,6 +547,30 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         return visualPreviewActive;
 #else
         return false;
+#endif
+    }
+
+    [Button("Preview Session End"), ShowIf(nameof(ShowSessionEnd))]
+    public void CompleteSessionVisualPreview()
+    {
+#if UNITY_EDITOR
+        if (visualPreviewRoot == null || (!timelinePreviewActive && !visualPreviewActive)) return;
+        if (action == AnimationVfxAction.StartLoop &&
+            (sessionEndMode == VfxSessionEndMode.Immediate || visualPreviewParticleSystems.Length == 0))
+        {
+            StopVisualPreview();
+            return;
+        }
+        if (timelinePreviewActive)
+        {
+            visualPreviewElapsedTime = timelinePreviewElapsedTime;
+            timelinePreviewActive = false;
+        }
+        visualPreviewActive = true;
+        lastPreviewUpdateTime = EditorApplication.timeSinceStartup;
+        PreviewCoordinator.Register(this);
+        if (action == AnimationVfxAction.StartLoop)
+            StopLoopVisualPreview(true, 0f);
 #endif
     }
 
@@ -551,6 +592,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
         }
 
         double now = EditorApplication.timeSinceStartup;
+        visualPreviewFollowAnchor?.ClearAnchor();
+        visualPreviewRoot.transform.SetParent(null, true);
         UpdateVisualPreview(now);
         for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
         {
@@ -635,13 +678,13 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
                 main.useUnscaledTime = true;
             }
 
-            visualPreviewDuration = VfxSpawner.EstimateLifetime(visualPreviewRoot);
-            if (animClip != null)
-                visualPreviewDuration = Mathf.Max(visualPreviewDuration, animClip.length);
-            if (action == AnimationVfxAction.OneShot)
-                visualPreviewDuration += Mathf.Max(0f, extraLife);
             resetPose = true;
         }
+
+        visualPreviewDuration = action == AnimationVfxAction.OneShot
+            ? VfxSpawner.CalculateOneShotLifetime(VfxSpawner.EstimateLifetime(visualPreviewRoot),
+                animClip != null ? animClip.length : 0f, extraLife, lifetimeMode, explicitLifetime)
+            : VfxSpawner.EstimateLifetime(visualPreviewRoot);
 
         if (resetPose)
             ApplyPlaybackPose(authoredInstance, source);
@@ -742,7 +785,8 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             if (particleSystem == null)
                 continue;
             ParticleSystem.MainModule main = particleSystem.main;
-            main.loop = enabled && action == AnimationVfxAction.StartLoop && visualPreviewOriginalLooping[i];
+            main.loop = enabled && (action == AnimationVfxAction.StartLoop ||
+                (action == AnimationVfxAction.OneShot && lifetimeMode == VfxLifetimeMode.Explicit)) && visualPreviewOriginalLooping[i];
         }
     }
 
@@ -766,18 +810,6 @@ public sealed class SkillVfxAuthoringEntry : MonoBehaviour
             if (particleSystem != null)
                 particleSystem.Simulate(time, withChildren: false, restart: restart, fixedTimeStep: false);
         }
-    }
-
-    bool HasAliveTimelineParticles()
-    {
-        for (int i = 0; i < visualPreviewParticleSystems.Length; i++)
-        {
-            ParticleSystem particleSystem = visualPreviewParticleSystems[i];
-            if (particleSystem != null && particleSystem.IsAlive(withChildren: false))
-                return true;
-        }
-
-        return false;
     }
 
     void SamplePreviewAnimClip(float time)

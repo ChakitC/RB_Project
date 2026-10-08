@@ -118,6 +118,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children:
       - kind: 17
         eventTarget: 0
@@ -151,6 +152,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
       - kind: 18
         eventTarget: 0
@@ -184,6 +186,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
     steps:
     - rid: 3342399495413957201
@@ -245,6 +248,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.LastRound.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.last_round.v1
   displayName: Last Round
   description: Last Round

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.CasinoLuckyCoin
   displayName: Casino Lucky Coin
-  description: A gambler's lucky coin. Adds 3 critical rate. After a kill, gain 5 more critical rate for 4 seconds.
-  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
+  description: A gambler's lucky coin. Adds 3 critical rate. After a kill, gain 5
+    more critical rate for 4 seconds.
+  icon: {fileID: 21300000, guid: a453b41152189364b8b19364d115433d, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

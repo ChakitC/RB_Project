@@ -107,8 +107,6 @@ public sealed partial class AICombatP0Checks
     }
     void Weapon()
     {
-        var firePoint = new GameObject("FirePoint").transform;
-        firePoint.SetParent(owner.transform, false);
         owner.WeaponSystem = owner.TargetInfo.gameObject.AddComponent<WeaponSystem>();
         owner.WeaponSystem.ctx = owner;
         var gun = Own(ScriptableObject.CreateInstance<GunConfig>());
@@ -117,7 +115,7 @@ public sealed partial class AICombatP0Checks
         owner.WeaponSystem.magazine = 10;
         owner.WeaponSystem.maxMagazine = 10;
         owner.WeaponSystem.reserveAmmo = 5;
-        owner.WeaponSystem.firePoint = owner.transform;
+        WeaponAimTestSource.Bind(owner.WeaponSystem, owner.transform);
     }
     public void TearDown()
     {
@@ -296,6 +294,7 @@ public sealed partial class AICombatP0Checks
     public IEnumerator ReloadAndAbort()
     {
         Setup(true); Weapon(); yield return null;
+        WeaponAimTestSource.Bind(owner.WeaponSystem, owner.transform);
         var shoot = Bind(new AiShoot { faceTarget = true, returnSuccessWhenTargetLost = false });
         shoot.OnStart();
         Set(owner.WeaponSystem, "isReloading", true);
@@ -347,6 +346,7 @@ public sealed partial class AICombatP0Checks
     public IEnumerator LiveTreeSharesAssetButNotActorState()
     {
         Setup(true); Weapon(); yield return null;
+        WeaponAimTestSource.Bind(owner.WeaponSystem, owner.transform);
         var graph = AssetDatabase.LoadAssetAtPath<Subtree>(AICombatP0GraphAuthoring.GraphPath);
         var firstTree = owner.gameObject.AddComponent<Opsive.BehaviorDesigner.Runtime.Wrappers.BehaviorTree>();
         firstTree.StartWhenEnabled = false; firstTree.Subgraph = graph;
@@ -420,7 +420,7 @@ public sealed partial class AICombatP0Checks
     {
         Setup(true); Weapon(); yield return null;
         owner.WeaponSystem.Equip(owner.WeaponSystem.CurrentWeapon);
-        owner.WeaponSystem.firePoint = owner.transform;
+        WeaponAimTestSource.Bind(owner.WeaponSystem, owner.transform);
         owner.WeaponSystem.magazine = 0; owner.WeaponSystem.reserveAmmo = 5;
         var shoot = Bind(new AiShoot { faceTarget = true, returnSuccessWhenTargetLost = false }); shoot.OnStart();
         Assert.AreEqual(TaskStatus.Running, shoot.OnUpdate());

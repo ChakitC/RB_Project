@@ -1,0 +1,8 @@
+{
+    "name": "VfxLifecyclePlayMode.Tests",
+    "references": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false
+}

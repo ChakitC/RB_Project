@@ -242,6 +242,7 @@ public static class ActiveSkillStatusEffectAuthoringService
             result.Add(new StatusEffectModifier
             {
                 statType = source.statType,
+                scope = source.scope,
                 operation = source.operation,
                 value = source.value,
             });
@@ -265,6 +266,7 @@ public static class ActiveSkillStatusEffectAuthoringService
                 result.Add(new StatusEffectModifier
                 {
                     statType = (StatType)(modifier.FindPropertyRelative("statType")?.intValue ?? 0),
+                    scope = (StatModifierScope)(modifier.FindPropertyRelative("scope")?.intValue ?? 0),
                     operation = (ModifierOp)(modifier.FindPropertyRelative("operation")?.intValue ?? 0),
                     value = modifier.FindPropertyRelative("value")?.floatValue ?? 0f,
                 });
@@ -492,6 +494,9 @@ public static class ActiveSkillStatusEffectAuthoringService
                 if (modifier == null)
                     continue;
 
+                if (!StatModifierRules.IsValidScope(modifier.statType, modifier.scope))
+                    issues.Add(Error($"Modifier #{i + 1}: {modifier.statType} does not support {modifier.scope}."));
+
                 if (modifier.operation == ModifierOp.Multiply && modifier.value <= 0f)
                 {
                     issues.Add(Warning(
@@ -626,7 +631,7 @@ public static class ActiveSkillStatusEffectAuthoringService
             {
                 StatusEffectModifier modifier = request.Modifiers[i];
                 if (modifier != null)
-                    lines.Add($"    - {modifier.statType} / {modifier.operation} / {modifier.value:0.###}");
+                    lines.Add($"    - {modifier.statType} / {modifier.scope} / {modifier.operation} / {modifier.value:0.###}");
             }
         }
 
@@ -856,6 +861,7 @@ public static class ActiveSkillStatusEffectAuthoringService
                     target.FindPropertyRelative("operation").intValue =
                         (int)(modifier?.operation ?? ModifierOp.Flat);
                     target.FindPropertyRelative("value").floatValue = modifier?.value ?? 0f;
+                    target.FindPropertyRelative("scope").intValue = (int)(modifier?.scope ?? StatModifierScope.Global);
                 }
             }
         }

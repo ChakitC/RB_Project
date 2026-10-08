@@ -124,6 +124,8 @@ public class PlayerContext : CharacteContext
         if (Application.isPlaying && thirdPersonAim == null)
             thirdPersonAim = gameObject.AddComponent<ThirdPersonAimController>();
 
+        if (WeaponAim == null) WeaponAim = thirdPersonAim;
+
         if (Application.isPlaying && Targeting == null)
             Targeting = gameObject.AddComponent<PlayerTargetingController>();
     }

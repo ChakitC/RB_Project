@@ -277,9 +277,14 @@ public sealed class TargetedDeliveryRuntime : MonoBehaviour
 
         if (payload.ImpactVfxPrefab != null)
         {
-            GameObject vfx = Instantiate(payload.ImpactVfxPrefab, impactPoint, Quaternion.identity);
-            if (vfx != null && payload.ImpactVfxLifetime > 0f)
-                Destroy(vfx, payload.ImpactVfxLifetime);
+            // Legacy zero means externally/self managed, not an immediate despawn.
+            if (payload.ImpactVfxLifetime > 0f)
+                VfxSpawner.Instance?.SpawnVfx(payload.ImpactVfxPrefab, impactPoint, Quaternion.identity,
+                    lifetimeMode: VfxLifetimeMode.Explicit, explicitLifetime: payload.ImpactVfxLifetime,
+                    useWorldTimeScale: false);
+            else
+                VfxSpawner.Instance?.SpawnLoopingVfx(payload.ImpactVfxPrefab, impactPoint, Quaternion.identity,
+                    useWorldTimeScale: false);
         }
 
         if (payload.ImpactAudio != null)

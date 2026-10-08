@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: RabbitLag
   description: When dashing, there is a 20% chance to restore ammo equal to 20% of
     the magazine capacity.
-  icon: {fileID: 21300000, guid: 8fafc6006aa08fe4293dc0bff5f94173, type: 3}
+  icon: {fileID: 21300000, guid: 38108113f442dcf4faf56cc0ec6aa632, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

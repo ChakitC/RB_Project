@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64c759ad080b4fc28b560f5aa9c26f76, type: 3}
   m_Name: WeaponUpgradeCurve.Default
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   maxLevel: 30
   rarityLevelCaps:
   - rarity: 0
@@ -27,42 +28,47 @@ MonoBehaviour:
   scrapCostPerTenLevels: 1
   levelCosts: []
   statBonuses:
-  - statType: 0
+  - scope: 1
+    statType: 0
     operation: 1
     valuePerStep: 0.2
     firstLevel: 1
     levelsPerStep: 1
-    allowedWeaponTypes: []
-  - statType: 16
+    allowedWeaponTypes: 
+  - scope: 1
+    statType: 16
     operation: 0
     valuePerStep: 0.5
     firstLevel: 1
     levelsPerStep: 1
-    allowedWeaponTypes: []
-  - statType: 14
+    allowedWeaponTypes: 
+  - scope: 1
+    statType: 14
     operation: 1
     valuePerStep: -0.2
     firstLevel: 1
     levelsPerStep: 1
-    allowedWeaponTypes: []
-  - statType: 15
+    allowedWeaponTypes: 
+  - scope: 1
+    statType: 15
     operation: 1
     valuePerStep: -0.1
     firstLevel: 1
     levelsPerStep: 1
-    allowedWeaponTypes: []
-  - statType: 18
+    allowedWeaponTypes: 
+  - scope: 1
+    statType: 18
     operation: 1
     valuePerStep: 5
     firstLevel: 10
     levelsPerStep: 10
-    allowedWeaponTypes: []
+    allowedWeaponTypes: 
   milestones:
   - milestoneId: upgrade-tier-10
     displayName: +10 Tier Unlock
     description: Unlocks the first weapon behavior.
     requiredLevel: 10
-    allowedWeaponTypes: []
+    allowedWeaponTypes: 
     increaseTier: 1
     tierIncreaseAmount: 1
     effects:
@@ -70,7 +76,8 @@ MonoBehaviour:
       displayName: Extra Shot
       description: 3% chance to fire one extra projectile without consuming ammo.
       effectType: 2
-      allowedWeaponTypes: []
+      allowedWeaponTypes: 
+      scope: 1
       statType: 0
       modifierOp: 0
       value: 0
@@ -86,7 +93,7 @@ MonoBehaviour:
     displayName: +20 Tier Unlock
     description: Unlocks a periodic extra projectile.
     requiredLevel: 20
-    allowedWeaponTypes: []
+    allowedWeaponTypes: 
     increaseTier: 1
     tierIncreaseAmount: 1
     effects:
@@ -94,7 +101,8 @@ MonoBehaviour:
       displayName: Sixth Shot
       description: Every 20 shots fires one extra projectile without consuming ammo.
       effectType: 3
-      allowedWeaponTypes: []
+      allowedWeaponTypes: 
+      scope: 1
       statType: 0
       modifierOp: 0
       value: 0
@@ -110,7 +118,7 @@ MonoBehaviour:
     displayName: +30 Tier Unlock
     description: Reloading briefly increases fire speed.
     requiredLevel: 30
-    allowedWeaponTypes: []
+    allowedWeaponTypes: 
     increaseTier: 1
     tierIncreaseAmount: 1
     effects:
@@ -118,7 +126,8 @@ MonoBehaviour:
       displayName: Reload Overdrive
       description: On reload, fire interval is reduced by 8% for 2 seconds.
       effectType: 4
-      allowedWeaponTypes: []
+      allowedWeaponTypes: 
+      scope: 1
       statType: 15
       modifierOp: 1
       value: -8

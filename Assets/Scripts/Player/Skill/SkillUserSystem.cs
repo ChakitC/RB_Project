@@ -12,6 +12,8 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
     [SerializeField] private CharacteContext characteContext;
     [SerializeField] private StatsHub statsHub;
     [SerializeField] private Transform castOrigin;
+    [SerializeField, Tooltip("Use the equipped weapon muzzle when present. Unarmed skills use the authored cast origin or actor root.")]
+    private bool useWeaponMuzzleForCastOrigin;
     [SerializeField] private Transform aimTransform;
     Transform runtimeAimTransformOverride;
 
@@ -42,7 +44,18 @@ public class SkillUserSystem : MonoBehaviour, ISkillUser
 
     public event Action<float, float> EnergyChanged;
 
-    public Transform CastOrigin => castOrigin ? castOrigin : transform;
+    public Transform CastOrigin
+    {
+        get
+        {
+            if (useWeaponMuzzleForCastOrigin && characteContext != null)
+            {
+                Transform muzzle = characteContext.WeaponSystem != null ? characteContext.WeaponSystem.FirePoint : null;
+                return muzzle != null ? muzzle : castOrigin != null ? castOrigin : characteContext.transform;
+            }
+            return castOrigin != null ? castOrigin : transform;
+        }
+    }
     public Transform AimTransform => runtimeAimTransformOverride ? runtimeAimTransformOverride : aimTransform ? aimTransform : transform;
     public float currentEnagy
     {

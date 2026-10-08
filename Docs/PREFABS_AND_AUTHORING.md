@@ -289,8 +289,8 @@ panels at 1280 x 720 and 1920 x 1080 after changing these settings.
 | `Party_System` | Character loader, formation, commands, helper, field allies, chains and follow-up controller/executor |
 
 The root retains Transform, CharacterController, Rigidbody, Animator,
-PlayerContext, AITargetInfo, AudioListener and CharacterMovementMotor. FirePoint,
-Aim Target and PlayerVisual remain actor anchors. The root Animator is retained;
+PlayerContext, AITargetInfo, AudioListener and CharacterMovementMotor.
+Aim Target and PlayerVisual remain actor anchors; FirePoint belongs to the weapon model. The root Animator is retained;
 this organization change does not remove or retarget animation components.
 
 Keep group transforms at local identity. Important peer references stay explicitly
@@ -335,7 +335,7 @@ variants linked to Enemy_Base when editing their systems.
 Move only modules already authored on that prefab. Ally retains eight root
 components: Transform, AllyContext, NavMeshAgent, CharacterController, Rigidbody,
 Animator, CharacterMovementMotor and AITargetInfo. Enemy retains the corresponding
-seven without CharacterController. Keep model roots, FirePoint, HelperAim, HitTaget,
+seven without CharacterController. Keep model roots, HelperAim, HitTaget,
 colliders and other positional anchors at their authored transforms; system groups
 use local identity. `AI Ally/Ally.prefab` and `Ally_Base.prefab` are separate layouts.
 
@@ -1254,14 +1254,16 @@ upper-body pose; Aim Point resolution and projectile trajectories still work.
 Model swaps cause the controller to discard old bone references and resolve the
 new visual rig.
 
-Keep the actor's authored `FirePoint` binding and `firePointBoneName` setup
-unchanged. If that fire-point bone (the current roster uses root-level
-`c_traj`) is not below Spine/Chest/UpperChest, the upper-body controller creates
-a runtime-only pivot below it and moves the muzzle origin through the blended
-pitch. If the fire point already belongs to the torso hierarchy, no extra pivot
-is added. Releasing aim, entering a rotation-locking/full-body state, or
-disabling the component restores the pivot to the authored pose. Projectile
-direction continues to target the existing Aim Point from the adjusted origin.
+Put `WeaponMuzzleBinding` on each weapon prefab root, with its FirePoint at the
+barrel tip and local +Z pointing out. CharacterVisualController binds the mounted
+model's muzzle after weapon/model changes (right hand for BothHands; left for
+LeftHand). The integrated turret binds its visual model directly. Do not author
+a FirePoint on the actor root or set a fire-point bone/offset on the visual controller.
+The upper-body rig changes the pose, never the muzzle hierarchy.
+
+Bind `CharacteContext.WeaponAim` to the actor's ThirdPersonAimController or
+AIAimTargetDriver. The weapon source must belong to that actor. Use
+`Tools > RB > Weapons > Validate Weapon Muzzles` after authoring new weapons.
 
 `Assets/Prefab/System/CameraHolder.prefab` remains the gameplay camera root.
 `GameplayCameraController` creates its Cinemachine camera/brain at runtime so
@@ -2064,9 +2066,17 @@ group; the matching `StopLoop` stops every VFX in that group. A later Start cue
 with the same key replaces the previous group. The authoring and runtime systems
 do not force `ParticleSystem.Main.loop`; configure looping on the VFX prefab when
 continuous particle emission is required.
-When animation playback or its runtime request ends, any loop group still active
-is removed immediately. Use an explicit `StopLoop` entry when a graceful particle
-tail is required before the animation finishes.
+When playback/request ends (including interruption), each StartLoop's `Session End Mode`
+controls remaining instances. `Immediate` is the serialized default; `FinishParticles`
+stops emission, detaches at the current world pose and lets the pool-owned tail finish.
+Use an explicit `StopLoop` for a tail beginning at a particular marker. StopLoop's
+own `Allow Particles To Finish` and `Extra Life` still take precedence at that marker.
+FinishParticles requires particles; mesh/shader fades need their own end animation.
+The entry's `Preview Session End` button previews this policy; non-looping main
+animation playback also applies it when it reaches the clip end, and the cutscene
+section applies it before handing off to the main clip. Looping the same preview
+entry restarts its single preview instance. Closing/stopping
+preview explicitly still clears previews.
 Place the same Animancer event named `Vfx` once for every VFX cue. Occurrence 1
 uses cue index 0, occurrence 2 uses cue index 1, and so on. Every entry under the
 same slot is saved with that slot's cue index and runs at the same marker.
@@ -2189,6 +2199,38 @@ marker reorders their cue indices. Removing a VFX marker also removes entries in
 that cue group and shifts later cue indices down.
 Stopping or closing the window stops VFX previews and exits Unity Animation Mode
 so the sampled character pose is restored.
+
+### VFX lifetime and pooling authoring
+
+OneShot entries expose `Lifetime Mode`: `Auto` preserves the existing estimate
+(maximum particle/trail lifetime versus animation clip length, plus Extra Life).
+`Explicit` uses exactly `Explicit Lifetime` seconds and ignores estimated duration,
+minimum lifetime and Extra Life. Use Explicit for mesh/shader effects or a deliberate
+cutoff. Explicit retains authored particle looping until that cutoff; Auto disables
+particle loops for one-shot playback. Both runtime and preview use the same calculation and deadline. Validation
+reports nonpositive/nonfinite explicit durations and Auto entries with no lifetime
+source or positive Extra Life. Existing serialized entries default to Auto/Immediate.
+
+Runtime VFX instances are rented inactive, reset/configured, then activated.
+FinishParticles animation loops use a detached follower so disabling/destroying the
+owner cannot interrupt their tail; non-Generic anchors still track position, rotation
+and changes in scale. Status loops and graceful pre-cast loops use the same approach. Do not
+schedule `Destroy` on a pooled instance. Retain `VfxLease` for delayed cleanup; an old
+lease cannot stop a later rental of the same object. `SpawnVfxEnabled` gates new
+spawns (and damage numbers), not already active effects or gameplay execution.
+
+The pool owns ParticleSystem stop actions and Cartoon FX clear behavior on clones;
+source prefabs stay unchanged. Custom scripts that modify material/property blocks,
+timers or subscriptions implement `IPooledVfxLifecycle`. Rent/return callbacks run
+inactive; restore only state owned by that script. The pool resets child poses,
+active flags, layers, root scale, particle loops, trails, follow anchors and its clock.
+It cannot undo arbitrary work in unrelated custom scripts. VfxRigSpawnPlayer reuses
+and releases its owned AnimatorOverrideController instead of allocating one per rent.
+
+Graceful tails keep their clock selection after detaching. Their deadline is
+estimated from base particle/trail speeds so world slow is applied only once. Pool scene-unload cleanup
+uses the originating scene, including detached tails; pool disable also returns active
+rentals. The default inactive capacity is 20 per prefab, not a concurrent-spawn limit.
 
 ## Shared Animation VFX Authoring
 
@@ -2740,7 +2782,7 @@ Weapon data should preserve:
 - affix and upgrade compatibility
 
 Author weapon `Stability` as a percentage from `0` to `100`. `0%` keeps full
-sway and `100%` removes sway. For passives, accessories, affixes, status
+projectile spread and `100%` removes spread. For passives, accessories, affixes, status
 effects, and upgrades, a `Flat` Stability modifier is authored as percentage
 points: a value of `10` changes `30%` Stability to `40%`.
 
@@ -3254,29 +3296,19 @@ branches removed and `AiRotateToTarget` driving the `Row` bone instead of
 `SharedVariable` override directly on the `BehaviorTree` component's data
 (not in the shared subtree asset — Unity does not allow reparenting an
 existing object across a nested-prefab-instance boundary in Prefab Mode, so
-this is the override point instead). `CharacterVisualController.firePointBoneName`
-is overridden to `Row` (offset zeroed) so `FirePoint` is reparented onto the
-turret bone at runtime and stays aligned with the barrel's rotation.
+this is the override point instead). The turret visual root now owns a
+`WeaponMuzzleBinding` targeting a FirePoint child of the authored FirePoint.Bone
+under Row/Terret. Its corrected child orientation points +Z down the barrel;
+the imported bone's orientation remains unchanged.
 
-`CharacterVisualController.buildModelAutomatically` is overridden to `false`
-on this prefab. `SummonBase` defaults it to `true`, which tries to build the
-visual model at runtime from `baseStats.CharacterPrefab` — this summon has no
-such stats entry, so that path silently no-ops (`Awake`/`Start` call it with
-`silent: true`) and `_currentModel` never gets set. Since `AttachFirePointToModelBone`
-and `CreateHealthBarOnModelBone` both bail out early when `_currentModel` is
-null, leaving `buildModelAutomatically` at its inherited `true` value means
-`firePointBoneName`/`healthBarBoneName` never take effect and `FirePoint`
-stays parented wherever `ThirdPersonAimRigController` first wraps it
-(typically `GameplayRoot`, not the turret bone) — the turret visually rotates
-but the fire point silently doesn't follow. With it `false`, the controller
-instead resolves the already-authored `MinigunTerret_Visual` via
-`SetupExistingModel`/`ResolveExistingModelObject`, which is what actually
-lets the bone-name overrides take effect. Any other prefab that authors its
-visual model directly in the prefab (rather than spawning it from
-`baseStats.CharacterPrefab`) needs this same override.
+`CharacterVisualController.buildModelAutomatically` is false on this prefab.
+It must bind the already-authored visual through SetupExistingModel, including
+its integrated muzzle and health bar. It does not instantiate a hand-held gun.
+Other prefabs with a preplaced model need the same model-build setting.
 
-Actual weapon firing (ammo, fire-rate, projectile spawn) remains unimplemented
-— only targeting and rotation are authored here.
+The turret WeaponSystem now supports the shared aim/muzzle launch path. Its
+authored behavior tree still determines whether it requests weapon fire; this
+migration does not add a new firing task to a rotation-only tree.
 
 `Assets/Data/Skills/Feno/Feno.Skill_MinigunTerret.asset` is assigned to Feno's
 slot 2. It requests one stationary summon at the caster-forward offset
@@ -3727,7 +3759,13 @@ compensate for animated bones. Landing surfaces must have solid colliders includ
 in GuardSetting's world layers within 0.2 m of the NavMesh landing point; character
 colliders and triggers are excluded as support. This is checked again after fade-out.
 
-Defender settings are authored only on `GuardSetting.asset`
+Defender recoil is authored on the incoming **Skill asset > Defensive Block >
+Defender Recoil (Player and Ally)**. **Slide Distance** and **Slide Seconds** apply
+to both defenders, including self guard and Cooperative Block. Defaults are 1.5 m
+and 0.35 s; zero distance disables movement. Values are captured when each guard
+begins. The old Actor Profile recoil fields have been removed.
+
+Other defender settings are authored on `GuardSetting.asset`
 (`DefensiveBlockActorProfile`), referenced by `ChaDef.Aires > Defensive Block` and
 the Player controller's `defaultSettings`. A character-specific profile takes priority.
 Controller tuning copies are hidden to avoid editing values that the profile
@@ -4117,6 +4155,25 @@ The shared Player prefab resolves this through CharacterSkillManager; no passive
 is hard-coded into the Player prefab or added to other character definitions.
 The production asset owns its recipe and four fragments independently of Tests.
 
+The production definition references `Roma_StaminaMomentum_UpgradeTree.asset` in
+the same folder. `RomaCombatSurgeAuthoring.Install()` installs the base recipe and
+all nine upgrade nodes together; repeated installation preserves IDs/GUIDs and
+does not duplicate nodes or strip upgrade rules. It reapplies default tuning.
+The tree uses three columns: Dodge left, continuous fire middle, low Stamina right.
+Each column progresses from two 1-point nodes to a 2-point major node; minor scale
+is 1.0 and major scale 1.5. Only prerequisites within that column create links.
+The existing Tree view displays progression bottom-to-top. Nodes use the same
+`Assets/Spain/Skill_Icon/Global` sprite library as the Aires and Feno trees.
+In prerequisite order, Dodge uses Skill_15600/4050/5100, continuous fire uses
+Skill_1090/5040/1000, and low Stamina uses Skill_4020/13260/2080. The authoring
+helper preserves this mapping when reinstalling defaults.
+
+Use the existing purchase/save/reset flow and shared skill points. No Player
+prefab fields or extra HUD gauges are required. The existing node drawer displays
+the selected node description, fits passive text within its description area,
+and resolves prerequisite labels to node display names. Non-passive description
+font settings are restored when switching back to an active skill.
+
 ### Weapon passive authoring (2026-10-05)
 
 Keep the existing WeaponAffixRuntimeController component and serialized database
@@ -4137,3 +4194,35 @@ migrate. Existing asset GUIDs, names, roll values, feedback profiles and externa
 references are preserved. Legacy rootBehavior fields remain for reference and
 migration compatibility but cannot construct gameplay runtimes. New formulas use
 recipe parameters, bindings and steps. Never put affix counters on CharacteContext.
+
+### Skill origins formerly bound to the actor FirePoint
+
+These SkillUserSystem bindings now enable `useWeaponMuzzleForCastOrigin` and clear
+the old transform reference. CastOrigin reads the currently equipped muzzle through
+context, so swapping weapons cannot leave a stale skill origin. With no weapon
+muzzle, non-weapon skills use their authored castOrigin or actor root. Explicit
+skill-only cast origins remain supported. AI aimTransform references that used
+the old muzzle now use the driver's aim target/runtime override. Skill trajectory
+modules and targeting policies are unchanged.
+
+## Stat modifier scope authoring
+
+Choose `Global` for whole-character bonuses and `WeaponOnly` for the gun's own
+contribution. Flat uses stat units, AddPercent 20 means +20%, Multiply 1.2 means
+x1.2. Three Multiply stacks in one group give x1.6; different groups multiply.
+Damage/Crit upgrades and migrated weapon affix stat bonuses are WeaponOnly;
+HP/movement/resource bonuses remain Global. Do not use WeaponOnly for stats that
+are not consumed by the weapon stat pipeline.
+
+Passive entries, dynamic recipe steps, accessory stats, status modifier entries
+and upgrade entries expose scope. The existing status application drawer and
+status authoring wizard preserve scope when copying a definition into an override.
+An application override is independent of its definition after editing.
+
+Migration menus: `Tools > RB > Stats > Preview Scope Migration` and `Apply Scope
+Migration`. Apply is schema-versioned/idempotent and uses native asset serialization.
+`Tools > RB > Stats > Validate Modifier Scopes` reports unsupported scope/stat
+pairs across accessory, status, upgrade, recipe and fragment assets/subassets.
+Changed affix graphs are isolated from existing references; do not delete their
+original subassets as part of migration. Existing saves keep weapon IDs, rolls and
+upgrade levels. This change requires no character prefab reference cleanup.

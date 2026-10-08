@@ -221,11 +221,15 @@ public sealed class GameplayHudPresenter : MonoBehaviour
         {
             view.actor = actor;
             actor.ResolveReferences();
-            if (view.portrait != null)
-            {
-                view.portrait.sprite = actor.baseStats != null ? actor.baseStats.icon : null;
-                view.portrait.enabled = view.portrait.sprite != null;
-            }
+        }
+
+        // Character data can load or change after the actor was first bound.
+        if (view.portrait != null)
+        {
+            Sprite portrait = actor.baseStats != null ? actor.baseStats.icon : null;
+            if (view.portrait.sprite != portrait)
+                view.portrait.sprite = portrait;
+            view.portrait.enabled = portrait != null;
         }
 
         HealthSystem health = actor.HealthSystem;

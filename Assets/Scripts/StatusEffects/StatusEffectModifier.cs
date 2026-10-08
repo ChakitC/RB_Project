@@ -5,6 +5,9 @@ using UnityEngine;
 [Serializable]
 public sealed class StatusEffectModifier
 {
+    [ValidateInput(nameof(HasValidScope), "WeaponOnly is not supported for this stat.")]
+    public StatModifierScope scope;
+    bool HasValidScope() => StatModifierRules.IsValidScope(statType, scope);
     [Tooltip("Stat affected by this modifier. Stability is authored as a final percentage from 0 to 100.")]
     public StatType statType;
 
@@ -12,10 +15,7 @@ public sealed class StatusEffectModifier
     [OnValueChanged(nameof(HandleOperationChanged))]
     public ModifierOp operation = ModifierOp.Flat;
 
-    [Tooltip(
-        "Flat: add points directly. AddPercent: whole percentages (10 => +10%), stacks additively — avoid on debuffs from " +
-        "multiple sources (can go negative). Multiply: direct factor (0.75 => -25%, 1.2 => +20%), stacks multiplicatively " +
-        "and never reaches 0 — use this for debuffs. A Multiply value of 0 zeroes the stat outright.")]
+    [Tooltip(StatModifierRules.ValueTooltip)]
     public float value = 1f;
 
 #if UNITY_EDITOR

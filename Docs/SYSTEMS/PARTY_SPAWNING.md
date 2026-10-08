@@ -57,6 +57,11 @@ refresh from throwing and rolling back the entire party. After activation the
 HUD's normal refresh reads the initialized state; no early state-machine setup
 or extra Audio Listener is required.
 
+`GameplayHudPresenter` also refreshes portraits from the current `baseStats.icon`
+on every HUD refresh. Character data may arrive after the actor is first bound,
+or change on the same context during a load; a missing initial icon must not leave
+the portrait disabled. Missing icons are hidden until a sprite becomes available.
+
 Scoped control tokens can also be acquired and released before `Awake`, with
 the actor context already bound. StateHub stores their masks immediately and
 defers shooting synchronization until its state machines are initialized.

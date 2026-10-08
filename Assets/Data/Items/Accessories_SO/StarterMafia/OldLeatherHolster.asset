@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: Accessory.OldLeatherHolster
   displayName: Old Leather Holster
-  description: A worn 1970s leather holster. Reduces reload time by 8% and adds 5 stability.
-  icon: {fileID: 21300000, guid: 4e529b56c06b43c4c83266dc0535478c, type: 3}
+  description: A worn 1970s leather holster. Reduces reload time by 8% and adds 5
+    stability.
+  icon: {fileID: 21300000, guid: 31fb940f51dfea24b8cce0b49c2d2c58, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -29,6 +30,7 @@ MonoBehaviour:
   - Reload
   - Stability
   - Gun
+  uniqueEquip: 0
   statModifiers:
   - statType: 14
     operation: 1

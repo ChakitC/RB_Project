@@ -439,6 +439,7 @@ public sealed class ActiveSkillStatusEffectWizardWindow : EditorWindow
             using (new EditorGUILayout.HorizontalScope())
             {
                 modifier.statType = (StatType)EditorGUILayout.EnumPopup(modifier.statType);
+                modifier.scope = (StatModifierScope)EditorGUILayout.EnumPopup(modifier.scope);
                 ModifierOp nextOperation = (ModifierOp)EditorGUILayout.EnumPopup(modifier.operation);
                 if (nextOperation != modifier.operation &&
                     nextOperation == ModifierOp.Multiply &&

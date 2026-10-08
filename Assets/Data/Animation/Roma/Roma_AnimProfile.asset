@@ -62,8 +62,8 @@ MonoBehaviour:
     backwardLeft: {fileID: -596120106417223001, guid: 954ede865601d5d47836d4fa3bf822e8, type: 3}
     backwardRight: {fileID: -8557995361944161523, guid: b1110dabcc4788949b033d3cd4190a53, type: 3}
   locomotionParamLerp: 14
-  snapTo8Directions: 1
-  locomotionFadeDuration: 0.25
+  snapTo8Directions: 0
+  locomotionFadeDuration: 0.35
   locomotionPlaybackSpeed: 1
   stageIntroClip:
     _FadeDuration: 0.25

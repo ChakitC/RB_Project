@@ -296,8 +296,8 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
             catch (Exception error) { buffer.RemoveRange(start, buffer.Count - start); runtime.Fail(error); }
         }
         if (_activeModifiers == null) return;
-        foreach (var modifier in _activeModifiers) if (!modifier.IsExpired(Clock)) foreach (var stat in modifier.Modifiers)
-            buffer.Add(new RuntimeStatModifier(stat.statType, stat.operation, stat.value * modifier.Stacks, modifier.ModifierKey));
+        foreach (var modifier in _activeModifiers) if (!modifier.IsExpired(Clock) && modifier.Stacks > 0) foreach (var stat in modifier.Modifiers)
+            buffer.Add(new RuntimeStatModifier(stat.statType, stat.operation, StatModifierRules.StackValue(stat.operation, stat.value, modifier.Stacks), modifier.ModifierKey, stat.scope, stat.weaponInstanceId));
     }
     public void Tick(float deltaTime)
     {
@@ -346,9 +346,9 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         ReleaseUnusedOptionalEventSources();
     }
 
-    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades = null)
+    public bool TryApplyRuntimeModifier(PassiveActionDefinition action, string modifierKey, double now, SkillUpgradeStatSnapshot upgrades = null, string weaponInstanceId = null)
     {
-        if (action == null) return false;
+        if (action == null || action.grantedStacks <= 0) return false;
         var snapshot = new PassiveActionDefinition
         {
             durationSeconds = action.durationSeconds, grantedStacks = action.grantedStacks,
@@ -358,7 +358,7 @@ public sealed class PassiveController : MonoBehaviour, IStatModifierProvider
         {
             float value = modifier.value;
             if (upgrades != null && upgrades.TryGetAggregate(modifier.statType, out float add, out float multiply)) value = (value + add) * multiply;
-            snapshot.modifiers.Add(new PassiveStatModifier { statType = modifier.statType, operation = modifier.operation, value = value });
+            snapshot.modifiers.Add(new PassiveStatModifier { statType = modifier.statType, operation = modifier.operation, value = value, scope = modifier.scope, weaponInstanceId = weaponInstanceId ?? modifier.weaponInstanceId });
         }
         bool result = ApplyModifierCore(snapshot, modifierKey, Clock);
         if (result) { NotifyStatModifiersChanged(); RefreshSubscriptions(); }

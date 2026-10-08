@@ -61,6 +61,9 @@ public sealed class PassiveRuntime
 
     public void Rebuild(PassiveGrant grant)
     {
+        if (initialized && expiries != null && !SameUpgradeIds(Grant.Upgrades, grant.Upgrades))
+            foreach (var expiry in expiries.Values)
+                if (expiry.Active && expiry.CancelOnUpgradeChange) EndExpiry(expiry);
         Grant = new PassiveGrant(grant.Definition, grant.SourceId, grant.GrantId, grant.Upgrades?.CreateReadOnlyCopy(), grant.Options);
         phaseRules.Clear();
         executions.Clear();
@@ -93,6 +96,13 @@ public sealed class PassiveRuntime
         if (dynamicEntries != null) foreach (var entry in dynamicEntries.Values)
             NeedsResource |= entry.Step.value.UsesResource || entry.Step.condition.UsesResource;
         initialized = true;
+    }
+
+    static bool SameUpgradeIds(SkillUpgradeStatSnapshot a, SkillUpgradeStatSnapshot b)
+    {
+        var ids = new HashSet<string>();
+        if (a != null) ids.UnionWith(a.UpgradeIds);
+        return b == null ? ids.Count == 0 : ids.SetEquals(b.UpgradeIds);
     }
 
     public void Handle(in PassiveEventContext evt, PassiveRuleTrigger trigger)
@@ -209,23 +219,48 @@ public sealed class PassiveRuntime
             return Mathf.Clamp(stored, 0, definition.maximum);
         return variables != null && variables.TryGetValue(key, out float value) ? value : Mathf.Clamp(definition.initial, 0, definition.maximum);
     }
-    public void SetExpiry(PassiveExecution execution, float duration, List<string> reset, string signal = null)
+    public void SetExpiry(PassiveExecution execution, float duration, List<string> reset, string signal = null, bool cancelOnUpgradeChange = false)
     {
         expiries ??= new();
         if (!expiries.TryGetValue(execution.Key, out var entry)) expiries.Add(execution.Key, entry = new());
         entry.Execution = execution; entry.Variables = reset; entry.End = Now + Mathf.Max(.01f, duration); entry.Active = true;
         entry.Duration = Mathf.Max(.01f, duration);
+        entry.Extension = 0; entry.Events?.Clear(); entry.CancelOnUpgradeChange = cancelOnUpgradeChange;
         entry.Signal = signal;
         Controller.RefreshTiming();
         TimerChanged?.Invoke();
+    }
+    ExpiryEntry FindExpiry(string variableKey)
+    {
+        if (variableKey == null || expiries == null) return null;
+        foreach (var entry in expiries.Values)
+            if (entry.Active && Now < entry.End)
+                foreach (var variable in entry.Variables)
+                    if (entry.Execution.ResolveVariableKey(variable) == variableKey) return entry;
+        return null;
+    }
+    public bool ClaimExpiryEvent(string variableKey, string scope, string id)
+    {
+        var entry = FindExpiry(variableKey);
+        if (entry == null || string.IsNullOrEmpty(id)) return false;
+        entry.Events ??= new();
+        return entry.Events.Add((scope, id));
+    }
+    public float ExtendExpiry(string variableKey, float seconds, float maximumExtension)
+    {
+        var entry = FindExpiry(variableKey);
+        if (entry == null) return 0;
+        float actual = Mathf.Min(Mathf.Max(0, seconds), Mathf.Max(0, maximumExtension - entry.Extension));
+        entry.End += actual; entry.Duration += actual; entry.Extension += actual;
+        if (actual > 0) TimerChanged?.Invoke();
+        return actual;
     }
     public float GetVariableExpiryRemaining(string variableId, out float duration)
     {
         duration = 0;
         if (!IsAlive || expiries == null) return 0;
-        foreach (var entry in expiries.Values)
-            if (entry.Active && entry.Variables.Contains(variableId))
-            { duration = entry.Duration; return Mathf.Max(0, (float)(entry.End - Now)); }
+        var entry = FindExpiry(variableId);
+        if (entry != null) { duration = entry.Duration; return Mathf.Max(0, (float)(entry.End - Now)); }
         return 0;
     }
     public void Tick()
@@ -234,16 +269,20 @@ public sealed class PassiveRuntime
         foreach (var expiry in expiries.Values)
         {
             if (!expiry.Active || Now < expiry.End) continue;
-            expiry.Active = false;
-            foreach (var variable in expiry.Variables)
-            {
-                string key = expiry.Execution.ResolveVariableKey(variable);
-                if (key != null && variableEpochs != null && variableEpochs.ContainsKey(key)) variableEpochs[key]++;
-                expiry.Execution.WriteVariable(variable, 0);
-            }
+            EndExpiry(expiry);
             Feedback(expiry.Signal, 0);
         }
         TimerChanged?.Invoke();
+    }
+    void EndExpiry(ExpiryEntry expiry)
+    {
+        expiry.Active = false; expiry.Events?.Clear();
+        foreach (var variable in expiry.Variables)
+        {
+            string key = expiry.Execution.ResolveVariableKey(variable);
+            if (key != null && variableEpochs != null && variableEpochs.ContainsKey(key)) variableEpochs[key]++;
+            expiry.Execution.WriteVariable(variable, 0);
+        }
     }
     public int VariableEpoch(string key)
     {
@@ -284,7 +323,7 @@ public sealed class PassiveRuntime
         {
             float value = modifier.value;
             if (Grant.Upgrades != null && Grant.Upgrades.TryGetAggregate(modifier.statType, out float add, out float multiply)) value = (value + add) * multiply;
-            values.Add(new RuntimeStatModifier(modifier.statType, modifier.operation, value, key));
+            values.Add(new RuntimeStatModifier(modifier.statType, modifier.operation, value, key, modifier.scope, Grant.Options?.WeaponInstanceId));
         }
         equipped[key] = values;
     }
@@ -302,8 +341,14 @@ public sealed class PassiveRuntime
         if (dynamicEntries != null) foreach (var pair in dynamicEntries)
         {
             var entry = pair.Value;
-            if (entry.Step.condition.Evaluate(entry.Execution)) buffer.Add(new RuntimeStatModifier(entry.Step.stat,
-                entry.Step.operation, entry.Step.value.Resolve(entry.Execution), pair.Key));
+            bool applies = entry.Step.condition.Evaluate(entry.Execution);
+            float floor = string.IsNullOrEmpty(entry.Step.minimumVariable) ? 0 : entry.Execution.PeekVariable(entry.Step.minimumVariable);
+            if (applies || floor > 0)
+            {
+                float value = applies ? entry.Step.value.Resolve(entry.Execution) : 0;
+                if (!string.IsNullOrEmpty(entry.Step.minimumVariable)) value = Mathf.Max(value, floor);
+                buffer.Add(new RuntimeStatModifier(entry.Step.stat, entry.Step.operation, value, pair.Key, entry.Step.scope, Grant.Options?.WeaponInstanceId));
+            }
         }
     }
     public bool HasConversions => conversions?.Count > 0;
@@ -346,5 +391,10 @@ public sealed class PassiveRuntime
     }
     sealed class DynamicEntry { public PassiveExecution Execution; public PassiveDynamicModifierStep Step; }
     sealed class AttackEntry { public PassiveExecution Execution; public PassiveNextAttackStep Step; }
-    sealed class ExpiryEntry { public PassiveExecution Execution; public List<string> Variables; public string Signal; public double End; public float Duration; public bool Active; }
+    sealed class ExpiryEntry
+    {
+        public PassiveExecution Execution; public List<string> Variables; public string Signal;
+        public double End; public float Duration, Extension; public bool Active, CancelOnUpgradeChange;
+        public HashSet<(string scope, string id)> Events;
+    }
 }

@@ -110,6 +110,8 @@ MonoBehaviour:
   - rid: 764561012647264923
   - rid: 764560941601521805
   - rid: 764561012647264924
+  overrideTargetPlacement: 0
+  targetStandOffDistanceAtCastPoint: 1
   references:
     version: 2
     RefIds:
@@ -174,6 +176,8 @@ MonoBehaviour:
     estimatedChargeSpeed: 8
     knockbackDistance: 2
     knockbackSeconds: 0.4
+    slideDistance: 1.5
+    slideSeconds: 0.35
   icon: {fileID: 21300000, guid: 2c406f12ba7b18248806ca4b7987e46c, type: 3}
   displayName: 
   skillId: aires.skill.3
@@ -228,11 +232,14 @@ MonoBehaviour:
     customAnchorPath: 
     humanoidBone: 18
     localPosition: {x: 0, y: 0, z: 0}
-    localEulerAngles: {x: -0, y: 0, z: 0}
-    localScale: {x: 0.9999999, y: 1, z: 0.9999999}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.99999976, y: 1, z: 0.99999976}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 4309644489401320689, guid: ed68ad6fec703714e83d661b5da94732, type: 3}
   - cueIndex: 1
@@ -242,11 +249,14 @@ MonoBehaviour:
     customAnchorPath: 
     humanoidBone: 18
     localPosition: {x: 0.000000029802322, y: 2.3, z: -0.2710001}
-    localEulerAngles: {x: 270, y: 0.00000071996953, z: 0}
-    localScale: {x: 1.4667001, y: 1.4666996, z: 1.4666996}
+    localEulerAngles: {x: 270, y: -0.00000038855094, z: 0}
+    localScale: {x: 1.4666998, y: 1.466699, z: 1.4666991}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
   - cueIndex: 2
@@ -256,11 +266,14 @@ MonoBehaviour:
     customAnchorPath: 
     humanoidBone: 18
     localPosition: {x: 0.00000008940697, y: 0.09, z: 0.4039998}
-    localEulerAngles: {x: -0, y: 0, z: 0}
-    localScale: {x: 0.9999999, y: 1, z: 0.9999999}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    localScale: {x: 0.99999976, y: 1, z: 0.99999976}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
   hitLagDuration: 0.06

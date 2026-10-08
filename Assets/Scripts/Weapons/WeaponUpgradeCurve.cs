@@ -49,12 +49,15 @@ public class WeaponRarityLevelCap
 [Serializable]
 public class WeaponUpgradeStatBonus
 {
+    [Sirenix.OdinInspector.ValidateInput(nameof(HasValidScope), "WeaponOnly is not supported for this stat.")]
+    public StatModifierScope scope;
+    bool HasValidScope() => StatModifierRules.IsValidScope(statType, scope);
     public StatType statType = StatType.Damage;
 
     [Tooltip("For Stability, Flat adds percentage points. Example: 30 Stability + 10 Flat = 40%.")]
     public ModifierOp operation = ModifierOp.Flat;
 
-    [Tooltip("For Stability with Flat, enter percentage points gained per upgrade step.")]
+    [Tooltip(StatModifierRules.ValueTooltip)]
     public float valuePerStep = 1f;
     [Min(1)] public int firstLevel = 1;
     [Min(1)] public int levelsPerStep = 1;
@@ -71,7 +74,7 @@ public class WeaponUpgradeStatBonus
             return 0f;
 
         int steps = ((upgradeLevel - firstLevel) / Mathf.Max(1, levelsPerStep)) + 1;
-        return valuePerStep * Mathf.Max(0, steps);
+        return StatModifierRules.StackValue(operation, valuePerStep, Mathf.Max(0, steps));
     }
 }
 
@@ -88,12 +91,15 @@ public class WeaponUpgradeEffect
     public List<WeaponType> allowedWeaponTypes = new();
 
     [Header("Stat Modifier")]
+    [Sirenix.OdinInspector.ValidateInput(nameof(HasValidScope), "WeaponOnly is not supported for this stat.")]
+    public StatModifierScope scope;
+    bool HasValidScope() => StatModifierRules.IsValidScope(statType, scope);
     public StatType statType = StatType.Damage;
 
     [Tooltip("For Stability, Flat adds percentage points. Example: 30 Stability + 10 Flat = 40%.")]
     public ModifierOp modifierOp = ModifierOp.Flat;
 
-    [Tooltip("For Stability with Flat, enter percentage points rather than a 0-1 ratio.")]
+    [Tooltip(StatModifierRules.ValueTooltip)]
     public float value = 0f;
 
     [Header("Trigger")]
@@ -160,6 +166,7 @@ public class WeaponUpgradeMilestone
 [CreateAssetMenu(menuName = "Game/Weapons/Weapon Upgrade Curve", fileName = "WeaponUpgradeCurve")]
 public class WeaponUpgradeCurve : ScriptableObject
 {
+    [HideInInspector] public int statScopeSchemaVersion;
     [Header("Level Cap")]
     [Min(0)] public int maxLevel = 10;
     public List<WeaponRarityLevelCap> rarityLevelCaps = new();
@@ -239,8 +246,8 @@ public class WeaponUpgradeCurve : ScriptableObject
         if (upgradeLevel <= 0)
             return;
 
-        AppendLevelStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey);
-        AppendMilestoneStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey);
+        AppendLevelStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey, instance.instanceId);
+        AppendMilestoneStatBonuses(buffer, weapon.WeaponType, upgradeLevel, modifierKey, instance.instanceId);
     }
 
     public int SyncUnlockedMilestones(WeaponInstanceData instance, GunConfig weapon)
@@ -314,7 +321,7 @@ public class WeaponUpgradeCurve : ScriptableObject
         List<RuntimeStatModifier> buffer,
         WeaponType weaponType,
         int upgradeLevel,
-        string modifierKey)
+        string modifierKey, string weaponInstanceId)
     {
         if (statBonuses == null)
             return;
@@ -326,10 +333,10 @@ public class WeaponUpgradeCurve : ScriptableObject
                 continue;
 
             float value = bonus.ResolveValue(upgradeLevel);
-            if (Mathf.Approximately(value, 0f))
+            if (upgradeLevel < bonus.firstLevel || (bonus.operation != ModifierOp.Multiply && Mathf.Approximately(value, 0f)))
                 continue;
 
-            buffer.Add(new RuntimeStatModifier(bonus.statType, bonus.operation, value, modifierKey));
+            buffer.Add(new RuntimeStatModifier(bonus.statType, bonus.operation, value, modifierKey, bonus.scope, weaponInstanceId));
         }
     }
 
@@ -337,7 +344,7 @@ public class WeaponUpgradeCurve : ScriptableObject
         List<RuntimeStatModifier> buffer,
         WeaponType weaponType,
         int upgradeLevel,
-        string modifierKey)
+        string modifierKey, string weaponInstanceId)
     {
         if (milestones == null)
             return;
@@ -359,13 +366,13 @@ public class WeaponUpgradeCurve : ScriptableObject
                 if (effect == null ||
                     effect.effectType != WeaponUpgradeEffectType.StatModifier ||
                     !effect.SupportsWeaponType(weaponType) ||
-                    Mathf.Approximately(effect.value, 0f))
+                    (effect.modifierOp != ModifierOp.Multiply && Mathf.Approximately(effect.value, 0f)))
                 {
                     continue;
                 }
 
                 string effectModifierKey = $"{modifierKey}:{milestone.ResolveId(i)}:{effect.ResolveId(milestone.ResolveId(i), j)}";
-                buffer.Add(new RuntimeStatModifier(effect.statType, effect.modifierOp, effect.value, effectModifierKey));
+                buffer.Add(new RuntimeStatModifier(effect.statType, effect.modifierOp, effect.value, effectModifierKey, effect.scope, weaponInstanceId));
             }
         }
     }

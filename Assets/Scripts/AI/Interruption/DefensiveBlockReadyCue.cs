@@ -1,11 +1,14 @@
 using UnityEngine;
 
 // Player-local presentation of the selected attack's real command eligibility.
-// One reusable billboard; querying readiness never spends/reserves anything.
+// Two reusable billboards; querying readiness never spends/reserves anything.
 [DisallowMultipleComponent]
 public sealed class DefensiveBlockReadyCue : MonoBehaviour
 {
     public GameObject cuePrefab;
+    [Tooltip("Small dim blue flare shown when an incoming attack cannot currently be blocked.")]
+    public GameObject unavailableCuePrefab;
+    [Range(0.02f, 1f)] public float unavailableScreenSize = 0.55f;
     public Vector3 targetOffset = new Vector3(0f, 2.6f, 0f);
     [Range(0.1f, 2f)] public float screenWidth = 1.2f;
     [Range(0.1f, 2f)] public float screenHeight = 0.85f;
@@ -20,6 +23,8 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
     PlayerContext ctx;
     Camera viewCamera;
     Transform cue;
+    Transform readyCue, unavailableCue;
+    bool displayedReady;
     Renderer cueRenderer;
     MaterialPropertyBlock properties;
     float readyWeight;
@@ -66,7 +71,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         ReadyAttack = eligible ? attack : null;
         ThreatAttack = hasThreat ? threat : null;
         IsReady = eligible;
-        if (viewCamera == null || cuePrefab == null)
+        if (viewCamera == null || (eligible ? cuePrefab : unavailableCuePrefab) == null)
         { HideImmediately(false); ReportPresentation(viewCamera == null ? "MissingCamera" : "MissingPrefab"); return; }
         if (hasThreat)
         {
@@ -94,6 +99,7 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         Vector3 viewport = viewCamera.WorldToViewportPoint(position);
         if (viewport.z <= viewCamera.nearClipPlane || viewport.x < 0f || viewport.x > 1f || viewport.y < 0f || viewport.y > 1f)
         { HideImmediately(false); ReportPresentation("Offscreen"); return; }
+        if (hasThreat) SetPresentationReady(eligible);
         if (!PrepareCue()) { HideImmediately(false); ReportPresentation("MissingRendererOrMaterial"); return; }
         if ((viewCamera.cullingMask & (1 << cueRenderer.gameObject.layer)) == 0)
         { HideImmediately(false); ReportPresentation("CameraExcludesLayer"); return; }
@@ -103,8 +109,10 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         float height = viewCamera.orthographic ? 2f * viewCamera.orthographicSize :
             2f * viewport.z * Mathf.Tan(viewCamera.fieldOfView * Mathf.Deg2Rad * 0.5f);
         cue.SetPositionAndRotation(position, viewCamera.transform.rotation);
-        cue.localScale = new Vector3(height * viewCamera.aspect * screenWidth * width,
-            height * screenHeight * heightScale, 1f);
+        cue.localScale = displayedReady
+            ? new Vector3(height * viewCamera.aspect * screenWidth * width, height * screenHeight * heightScale, 1f)
+            : new Vector3(height * unavailableScreenSize * viewCamera.aspect * screenWidth / Mathf.Max(0.1f, screenHeight),
+                height * unavailableScreenSize, 1f);
         readyWeight = Mathf.MoveTowards(readyWeight, eligible ? 1f : unavailableBrightness, Time.unscaledDeltaTime * 8f);
         properties.SetFloat(IntensityId, brightness * intensity * readyWeight);
         if (cueRenderer != null) cueRenderer.SetPropertyBlock(properties);
@@ -122,16 +130,27 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
 
     bool PrepareCue()
     {
-        if (cue == null)
+        var source = displayedReady ? cuePrefab : unavailableCuePrefab;
+        if (source == null) return false;
+        var selected = displayedReady ? readyCue : unavailableCue;
+        if (selected == null)
         {
-            cue = Instantiate(cuePrefab).transform;
-            cue.name = "Defensive Block Ready (local cue)";
+            selected = Instantiate(source).transform;
+            selected.name = displayedReady ? "Defensive Block Ready (local cue)" : "Defensive Block Unavailable (local cue)";
+            if (displayedReady) readyCue = selected;
+            else unavailableCue = selected;
+        }
+        if (cue != selected)
+        {
+            if (cue != null) cue.gameObject.SetActive(false);
+            cue = selected;
+            cueRenderer = null;
         }
         if (cueRenderer == null) cueRenderer = cue.GetComponent<Renderer>();
         if (cueRenderer == null) return false;
         if (cueRenderer.sharedMaterial == null)
         {
-            var sourceRenderer = cuePrefab.GetComponent<Renderer>();
+            var sourceRenderer = source.GetComponent<Renderer>();
             if (sourceRenderer != null) cueRenderer.sharedMaterial = sourceRenderer.sharedMaterial;
         }
         if (cueRenderer.sharedMaterial == null) return false;
@@ -139,6 +158,25 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         cueRenderer.forceRenderingOff = false;
         cue.gameObject.SetActive(true);
         return true;
+    }
+
+    void SetPresentationReady(bool ready)
+    {
+        if (ready && !displayedReady)
+        {
+            // A newly actionable threat flashes even if its warning was already visible.
+            width = 0.025f; heightScale = 0.06f; intensity = 0f;
+            readyWeight = 1f;
+            BeginPhase(Phase.Appearing);
+        }
+        else if (!ready)
+        {
+            // Unavailable is a stable symbol, without the ready flare's expansion or flash.
+            phase = Phase.Holding;
+            width = heightScale = intensity = 1f;
+            readyWeight = unavailableBrightness;
+        }
+        displayedReady = ready;
     }
 
     void ReportPresentation(string status)
@@ -203,11 +241,13 @@ public sealed class DefensiveBlockReadyCue : MonoBehaviour
         phase = Phase.Hidden;
         phaseTime = width = heightScale = intensity = 0f;
         displayedTarget = null;
+        displayedReady = false;
         if (cue != null) cue.gameObject.SetActive(false);
     }
     void OnDisable() { HideImmediately(); viewCamera = null; ReportPresentation("Disabled"); }
     void OnDestroy()
     {
-        if (cue != null) Destroy(cue.gameObject);
+        if (readyCue != null) Destroy(readyCue.gameObject);
+        if (unavailableCue != null) Destroy(unavailableCue.gameObject);
     }
 }

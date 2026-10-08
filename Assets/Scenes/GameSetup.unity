@@ -2694,6 +2694,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!4 &233309535 stripped
@@ -3615,6 +3618,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: -2627289581020525374, guid: 239faa341118d38428b05726c6a95469, type: 3}
 --- !u!1 &368537843
@@ -3940,6 +3946,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!1 &554778630
@@ -3996,6 +4005,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!1001 &659042347
@@ -4600,6 +4612,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!1001 &1317555875
@@ -4959,6 +4974,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!1 &1747233890
@@ -5015,6 +5033,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 2466738962667711663, guid: a286bc565f6ed334f8f93df9218823c0, type: 3}
 --- !u!1001 &1752094352
@@ -5242,6 +5263,9 @@ MonoBehaviour:
   parentToAnchor: 0
   loopKey: 
   extraLife: 0
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!4 &1874599099 stripped
@@ -6991,6 +7015,9 @@ MonoBehaviour:
   parentToAnchor: 1
   loopKey: 
   extraLife: 1.666
+  lifetimeMode: 0
+  explicitLifetime: 0
+  sessionEndMode: 0
   allowParticlesToFinish: 1
   animClip: {fileID: 0}
 --- !u!4 &2091717308 stripped

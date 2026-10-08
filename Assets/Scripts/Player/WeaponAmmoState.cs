@@ -180,7 +180,7 @@ public sealed class WeaponAmmoState
             if (desiredMagazine < 0)
                 desiredMagazine = defaultMagazine;
 
-            return Mathf.Clamp(desiredMagazine, 0, Mathf.Max(weapon.maxMagazine, defaultMagazine));
+            return Mathf.Clamp(desiredMagazine, 0, MaxMagazine);
         }
 
         return WeaponInstanceFactory.ResolveDefaultMagazine(weapon);

@@ -48,6 +48,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.ConservationRound.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.conservation_round.v1
   displayName: Conservation Round
   description: Conservation Round
@@ -208,6 +209,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957236
@@ -275,6 +277,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         whenTrue:
         - rid: 3342399495413957238
@@ -338,6 +341,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         whenTrue:
         - rid: 3342399495413957240

@@ -50,7 +50,8 @@ public static class LobbyCharacterStatPreview
             CharacterMaxHealth = stats.maxHP + stats.MAXHPScaling * levelOffset,
             CharacterMaxStamina = stats.maxStamina + stats.StaminaScaling * levelOffset,
             CharacterMaxEnergy = stats.Enagy + stats.EnagyScaling * levelOffset,
-            Weapon = weapon
+            Weapon = weapon,
+            WeaponInstanceId = weaponInstance?.instanceId
         };
 
         ModifierBuffer.Clear();
@@ -103,22 +104,8 @@ public static class LobbyCharacterStatPreview
     {
         for (int i = 0; i < passives.Count; i++)
         {
-            if (passives[i] is not AlwaysOnPassiveDef alwaysOn || alwaysOn.modifiers == null)
-                continue;
-
-            string modifierKey = $"passive:{alwaysOn.RuntimeId}";
-            for (int j = 0; j < alwaysOn.modifiers.Count; j++)
-            {
-                PassiveStatModifier modifier = alwaysOn.modifiers[j];
-                if (modifier == null)
-                    continue;
-
-                buffer.Add(new RuntimeStatModifier(
-                    modifier.statType,
-                    modifier.operation,
-                    modifier.value,
-                    modifierKey));
-            }
+            if (passives[i] == null) continue;
+            PassiveStatPreview.Append(new PassiveGrant(passives[i], "preview:accessory", "passive:" + i), buffer);
         }
     }
 }

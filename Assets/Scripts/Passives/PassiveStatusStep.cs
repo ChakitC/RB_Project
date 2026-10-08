@@ -12,6 +12,7 @@ public sealed class PassiveStatusStep : PassiveStep
     {
         // A per-use copy protects the shared asset when a fragment overrides the status.
         var resolved = spec.Clone();
+        resolved.weaponInstanceId = execution.Grant.Options?.WeaponInstanceId;
         resolved.effect = string.IsNullOrEmpty(statusParameter) ? spec.effect : execution.StatusParameter(statusParameter);
         if (resolved.effect == null) return new(PassiveOutcome.Failed);
         List<CharacteContext> succeeded = null;

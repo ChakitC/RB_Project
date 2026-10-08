@@ -22,11 +22,12 @@ using UnityEngine;
 public sealed class StatusApplicationSpec
 {
     public StatusEffectDef effect;
+    [NonSerialized] public string weaponInstanceId;
 
     [Min(1)]
     public int stacks = 1;
 
-    [Tooltip("Uses StatusEffectDef modifiers until edited. An explicit empty override applies no stat modifiers. Debuffs should use ModifierOp.Multiply for diminishing stacking.")]
+    [Tooltip("Uses StatusEffectDef modifiers until edited. An explicit empty override applies no stat modifiers. Multiply stacks add their deviation from 1 within one instance.")]
     public List<StatusEffectModifier> modifiers = new();
 
     [SerializeField, HideInInspector]
@@ -57,12 +58,25 @@ public sealed class StatusApplicationSpec
     public bool HasTickDamageOverride => tickDamageOverrideEnabled;
     public bool HasTickIntervalOverride => tickIntervalOverrideEnabled;
 
+    public void SetModifierOverride(List<StatusEffectModifier> values)
+    {
+        modifiers = values ?? new List<StatusEffectModifier>();
+        modifiersOverrideEnabled = true;
+    }
+
+    public void SetDurationOverride(float seconds)
+    {
+        durationOverride = Mathf.Max(0f, seconds);
+        durationOverrideEnabled = true;
+    }
+
     /// <summary>คัดลอกทุก channel (รวม enable flag) — ใช้ตอนต้องสร้าง spec ชั่วคราวโดยไม่แตะ spec ที่ serialize อยู่ใน asset</summary>
     public StatusApplicationSpec Clone()
     {
         return new StatusApplicationSpec
         {
             effect = effect,
+            weaponInstanceId = weaponInstanceId,
             stacks = stacks,
             modifiers = modifiers,
             modifiersOverrideEnabled = modifiersOverrideEnabled,
@@ -97,6 +111,9 @@ public sealed class StatusApplicationSpec
             var modifier = modifiers[i];
             if (modifier == null)
                 continue;
+
+            if (!StatModifierRules.IsValidScope(modifier.statType, modifier.scope))
+                issues.Add($"{contextLabel}: modifier #{i} has unsupported scope/stat {modifier.scope}/{modifier.statType}.");
 
             if (modifier.operation == ModifierOp.Multiply && modifier.value <= 0f)
             {

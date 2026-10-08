@@ -122,6 +122,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957225
@@ -226,6 +227,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children:
       - kind: 21
         eventTarget: 0
@@ -259,6 +261,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
       - kind: 14
         eventTarget: 0
@@ -292,6 +295,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
     steps:
     - rid: 3342399495413957228
@@ -349,6 +353,7 @@ MonoBehaviour:
         variables:
         - stacks
         expirySignal: Expired
+        cancelOnUpgradeChange: 0
     - rid: 3342399495413957228
       type: {class: PassiveShotModifierStep, ns: , asm: Assembly-CSharp}
       data:
@@ -382,6 +387,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.PressurePoint.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.pressure_point.v1
   displayName: Pressure Point
   description: Pressure Point

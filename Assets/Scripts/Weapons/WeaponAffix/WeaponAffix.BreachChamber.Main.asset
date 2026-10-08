@@ -122,6 +122,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957219
@@ -189,6 +190,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         whenTrue:
         - rid: 3342399495413957221
@@ -254,6 +256,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         whenTrue:
         - rid: 3342399495413957223
@@ -304,6 +307,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.BreachChamber.Main
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.main.breach_chamber.v1
   displayName: Breach Chamber
   description: Every fourth shot fires an ammo-free breaching projectile with increased

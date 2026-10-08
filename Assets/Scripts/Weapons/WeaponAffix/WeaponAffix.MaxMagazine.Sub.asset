@@ -1,5 +1,207 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8122270653726519405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef1a5fbf21a0eec488c0f800672b5a18, type: 3}
+  m_Name: Passive recipe (Weapon scopes)
+  m_EditorClassIdentifier: 
+  parameters:
+  - id: roll
+    kind: 0
+    number: 8
+    status: {fileID: 0}
+  variables: []
+  rules:
+  - id: rule-0
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 3342399495413957212
+  references:
+    version: 2
+    RefIds:
+    - rid: 3342399495413957212
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: step-0
+        successSignal: 
+        successValueVariable: 
+        scope: 1
+        condition:
+          kind: 0
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children: []
+        stat: 18
+        operation: 1
+        value:
+          source: 1
+          value: 0
+          reference: roll
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        minimumVariable: 
+--- !u!114 &-7778247480378644785
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977e63054233f2041b66a0125929398e, type: 3}
+  m_Name: Extended Magazine Passive (Weapon scopes)
+  m_EditorClassIdentifier: 
+  passiveId: weapon.sub.max_magazine.v1
+  icon: {fileID: 0}
+  description: Increases maximum magazine capacity.
+  upgradeTree: {fileID: 0}
+  recipe: {fileID: -8122270653726519405}
+  hudPrefab: {fileID: 0}
+  definitionId: ad398ec83eb04646bece7c25ef56d6c7
 --- !u!114 &-7554847561103561866
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67,6 +269,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 43b57a438a96a6541940dddf2633e2bb, type: 3}
   m_Name: WeaponAffix.MaxMagazine.Sub
   m_EditorClassIdentifier: 
+  statScopeSchemaVersion: 1
   affixId: weapon.sub.max_magazine.v1
   displayName: Extended Magazine
   description: Increases maximum magazine capacity.
@@ -75,7 +278,7 @@ MonoBehaviour:
   weight: 0.85
   allowedWeaponTypes: 030000000400000005000000
   rootBehavior: {fileID: -7554847561103561866}
-  passiveDefinition: {fileID: -255315932996517612}
+  passiveDefinition: {fileID: -7778247480378644785}
   rollSpec:
     valueKind: 0
     minimum: 8
@@ -223,6 +426,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
     - rid: 3342399495413957212
@@ -235,6 +439,7 @@ MonoBehaviour:
         id: step-0
         successSignal: 
         successValueVariable: 
+        scope: 0
         condition:
           kind: 0
           eventTarget: 0
@@ -268,6 +473,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 18
         operation: 1
@@ -284,3 +490,4 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
+        minimumVariable: 

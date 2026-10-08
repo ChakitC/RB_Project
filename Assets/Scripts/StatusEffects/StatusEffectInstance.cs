@@ -46,15 +46,16 @@ public sealed class StatusEffectInstance
             ? new int[definition.triggerRules.Count]
             : Array.Empty<int>();
 
+        WeaponInstanceId = spec?.weaponInstanceId;
         ResolvedModifiers = ResolveModifiers(spec, definition);
         ResolvedTickDamage = ResolveTickDamage(spec, definition);
         ResolvedTickInterval = ResolveTickInterval(spec, definition);
-        StrengthScore = ComputeStrengthScore(ResolvedModifiers);
         Attribution = CombatAttributionSnapshot.FromPhysicalActor(source);
         ScheduleFirstTick(now);
     }
 
     public StatusEffectDef Definition { get; }
+    public string WeaponInstanceId { get; private set; }
     public GameObject Source { get; private set; }
     public CharacteContext SourceContext { get; private set; }
     public int SourceLifeGeneration { get; private set; }
@@ -83,7 +84,7 @@ public sealed class StatusEffectInstance
     public IReadOnlyList<StatusEffectModifier> ResolvedModifiers { get; private set; }
     public float ResolvedTickDamage { get; private set; }
     public float ResolvedTickInterval { get; private set; }
-    public float StrengthScore { get; private set; }
+    public float StrengthScore => ComputeStrengthScore(ResolvedModifiers, CurrentStacks);
     public CombatAttributionSnapshot Attribution { get; private set; }
 
     /// <summary>เรียกเมื่อ instance เดิมถูก apply ซ้ำ (refresh/stack) — ทำให้ถือว่าเป็น application ล่าสุด.</summary>
@@ -163,9 +164,9 @@ public sealed class StatusEffectInstance
     /// <summary>เปลี่ยนค่าบาลานซ์ของ instance นี้เป็นของ spec ที่ระบุ (ใช้ตอน StrongestOnly ตัดสินว่า incoming แรงกว่า หรือ RefreshDuration/AddStackAndRefresh ที่ยอมรับค่าล่าสุดเสมอ)</summary>
     public void AdoptMagnitude(StatusApplicationSpec spec, float now)
     {
+        WeaponInstanceId = spec?.weaponInstanceId;
         ResolvedModifiers = ResolveModifiers(spec, Definition);
         ResolvedTickDamage = ResolveTickDamage(spec, Definition);
-        StrengthScore = ComputeStrengthScore(ResolvedModifiers);
 
         float nextInterval = ResolveTickInterval(spec, Definition);
         if (!Mathf.Approximately(nextInterval, ResolvedTickInterval))
@@ -302,34 +303,35 @@ public sealed class StatusEffectInstance
             if (m == null)
                 continue;
 
-            copy.Add(new StatusEffectModifier { statType = m.statType, operation = m.operation, value = m.value });
+            copy.Add(new StatusEffectModifier { statType = m.statType, operation = m.operation, value = m.value, scope = m.scope });
         }
 
         return copy;
     }
 
-    public static float ComputeStrengthScore(IReadOnlyList<StatusEffectModifier> modifiers)
+    public static float ComputeStrengthScore(IReadOnlyList<StatusEffectModifier> modifiers, int stacks = 1)
     {
         if (modifiers == null)
             return 0f;
 
         float score = 0f;
         for (int i = 0; i < modifiers.Count; i++)
-            score += ScoreModifier(modifiers[i]);
+            score += ScoreModifier(modifiers[i], stacks);
 
         return score;
     }
 
-    static float ScoreModifier(StatusEffectModifier m)
+    static float ScoreModifier(StatusEffectModifier m, int stacks)
     {
         if (m == null)
             return 0f;
 
+        float value = StatModifierRules.StackValue(m.operation, m.value, stacks);
         return m.operation switch
         {
-            ModifierOp.Multiply => Mathf.Abs(1f - m.value),
-            ModifierOp.AddPercent => Mathf.Abs(m.value) * 0.01f,
-            _ => Mathf.Abs(m.value),
+            ModifierOp.Multiply => Mathf.Abs(1f - value),
+            ModifierOp.AddPercent => Mathf.Abs(value) * 0.01f,
+            _ => Mathf.Abs(value),
         };
     }
 
@@ -351,7 +353,7 @@ public sealed class StatusEffectInstance
             {
                 var candidate = remaining[j];
                 if (candidate != null && m != null &&
-                    candidate.statType == m.statType && candidate.operation == m.operation)
+                    candidate.statType == m.statType && candidate.operation == m.operation && candidate.scope == m.scope)
                 {
                     matchIndex = j;
                     break;

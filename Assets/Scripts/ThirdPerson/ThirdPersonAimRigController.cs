@@ -4,7 +4,6 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class ThirdPersonAimRigController : MonoBehaviour
 {
-    const string FirePointAimPivotName = "Upper-body Aim Fire Point Pivot";
 
     [SerializeField] private CharacteContext characterContext;
     [SerializeField, Min(0f)] private float blendSpeed = 12f;
@@ -13,15 +12,11 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
     [SerializeField] Transform spine;
     [SerializeField] Transform chest;
     Transform upperChest;
-    Transform firePoint;
-    Transform firePointSourceParent;
-    Transform firePointAimPivot;
     AIAimTargetDriver aiAimTargetDriver;
     readonly ThirdPersonCharacterProfile fallbackProfile =
         ThirdPersonCharacterProfile.CreateDefault();
     float currentWeight;
     float currentPitch;
-    bool aimDriverResolved;
     bool missingBoneMapWarningIssued;
 
     void Awake()
@@ -29,17 +24,13 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
         ResolveReferences();
     }
 
-    void OnDisable()
-    {
-        ResetFirePointAimPivot();
-    }
+
 
     void LateUpdate()
     {
         ResolveReferences();
         if (animator == null || !HasAimBones())
         {
-            ResetFirePointAimPivot();
             return;
         }
 
@@ -63,7 +54,6 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
             blendSpeed * Time.deltaTime);
         if (currentWeight <= 0.001f)
         {
-            ResetFirePointAimPivot();
             return;
         }
 
@@ -73,7 +63,6 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
             GetActiveBoneWeight(upperChest, profile.upperChestAimWeight);
         if (totalBoneWeight <= 0.001f)
         {
-            ResetFirePointAimPivot();
             return;
         }
 
@@ -95,7 +84,6 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
             currentPitch,
             profile.upperChestAimWeight * normalization * currentWeight,
             reference);
-        ApplyFirePointPitch(reference);
     }
 
     bool CanApplyVisualAim()
@@ -202,125 +190,15 @@ public sealed class ThirdPersonAimRigController : MonoBehaviour
 
         if (animator != nextAnimator)
         {
-            ResetFirePointAimPivot();
             animator = nextAnimator;
-            firePoint = null;
-            firePointSourceParent = null;
-            firePointAimPivot = null;
             currentWeight = 0f;
             currentPitch = 0f;
             missingBoneMapWarningIssued = false;
             ResolveAimBones();
         }
 
-        ResolveFirePointAimPivot();
 
-        if (!aimDriverResolved && characterContext != null)
-        {
-            aiAimTargetDriver = GetComponent<AIAimTargetDriver>();
-            if (aiAimTargetDriver == null)
-            {
-                aiAimTargetDriver =
-                    GetComponentInChildren<AIAimTargetDriver>(true);
-            }
-
-            aimDriverResolved = true;
-        }
-    }
-
-    void ResolveFirePointAimPivot()
-    {
-        Transform nextFirePoint = characterContext != null &&
-                                  characterContext.WeaponSystem != null
-            ? characterContext.WeaponSystem.FirePoint
-            : null;
-        if (nextFirePoint == null)
-        {
-            ResetFirePointAimPivot();
-            firePoint = null;
-            firePointSourceParent = null;
-            firePointAimPivot = null;
-            return;
-        }
-
-        if (nextFirePoint == firePoint &&
-            firePointAimPivot != null &&
-            nextFirePoint.parent == firePointAimPivot)
-        {
-            return;
-        }
-
-        ResetFirePointAimPivot();
-        firePoint = nextFirePoint;
-
-        Transform parent = firePoint.parent;
-        if (parent == null || IsUnderAimBones(parent))
-        {
-            firePointSourceParent = null;
-            firePointAimPivot = null;
-            return;
-        }
-
-        if (parent.name == FirePointAimPivotName && parent.parent != null)
-        {
-            firePointAimPivot = parent;
-            firePointSourceParent = parent.parent;
-            return;
-        }
-
-        var pivotObject = new GameObject(FirePointAimPivotName);
-        firePointAimPivot = pivotObject.transform;
-        firePointAimPivot.SetParent(parent, false);
-        firePointSourceParent = parent;
-        firePoint.SetParent(firePointAimPivot, false);
-    }
-
-    bool IsUnderAimBones(Transform candidate)
-    {
-        return IsChildOf(candidate, spine) ||
-               IsChildOf(candidate, chest) ||
-               IsChildOf(candidate, upperChest);
-    }
-
-    static bool IsChildOf(Transform candidate, Transform ancestor)
-    {
-        return candidate != null &&
-               ancestor != null &&
-               (candidate == ancestor || candidate.IsChildOf(ancestor));
-    }
-
-    void ApplyFirePointPitch(Transform reference)
-    {
-        if (firePointAimPivot == null || firePointSourceParent == null)
-            return;
-
-        Transform originBone = chest != null
-            ? chest
-            : upperChest != null
-                ? upperChest
-                : spine;
-        Vector3 pivot = originBone != null
-            ? originBone.position
-            : reference.position + Vector3.up;
-        Quaternion pitchRotation = Quaternion.AngleAxis(
-            -currentPitch * currentWeight,
-            reference.right);
-
-        firePointAimPivot.position =
-            pivot +
-            pitchRotation * (firePointSourceParent.position - pivot);
-        firePointAimPivot.rotation =
-            pitchRotation * firePointSourceParent.rotation;
-    }
-
-    void ResetFirePointAimPivot()
-    {
-        if (firePointAimPivot == null)
-            return;
-
-        firePointAimPivot.localPosition = Vector3.zero;
-        firePointAimPivot.localRotation = Quaternion.identity;
-        firePointAimPivot.localScale = Vector3.one;
+        aiAimTargetDriver = characterContext != null ? characterContext.WeaponAim as AIAimTargetDriver : null;
     }
 
     void ResolveAimBones()

@@ -1,5 +1,36 @@
 # Passive System
 
+## Stat scope and stacks
+
+Passive stat entries and dynamic modifier steps expose `Global` and `WeaponOnly`.
+Global is the serialized default and affects the combined character/weapon stat;
+WeaponOnly affects only the gun contribution before character base and Global
+bonuses are applied. WeaponOnly supports Damage, CritRate, CritMultiplier,
+FireInterval, ReloadTime, ReloadSpeed, Stability, BulletSpeed, MaxMagazine and
+MaxReserveAmmo. Character-only and skill-only stats must remain Global.
+
+Weapon grants forward `PassiveGrantOptions.WeaponInstanceId` through equipped,
+dynamic, temporary and status modifiers; snapshots and previews preserve it.
+Item/character grants can leave it empty to affect the equipped gun. Unsupported
+scope/stat pairs are rejected by recipe validation. Dynamic expressions already
+resolve their own variable counts and receive no additional stack multiplication.
+
+One active stack group uses `value*stacks` for Flat/AddPercent and
+`max(0, 1+(value-1)*stacks)` for Multiply. Thus x1.2 at three stacks is x1.6,
+x0.8 at three stacks is x0.4, and excessive reductions clamp the factor to zero.
+No modifier is emitted at zero stacks. Distinct/Independent groups still multiply;
+refresh, replacement, expiry and maximum-stack policies retain their meanings.
+Status effects and weapon upgrade steps share this rule. Status strongest-only
+comparison uses the same stack math and includes scope in modifier shape.
+
+Lobby accessory passive previews read unconditional Equipped recipe steps through
+`PassiveStatPreview`; legacy AlwaysOn fields are not another calculation path.
+Triggered, timed and conditional combat buffs are absent from an idle preview.
+
+Runtime status producers must call `SetModifierOverride` / `SetDurationOverride`
+when overriding a StatusApplicationSpec channel. Merely assigning its public value
+does not enable the override; `Clone` preserves the flags and weapon binding.
+
 PassiveDefinition keeps identity, icon, description and upgrade tree, and points to a
 PassiveRecipe. All installed passives execute through PassiveRuntime. AlwaysOn,
 Triggered and Custom definitions remain asset wrappers for serialized reference
@@ -225,7 +256,7 @@ Partial charge and full readiness do not decay. The next successful normal weapo
 shot consumes 100 and activates a five-second buff: +30% reload speed and 50% less
 aim movement penalty. Failed shots, melee, Dash, reload, skills and generated shots
 do not activate it. Spending during the buff grants no Momentum; firing during it
-does not extend it. Expiry resumes accumulation from zero. Removing/disabling the
+does not extend it without Keep the Pressure. Expiry resumes accumulation from zero. Removing/disabling the
 grant clears its buff and charge; ordinary loadout refresh preserves the deadline.
 
 The recipe uses ShotCommitted, a `surge-active` variable, dynamic Equipped stat
@@ -239,8 +270,62 @@ speed. A reload started during Surge retains that speed until completed/cancelle
 even if Surge expires. No extra damage or fire-rate bonus comes from Momentum.
 
 Tune the production recipe directly; `RomaCombatSurgeAuthoring.Install()` reapplies
-these defaults while preserving the other three passive rules and asset identity.
+these defaults, including the upgrade rules below, while preserving asset identity.
 The original next-attack example remains separate regression-test data.
+
+### Roma Combat Surge upgrade tree
+
+`Roma_StaminaMomentum_UpgradeTree.asset` uses tree ID
+`roma.passive.stamina-momentum.tree.v1`. Nine nodes cost 12 shared skill points;
+each independent column requires its preceding node and costs 1, 1, then 2.
+There are no extra level requirements or cross-column exclusions. The passive
+works without upgrades. Node IDs and granted flags use `roma.passive.` plus
+the suffix below; existing slot/option IDs and definition GUID are unchanged.
+
+| Path | Node suffix | Effect |
+| --- | --- | --- |
+| Dodge | perfect-recovery | Perfect Dash refund 10 -> 15 Stamina |
+| Dodge | stamina-reserve | +10 Max Stamina |
+| Dodge | slip-reload | Perfect Dash transfers ceil(25% magazine capacity) from reserve during Surge |
+| Continuous fire | fast-hands | Surge reload speed +30% -> +40% |
+| Continuous fire | mobile-aim | Surge aim penalty reduction 50% -> 65% |
+| Low Stamina | deep-reserve | Regen bonus conversion 1:4 -> 1:5 |
+| Low Stamina | desperate-power | Below 70%, damage per missing 1% Stamina 0.5% -> 0.6% |
+| Continuous fire | keep-the-pressure | Every five eligible shots add 1 second, maximum +3 seconds |
+| Low Stamina | redline | Opening low-Stamina damage bonus remains a floor until Surge ends |
+
+Slip Reload claims each Dash before attempting transfer, including full-magazine
+and empty-reserve attempts. Only successful transfers consume its two-per-Surge
+quota. It affects the currently held weapon, obeys infinite-reserve rules, and
+does not emit Reload or interrupt a running reload. Perfect Dash's Stamina refund
+is independent.
+
+Pressure requires an external normal weapon Hit credited to the owner, positive
+applied damage and an Enemy target. Melee, skills, status, generated affix shots
+and follow-up skill shots are excluded. Each AttackId is remembered for the whole
+round, including out-of-order duplicates and piercing targets. Impact time controls
+eligibility: a shot fired before Surge can count; an impact at/after the deadline
+cannot revive it. Hits 5/10/15 extend the existing deadline, at most eight seconds
+total. Counters and identities clear at the start/end of each round.
+
+Redline captures the upgraded damage formula at activation, or zero at >=70%
+Stamina. The single dynamic damage modifier uses max(current bonus, captured
+floor); it never adds them or records later low-water marks. Pressure extends the
+same floor. Expiry, unequip and disable clear it. Prepared projectiles, including
+the shot activating Surge, retain their existing damage snapshot.
+
+All round state belongs to the passive runtime. Ordinary loadout refresh preserves
+it; changing upgrade flags ends an active Surge and clears its round state, while
+idle Momentum survives. `PassiveNumericUpgrade` and `HasUpgrade` drive minor nodes.
+`PassiveReserveAmmoStep` returns actual transferred ammo. `PassiveExpiryEventStep`
+claims Attack/Dash identities against a live timer, `PassiveExtendExpiryStep` adds
+time with a cumulative quota, and `PassiveExpiryStep.cancelOnUpgradeChange` opts a
+timer into cancellation. Dynamic modifiers can set `minimumVariable` for a floor.
+
+The HUD keeps its existing gauges. Surge fill is remaining time / total duration
+awarded in this round (5 through 8 seconds). Damage displays the actual Redline
+modifier. Successful transfers/extensions emit brief `SLIP RELOAD +N AMMO` and
+`PRESSURE +Ns` feedback.
 ## Skill slots and preview
 
 Passives remain SkillDefinitionBase assets in CharacterStats.skillSlots, sharing

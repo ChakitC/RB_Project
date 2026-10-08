@@ -43,6 +43,7 @@ public class AllyContext : CharacteContext
 
         if (AimTargetDriver == null && Application.isPlaying)
             AimTargetDriver = gameObject.AddComponent<AIAimTargetDriver>();
+        if (WeaponAim == null) WeaponAim = AimTargetDriver;
     }
 
     public override bool ShouldBeInMoveState()

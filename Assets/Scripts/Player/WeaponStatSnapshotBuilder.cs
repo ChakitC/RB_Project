@@ -36,13 +36,10 @@ public static class WeaponStatSnapshotBuilder
             weapon.magazineReload,
             weapon.autoloader,
             weapon.reloadPerBullet,
-            ResolveReloadDuration(weapon.startInsertDelay, statsHub),
-            ResolveReloadDuration(weapon.perBulletInsertTime, statsHub),
-            ResolveReloadDuration(weapon.endInsertDelay, statsHub),
+            ResolveReloadDuration(weapon.startInsertDelay, statsHub, weapon),
+            ResolveReloadDuration(weapon.perBulletInsertTime, statsHub, weapon),
+            ResolveReloadDuration(weapon.endInsertDelay, statsHub, weapon),
             weapon.shootInterruptsReload,
-            weapon.baseSwaySpeed,
-            weapon.baseMaxSwayAngle,
-            weapon.baseReturnSpeed,
             weapon.burstCount,
             weapon.burstInterval);
     }
@@ -62,9 +59,9 @@ public static class WeaponStatSnapshotBuilder
         return statsHub ? statsHub.GetReloadTime(weapon) : weapon.reloadTime;
     }
 
-    static float ResolveReloadDuration(float duration, StatsHub statsHub)
+    static float ResolveReloadDuration(float duration, StatsHub statsHub, GunConfig weapon)
     {
-        return statsHub ? statsHub.GetReloadDuration(duration) : Mathf.Max(0f, duration);
+        return statsHub ? statsHub.GetReloadDuration(duration, weapon) : Mathf.Max(0f, duration);
     }
 
     static float ResolveCritRate(GunConfig weapon, StatsHub statsHub, CharacteContext ctx)

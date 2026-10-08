@@ -17,9 +17,12 @@ public sealed class WeaponProjectileSpawner
 
         var pool = ProjectilePool.Instance;
         if (pool == null) return false;
-        Vector3 direction = context.Direction.sqrMagnitude > 0.0001f
-            ? context.Direction.normalized
-            : context.FirePoint.forward;
+        if (!WeaponAimResolver.IsFinite(context.Direction) || context.Direction.sqrMagnitude <= 0.0001f)
+        {
+            Debug.LogWarning("WeaponProjectileSpawner: shot rejected; explicit direction is missing.");
+            return false;
+        }
+        Vector3 direction = context.Direction.normalized;
         Quaternion rotation = Quaternion.LookRotation(direction, context.FirePoint.up);
         // Atomic spawn: the instance stays inactive until every runtime field below is written.
         var projectile = pool.AcquireInactive(prefabComp, context.FirePoint.position, rotation);

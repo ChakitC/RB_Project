@@ -6,7 +6,6 @@ using UnityEngine;
 [RequireComponent(typeof(WeaponUpgradeRuntimeController))]
 public class WeaponSystem : MonoBehaviour
 {
-    const string DefaultFirePointName = "FirePoint";
     const float StatsHubProbeIntervalSeconds = 0.2f;
 
     [Header("Refs")]
@@ -26,7 +25,8 @@ public class WeaponSystem : MonoBehaviour
     public WeaponInstanceData CurrentWeaponInstance => currentWeaponInstance;
 
     [Header("WeaponStats (debug/inspector)")]
-    public Transform firePoint;
+    private Transform firePoint;
+    private WeaponMuzzleBinding muzzleBinding;
     public WeaponType gunType;
     public float damage = 0f;
     public float fireRate = 0f;
@@ -135,20 +135,30 @@ public class WeaponSystem : MonoBehaviour
         }
     }
 
+    public int TransferReserveToMagazine(int amount)
+    {
+        using (BeginStateChange())
+        {
+            if (currentWeapon == null || amount <= 0) return 0;
+            RefreshDerivedStatsIfDirty(forceStatsHubProbe: true);
+            SyncAmmoStateFromMirrors();
+            int requested = Mathf.Min(amount, Mathf.Max(0, MaxMagazine - magazine));
+            int actual = ammoState.ConsumeReserveAmmo(requested);
+            if (actual <= 0) return 0;
+            ammoState.AddMagazineAmmo(actual);
+            SyncAmmoMirrorsFromState();
+            SyncWeaponInstanceState();
+            UpdateAmmoUI();
+            return actual;
+        }
+    }
+
     bool _isFiringHeld;
     readonly WeaponAmmoState ammoState = new();
     readonly WeaponProjectileSpawner projectileSpawner = new();
 
-    float baseSwaySpeed = 0f;
-    float baseMaxSwayAngle = 0f;
-    float baseReturnSpeed = 0f;
-    float swaySpeed;
-    float maxSwayAngle;
-    float returnSpeed;
     float spreadBloom;
 
-    float swayTimer = 0f;
-    Quaternion firePointOriginalRot;
 
     bool reloadPerBullet = true;
     float startInsertDelay = 0f;
@@ -193,7 +203,7 @@ public class WeaponSystem : MonoBehaviour
 
         if (!currentWeapon && ctx) currentWeapon = ctx.currentWeapon;
 
-        RefreshFirePointReference(logIfMissing: true);
+
     }
 
     void OnEnable()
@@ -201,6 +211,7 @@ public class WeaponSystem : MonoBehaviour
         ResolveReferences();
         nextStatsHubProbeTime = 0f;
         MarkDerivedStatsDirty();
+        ctx?.Visual?.RebindWeaponFirePoint();
     }
 
     void ResolveReferences()
@@ -259,61 +270,24 @@ public class WeaponSystem : MonoBehaviour
     // Equipment may install the shared event module lazily on older actor prefabs.
     public void RefreshPassiveEventReference() => combatEventBus = ctx != null ? ctx.CombatEventBus : null;
 
-    public bool RefreshFirePointReference(bool logIfMissing = false)
-    {
-        ResolveReferences();
-
-        if (!firePoint)
-        {
-            Transform ownerRoot = ctx ? ctx.transform : transform;
-            BindFirePoint(FindChildByName(ownerRoot, DefaultFirePointName));
-        }
-
-        if (firePoint)
-        {
-            CacheFirePointRestPose();
-            return true;
-        }
-
-        if (logIfMissing)
-            Debug.LogError("WeaponSystem: firePoint is missing.", this);
-
-        return false;
-    }
+    bool warnedMissingLaunchBinding;
 
     public bool BindFirePoint(Transform value)
     {
-        firePoint = value;
-
-        if (!firePoint)
-            return false;
-
-        CacheFirePointRestPose();
-        return true;
-    }
-
-    void CacheFirePointRestPose()
-    {
-        firePointOriginalRot = firePoint.localRotation;
-        swayTimer = 0f;
-    }
-
-    private static Transform FindChildByName(Transform root, string targetName)
-    {
-        if (!root)
-            return null;
-
-        if (root.name == targetName)
-            return root;
-
-        for (int i = 0; i < root.childCount; i++)
+        firePoint = null;
+        muzzleBinding = null;
+        warnedMissingLaunchBinding = false;
+        if (value == null) return false;
+        WeaponMuzzleBinding binding = value.GetComponentInParent<WeaponMuzzleBinding>(true);
+        if (binding == null || !binding.IsValid || binding.FirePoint != value ||
+            (ctx != null && !value.IsChildOf(ctx.transform)))
         {
-            var found = FindChildByName(root.GetChild(i), targetName);
-            if (found)
-                return found;
+            Debug.LogError("WeaponSystem: muzzle must be explicitly bound on this actor's weapon model.", this);
+            return false;
         }
-
-        return null;
+        firePoint = value;
+        muzzleBinding = binding;
+        return true;
     }
 
     void Start()
@@ -339,6 +313,7 @@ public class WeaponSystem : MonoBehaviour
             SyncWeaponInstanceState();
             StopWeaponActivity(clearHeld: true, stopReloadAnim: true, syncInstance: false);
 
+            BindFirePoint(null);
             currentWeapon = weapon;
             currentWeaponInstance = instance;
             MarkDerivedStatsDirty();
@@ -365,9 +340,6 @@ public class WeaponSystem : MonoBehaviour
             endInsertDelay = currentWeapon.endInsertDelay;
             shootInterruptsReload = currentWeapon.shootInterruptsReload;
 
-            baseSwaySpeed = currentWeapon.baseSwaySpeed;
-            baseMaxSwayAngle = currentWeapon.baseMaxSwayAngle;
-            baseReturnSpeed = currentWeapon.baseReturnSpeed;
 
             burstCount = currentWeapon.burstCount;
             burstInterval = currentWeapon.burstInterval;
@@ -451,6 +423,7 @@ public class WeaponSystem : MonoBehaviour
 
     void OnDisable()
     {
+        BindFirePoint(null);
         using (BeginStateChange())
         {
             StopAllCoroutines();
@@ -526,12 +499,6 @@ public class WeaponSystem : MonoBehaviour
         ammoState.RefreshLimits(maxMagazine, maxReserveAmmo, infiniteReserveAmmo, clampMagazine: false, resetInfiniteReserve: false);
         SyncAmmoMirrorsFromState();
 
-        float stability01 = Mathf.Clamp01(stability * 0.01f);
-        float swayMultiplier = 1f - stability01;
-
-        swaySpeed = baseSwaySpeed * swayMultiplier;
-        maxSwayAngle = baseMaxSwayAngle * swayMultiplier;
-        returnSpeed = baseReturnSpeed * (1f + stability01);
         derivedStatsDirty = false;
         derivedStatsWeapon = currentWeapon;
         observedStatsHubRevision = ResolveStatsHubRevision();
@@ -649,13 +616,6 @@ public class WeaponSystem : MonoBehaviour
         endInsertDelay = 0f;
         shootInterruptsReload = true;
 
-        baseSwaySpeed = 0f;
-        baseMaxSwayAngle = 0f;
-        baseReturnSpeed = 0f;
-        swaySpeed = 0f;
-        maxSwayAngle = 0f;
-        returnSpeed = 0f;
-        swayTimer = 0f;
         spreadBloom = 0f;
     }
 
@@ -676,7 +636,7 @@ public class WeaponSystem : MonoBehaviour
             var hub = ctx != null ? ctx.stateHub : null;
             if (hub == null) return false;
             var decision = hub.GetAdmission(fresh ? CharacterAction.FireRequest : CharacterAction.Shoot);
-            if (!decision.Allowed || currentWeapon == null || !HasProjectileLaunchRefs() ||
+            if (!decision.Allowed || currentWeapon == null || !TryGetShotAim(out _, out _) ||
                 GetWeaponTime() < nextFireTime) return false;
             hub.ApplyAcceptedAction(decision);
             _isFiringHeld = true;
@@ -719,22 +679,6 @@ public class WeaponSystem : MonoBehaviour
             if (firingMode == FiringMode.Auto && isFiring && GetWeaponTime() >= nextFireTime)
                 TryShoot();
 
-            if (!firePoint)
-                return;
-
-            if (isFiring && (firingMode == FiringMode.Auto || firingMode == FiringMode.Burst))
-            {
-                swayTimer += GetWeaponDeltaTime() * swaySpeed;
-                float angle = Mathf.Sin(swayTimer) * maxSwayAngle;
-                firePoint.localRotation = firePointOriginalRot * Quaternion.Euler(0f, angle, 0f);
-                return;
-            }
-
-            swayTimer = Mathf.MoveTowards(swayTimer, 0f, GetWeaponDeltaTime() * swaySpeed);
-            firePoint.localRotation = Quaternion.Lerp(
-                firePoint.localRotation,
-                firePointOriginalRot,
-                GetWeaponDeltaTime() * returnSpeed);
         }
     }
 
@@ -750,7 +694,7 @@ public class WeaponSystem : MonoBehaviour
             if (TryHandleEmptyMagazineShot())
                 return false;
 
-            if (!HasProjectileLaunchRefs())
+            if (!TryResolveProjectileDirection(CurrentSpreadDegrees, out Vector3 shotDirection))
                 return false;
 
             var shotAdmission = ctx != null && ctx.stateHub != null
@@ -763,7 +707,7 @@ public class WeaponSystem : MonoBehaviour
 
             string passiveAttackId = combatEventBus != null ? combatEventBus.CreateAttackId(GetWeaponSourceId()) : "attack:" + CombatEventBus.NextAttackExecutionId();
             using var passiveReservation = ctx?.PassiveController?.ReserveNextAttack(passiveAttackId);
-            var build = BuildWeaponShot(ammoBefore, magazine, ammoConsumed, passiveAttackId);
+            var build = BuildWeaponShot(ammoBefore, magazine, ammoConsumed, passiveAttackId, shotDirection);
             using var weaponPhase = ctx?.PassiveController?.PrepareWeaponShot(ref build);
             build.Damage *= passiveReservation?.Multiplier ?? 1f;
             WeaponShotContext shot = SnapshotShot(build);
@@ -802,7 +746,22 @@ public class WeaponSystem : MonoBehaviour
 
     bool HasProjectileLaunchRefs()
     {
-        return projectilePrefab && firePoint;
+        bool valid = projectilePrefab != null && firePoint != null && firePoint.gameObject.activeInHierarchy &&
+                     muzzleBinding != null && muzzleBinding.IsValid && muzzleBinding.FirePoint == firePoint;
+        if (!valid && !warnedMissingLaunchBinding)
+        {
+            Debug.LogWarning("WeaponSystem: shot rejected; projectile or weapon-model muzzle is not configured.", this);
+            warnedMissingLaunchBinding = true;
+        }
+        return valid;
+    }
+
+    bool TryGetShotAim(out WeaponAimSample sample, out WeaponAimSource source)
+    {
+        sample = default;
+        source = ctx != null ? ctx.WeaponAim : null;
+        return HasProjectileLaunchRefs() && source != null && source.isActiveAndEnabled &&
+               source.TryGetAimSample(out sample) && sample.IsValid;
     }
 
     void ConsumeAmmoForShotIfNeeded()
@@ -819,12 +778,13 @@ public class WeaponSystem : MonoBehaviour
 
     WeaponShotContext CreateWeaponShotContext(int ammoBefore, int ammoAfter, bool ammoConsumed, string reservedAttackId = null, float passiveDamageMultiplier = 1f)
     {
-        var build = BuildWeaponShot(ammoBefore, ammoAfter, ammoConsumed, reservedAttackId);
+        TryResolveProjectileDirection(CurrentSpreadDegrees, out Vector3 direction);
+        var build = BuildWeaponShot(ammoBefore, ammoAfter, ammoConsumed, reservedAttackId, direction);
         build.Damage *= passiveDamageMultiplier;
         return SnapshotShot(build);
     }
 
-    WeaponShotBuildContext BuildWeaponShot(int ammoBefore, int ammoAfter, bool ammoConsumed, string reservedAttackId)
+    WeaponShotBuildContext BuildWeaponShot(int ammoBefore, int ammoAfter, bool ammoConsumed, string reservedAttackId, Vector3 direction)
     {
         string weaponSourceId = GetWeaponSourceId();
         string attackId = reservedAttackId ?? (combatEventBus != null ? combatEventBus.CreateAttackId(weaponSourceId) : null);
@@ -840,7 +800,6 @@ public class WeaponSystem : MonoBehaviour
             sourceKind: CombatSourceKind.Weapon);
         PassiveEventContext passiveContext = CreateShotContext(weaponSourceId, attackId, metadata);
 
-        Vector3 direction = ResolveProjectileDirection(CurrentSpreadDegrees);
 
         var build = new WeaponShotBuildContext
         {
@@ -885,22 +844,21 @@ public class WeaponSystem : MonoBehaviour
         float baseSpread = isAiming
             ? currentWeapon.aimSpreadDegrees
             : currentWeapon.hipSpreadDegrees;
-        float movementPenalty = ctx != null
-            ? currentWeapon.moveSpreadPenaltyDegrees * Mathf.Clamp01(ctx.moveInput.magnitude)
+        float movementPenalty = ctx != null && ctx.WeaponAim != null
+            ? currentWeapon.moveSpreadPenaltyDegrees * ctx.WeaponAim.MovementSpreadFactor
             : 0f;
         float stabilityMultiplier = 1f - Mathf.Clamp01(stability * 0.01f);
         return Mathf.Max(0f, (baseSpread + movementPenalty + spreadBloom) * stabilityMultiplier);
     }
 
-    Vector3 ResolveProjectileDirection(float spreadDegrees)
+    bool TryResolveProjectileDirection(float spreadDegrees, out Vector3 direction)
     {
-        Vector3 direction = firePoint != null ? firePoint.forward : transform.forward;
-        if (ctx is PlayerContext player && player.thirdPersonAim != null)
-            direction = player.thirdPersonAim.ResolveShotDirection(firePoint, spreadDegrees);
-
-        return direction.sqrMagnitude > 0.0001f
-            ? direction.normalized
-            : transform.forward;
+        direction = Vector3.zero;
+        if (!TryGetShotAim(out WeaponAimSample sample, out WeaponAimSource source))
+            return false;
+        Vector3 origin = firePoint.position;
+        source.ProbeMuzzle(origin, sample);
+        return WeaponAimResolver.TryResolveDirection(origin, sample, spreadDegrees, out direction);
     }
 
     void ApplyThirdPersonShotFeedback()
@@ -932,23 +890,23 @@ public class WeaponSystem : MonoBehaviour
         var projectileToSpawn = prefabOverride ? prefabOverride : projectilePrefab;
         var configToUse = configOverride ? configOverride : projectileConfig;
 
-        if (!projectileToSpawn || !configToUse)
+        if (!projectileToSpawn || !configToUse ||
+            !TryResolveProjectileDirection(CurrentSpreadDegrees, out Vector3 direction))
             return false;
 
         string weaponSourceId = GetWeaponSourceId();
         string attackId = combatEventBus != null ? combatEventBus.CreateAttackId($"{weaponSourceId}:affix") : null;
 
-        SpawnProjectile(
+        return SpawnProjectile(
             configToUse,
             projectileToSpawn,
             damage * Mathf.Max(0f, damageMultiplier),
             bulletSpeed * Mathf.Max(0f, speedMultiplier),
-            ResolveProjectileDirection(CurrentSpreadDegrees),
+            direction,
             weaponSourceId,
             attackId,
             default);
 
-        return true;
     }
 
     public bool SpawnPassiveProjectile(in WeaponShotBuildContext primary, ProjectileConfig config, GameObject prefab,
@@ -1431,9 +1389,6 @@ public class WeaponSystem : MonoBehaviour
         statSnapshot = default;
         derivedStatsDirty = false;
         derivedStatsWeapon = null;
-
-        if (firePoint)
-            firePoint.localRotation = firePointOriginalRot;
 
         NotifyRuntimeEffectHandlersWeaponEquipped();
         statsHub?.MarkDirty();

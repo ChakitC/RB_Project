@@ -17,11 +17,19 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
 
     void Awake()
     {
-        CacheComponents();
+        if (_particleSystems == null) CacheComponents();
     }
 
     void OnEnable()
     {
+        _handle = GetComponent<PooledVfxHandle>();
+        if (_handle == null) ResetForReuse();
+    }
+
+    internal void ResetForReuse()
+    {
+        if (_particleSystems == null) CacheComponents();
+        ApplyScale(1f);
         _useWorldTimeScale = true;
         _age = 0f;
         _destroyAfterLifetime = false;
@@ -54,12 +62,15 @@ public sealed class WorldTimeScaledVfx : MonoBehaviour
 
     public void RestoreBaseSpeeds()
     {
-        CacheComponents();
+        if (_particleSystems == null) CacheComponents();
         ApplyScale(1f);
     }
 
+    internal void RestoreClockScale() => ApplyWorldScale();
+
     public void SetUseWorldTimeScale(bool value)
     {
+        if (_particleSystems == null) CacheComponents();
         _useWorldTimeScale = value;
         ApplyScale(value ? TimeSlowManager.Instance.WorldTimeScale : 1f);
     }

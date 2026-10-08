@@ -666,37 +666,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targets: []
---- !u!1 &790572315201016245
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7934880346290344753}
-  m_Layer: 6
-  m_Name: FirePoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7934880346290344753
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 790572315201016245}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 1, z: 1.2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 3749669808023046127}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &886609839402011435
 GameObject:
   m_ObjectHideFlags: 0
@@ -1028,7 +997,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7488652941193234196}
-  - {fileID: 7934880346290344753}
   - {fileID: 37773055136607646}
   - {fileID: 2315058692641633103}
   m_Father: {fileID: 0}
@@ -1135,6 +1103,7 @@ MonoBehaviour:
   Equipment: {fileID: 4800197423176489028}
   AccessoryLoadout: {fileID: 2723905703233099677}
   WeaponSystem: {fileID: 4048141596046314092}
+  WeaponAim: {fileID: 6098239142180533381}
   AnimBrain: {fileID: 7895287034516787951}
   AnimDriver: {fileID: 3933203452649057500}
   RootMotionDriver: {fileID: 0}
@@ -1335,11 +1304,6 @@ MonoBehaviour:
   leftLocalPos: {x: 0, y: 0.28, z: -0.03}
   leftLocalRotEuler: {x: 0, y: 0, z: 90}
   leftLocalScale: {x: 1.5, y: 1.5, z: 1.5}
-  firePointName: FirePoint
-  firePointBoneName: c_traj
-  firePointLocalPos: {x: 0, y: 1, z: 1.2}
-  firePointLocalRotEuler: {x: -90, y: 0, z: 0}
-  firePointLocalScale: {x: 1, y: 1, z: 1}
   healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 2
   healthBarBoneName: c_traj
@@ -1656,7 +1620,6 @@ MonoBehaviour:
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
     affixRuntimeStates: []
-  firePoint: {fileID: 7934880346290344753}
   gunType: 0
   damage: 0
   fireRate: 0
@@ -1753,7 +1716,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characteContext: {fileID: 1638387977988830713}
   statsHub: {fileID: 5818043391274991836}
-  castOrigin: {fileID: 7934880346290344753}
+  castOrigin: {fileID: 0}
+  useWeaponMuzzleForCastOrigin: 1
   aimTransform: {fileID: 37773055136607646}
   maximumEnergy: 0
   currentEnergy: 0
@@ -1788,12 +1752,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0c4d2965dc340d9bf32989360ea1415, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerContext: {fileID: 0}
   aimCollisionMask:
     serializedVersion: 2
     m_Bits: 4194303
-  maximumAimDistance: 250
   muzzleProbeRadius: 0.045
+  playerContext: {fileID: 0}
+  maximumAimDistance: 250
 --- !u!114 &8145632287748851207
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1892,6 +1856,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cuePrefab: {fileID: 5435443050003699240, guid: 3f852a332e086634482335636652c270, type: 3}
+  unavailableCuePrefab: {fileID: 5435443050003699240, guid: ba9d53857f4f9f746a66f1a3c8e9eda0, type: 3}
+  unavailableScreenSize: 0.55
   targetOffset: {x: 0, y: 2.6, z: 0}
   screenWidth: 1.2
   screenHeight: 0.85

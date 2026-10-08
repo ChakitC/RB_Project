@@ -35,7 +35,8 @@ public static class WeaponPassiveRecipeMigration
         recipe.variables.Add(new() { id = id, maximum = maximum, persistent = persistent });
     static void Modifier(PassiveRecipe recipe, StatType stat, ModifierOp operation, PassiveNumber number, PassiveCondition condition = null) =>
         recipe.rules.Add(Rule(PassiveRuleTrigger.Equipped, PassiveEventType.None,
-            new PassiveDynamicModifierStep { stat = stat, operation = operation, value = number, condition = condition ?? new() }));
+            new PassiveDynamicModifierStep { stat = stat, scope = StatModifierRules.SupportsWeaponScope(stat) ? StatModifierScope.WeaponOnly : StatModifierScope.Global,
+                operation = operation, value = number, condition = condition ?? new() }));
 
     public static PassiveRecipe Build(ConfiguredWeaponAffixBehavior behavior)
     {

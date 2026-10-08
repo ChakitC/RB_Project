@@ -21,9 +21,6 @@ public readonly struct WeaponStatSnapshot
     public readonly float PerBulletInsertTime;
     public readonly float EndInsertDelay;
     public readonly bool ShootInterruptsReload;
-    public readonly float BaseSwaySpeed;
-    public readonly float BaseMaxSwayAngle;
-    public readonly float BaseReturnSpeed;
     public readonly int BurstCount;
     public readonly float BurstInterval;
 
@@ -51,9 +48,6 @@ public readonly struct WeaponStatSnapshot
         float perBulletInsertTime,
         float endInsertDelay,
         bool shootInterruptsReload,
-        float baseSwaySpeed,
-        float baseMaxSwayAngle,
-        float baseReturnSpeed,
         int burstCount,
         float burstInterval)
     {
@@ -78,9 +72,6 @@ public readonly struct WeaponStatSnapshot
         PerBulletInsertTime = perBulletInsertTime;
         EndInsertDelay = endInsertDelay;
         ShootInterruptsReload = shootInterruptsReload;
-        BaseSwaySpeed = baseSwaySpeed;
-        BaseMaxSwayAngle = baseMaxSwayAngle;
-        BaseReturnSpeed = baseReturnSpeed;
         BurstCount = burstCount;
         BurstInterval = burstInterval;
     }

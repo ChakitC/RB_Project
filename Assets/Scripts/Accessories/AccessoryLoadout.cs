@@ -992,7 +992,7 @@ public sealed class AccessoryLoadout : MonoBehaviour, IStatModifierProvider, IPa
                 modifier.statType,
                 modifier.operation,
                 modifier.value,
-                modifierKey));
+                modifierKey, modifier.scope));
         }
     }
 

@@ -4,6 +4,7 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Game/Weapons/Weapon Affix", fileName = "WeaponAffix")]
 public class WeaponAffixDefinition : ScriptableObject
 {
+    [HideInInspector] public int statScopeSchemaVersion;
     [Header("Identity")]
     public string affixId;
     public string displayName;

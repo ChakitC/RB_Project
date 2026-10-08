@@ -38,7 +38,7 @@ public class GunConfig : ItemDefinition
     public float critMultiplier = 1f;
     [LabelText("Stability (%)")]
     [Range(0f, 100f)]
-    [Tooltip("Reduces weapon sway. 0% uses full sway and 100% removes sway completely.")]
+    [Tooltip("Reduces shot spread. 0% uses full spread and 100% removes spread completely.")]
     public float stability = 0f;
     public float BulletSpeed = 30f;
 
@@ -90,13 +90,9 @@ public class GunConfig : ItemDefinition
     public bool shootInterruptsReload = false;
     
     
-    [Header("RecoilSettings")]
         
-    public float baseSwaySpeed = 0f;
-    public float baseMaxSwayAngle = 0f;
-    public float baseReturnSpeed = 0f;
 
-    [Header("Third Person Accuracy")]
+    [Header("Weapon Accuracy")]
     [Min(0f)] public float hipSpreadDegrees = 2.2f;
     [Min(0f)] public float aimSpreadDegrees = 0.35f;
     [Min(0f)] public float moveSpreadPenaltyDegrees = 1f;

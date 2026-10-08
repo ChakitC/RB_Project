@@ -79,313 +79,19 @@ MonoBehaviour:
     persistent: 0
     initial: 0
     maximum: 1
+  - id: slip-uses
+    persistent: 0
+    initial: 0
+    maximum: 2
+  - id: pressure-hits
+    persistent: 0
+    initial: 0
+    maximum: 15
+  - id: redline-floor
+    persistent: 0
+    initial: 0
+    maximum: 100
   rules:
-  - id: perfect-dash
-    trigger: 0
-    eventType: 6
-    originFilter: 0
-    eventSourceId: 
-    requireTarget: 0
-    requireAttackId: 0
-    oncePerTargetPerChain: 1
-    once: 2
-    consume: 0
-    count:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    window:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    cooldown:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    chance:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    counterConsumeMode: 0
-    optionalSource: 0
-    sourceDistance: 2
-    sourceValue: 0
-    condition:
-      kind: 0
-      eventTarget: 0
-      eventType: 0
-      threshold:
-        source: 0
-        value: 0.7
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      id: 
-      number:
-        source: 0
-        value: 0
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      status: {fileID: 0}
-      minimumStacks: 1
-      children: []
-    steps:
-    - rid: 3342399495413957128
-  - id: conversion
-    trigger: 1
-    eventType: 0
-    originFilter: 0
-    eventSourceId: 
-    requireTarget: 0
-    requireAttackId: 0
-    oncePerTargetPerChain: 1
-    once: 0
-    consume: 0
-    count:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    window:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    cooldown:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    chance:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    counterConsumeMode: 0
-    optionalSource: 0
-    sourceDistance: 2
-    sourceValue: 0
-    condition:
-      kind: 0
-      eventTarget: 0
-      eventType: 0
-      threshold:
-        source: 0
-        value: 0.7
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      id: 
-      number:
-        source: 0
-        value: 0
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      status: {fileID: 0}
-      minimumStacks: 1
-      children: []
-    steps:
-    - rid: 3342399495413957129
-  - id: missing-stamina
-    trigger: 1
-    eventType: 0
-    originFilter: 0
-    eventSourceId: 
-    requireTarget: 0
-    requireAttackId: 0
-    oncePerTargetPerChain: 1
-    once: 0
-    consume: 0
-    count:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    window:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    cooldown:
-      source: 0
-      value: 0
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    chance:
-      source: 0
-      value: 1
-      reference: 
-      multiplyParameter: 
-      multiplyVariable: 
-      roundToInteger: 0
-      ceilToInteger: 0
-      multiply: 1
-      add: 0
-      minimum: -1000000
-      maximum: 1000000
-      upgrades: []
-    counterConsumeMode: 0
-    optionalSource: 0
-    sourceDistance: 2
-    sourceValue: 0
-    condition:
-      kind: 0
-      eventTarget: 0
-      eventType: 0
-      threshold:
-        source: 0
-        value: 0.7
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      id: 
-      number:
-        source: 0
-        value: 0
-        reference: 
-        multiplyParameter: 
-        multiplyVariable: 
-        roundToInteger: 0
-        ceilToInteger: 0
-        multiply: 1
-        add: 0
-        minimum: -1000000
-        maximum: 1000000
-        upgrades: []
-      status: {fileID: 0}
-      minimumStacks: 1
-      children: []
-    steps:
-    - rid: 3342399495413957130
   - id: momentum-spent
     trigger: 2
     eventType: 0
@@ -485,9 +191,10 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
-    - rid: 8714093773343949126
+    - rid: 1027
   - id: momentum-ready
     trigger: 1
     eventType: 0
@@ -587,10 +294,11 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children: []
     steps:
-    - rid: 8714093773343949127
-    - rid: 8714093773343949128
+    - rid: 1028
+    - rid: 1029
   - id: combat-surge
     trigger: 5
     eventType: 0
@@ -690,6 +398,7 @@ MonoBehaviour:
         upgrades: []
       status: {fileID: 0}
       minimumStacks: 1
+      targetIdentity: 0
       children:
       - kind: 14
         eventTarget: 0
@@ -723,6 +432,7 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
       - kind: 16
         eventTarget: 0
@@ -756,45 +466,910 @@ MonoBehaviour:
           upgrades: []
         status: {fileID: 0}
         minimumStacks: 1
+        targetIdentity: 0
         children: []
     steps:
-    - rid: 8714093773343949129
-    - rid: 8714093773343949130
-    - rid: 8714093773343949131
+    - rid: 1030
+    - rid: 1031
+    - rid: 1032
+    - rid: 1033
+    - rid: 1034
+    - rid: 1035
+    - rid: 1036
+  - id: perfect-dash
+    trigger: 0
+    eventType: 6
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 2
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 1037
+  - id: conversion
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 1038
+  - id: stamina-reserve
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 1039
+  - id: missing-stamina
+    trigger: 1
+    eventType: 0
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 0
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children: []
+    steps:
+    - rid: 1040
+  - id: slip-reload
+    trigger: 0
+    eventType: 6
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 0
+    requireAttackId: 0
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 1
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children:
+      - kind: 7
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0.7
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: roma.passive.slip-reload
+        number:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 15
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 5
+          value: 0
+          reference: surge-active
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 16
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 5
+          value: 0
+          reference: slip-uses
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+    steps:
+    - rid: 1041
+  - id: keep-the-pressure
+    trigger: 0
+    eventType: 2
+    originFilter: 0
+    eventSourceId: 
+    requireTarget: 1
+    requireAttackId: 1
+    oncePerTargetPerChain: 1
+    once: 0
+    consume: 0
+    count:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    window:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    cooldown:
+      source: 0
+      value: 0
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    chance:
+      source: 0
+      value: 1
+      reference: 
+      multiplyParameter: 
+      multiplyVariable: 
+      roundToInteger: 0
+      ceilToInteger: 0
+      multiply: 1
+      add: 0
+      minimum: -1000000
+      maximum: 1000000
+      upgrades: []
+    counterConsumeMode: 0
+    optionalSource: 0
+    sourceDistance: 2
+    sourceValue: 0
+    condition:
+      kind: 1
+      eventTarget: 0
+      eventType: 0
+      threshold:
+        source: 0
+        value: 0.7
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      id: 
+      number:
+        source: 0
+        value: 0
+        reference: 
+        multiplyParameter: 
+        multiplyVariable: 
+        roundToInteger: 0
+        ceilToInteger: 0
+        multiply: 1
+        add: 0
+        minimum: -1000000
+        maximum: 1000000
+        upgrades: []
+      status: {fileID: 0}
+      minimumStacks: 1
+      targetIdentity: 0
+      children:
+      - kind: 7
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0.7
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: roma.passive.keep-the-pressure
+        number:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 15
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 5
+          value: 0
+          reference: surge-active
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 16
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 14
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 5
+          value: 0
+          reference: pressure-hits
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 23
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0.7
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 0
+        children: []
+      - kind: 24
+        eventTarget: 0
+        eventType: 0
+        threshold:
+          source: 0
+          value: 0.7
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        id: 
+        number:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        status: {fileID: 0}
+        minimumStacks: 1
+        targetIdentity: 4
+        children: []
+    steps:
+    - rid: 1042
   references:
     version: 2
     RefIds:
-    - rid: 3342399495413957128
-      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
-      data:
-        id: restore
-        successSignal: 
-        successValueVariable: 
-        fragment: {fileID: 6556558672849175701}
-        overrides: []
-        bindings: []
-        parameterBindings: []
-    - rid: 3342399495413957129
-      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
-      data:
-        id: conversion
-        successSignal: 
-        successValueVariable: 
-        fragment: {fileID: -8060093984466642607}
-        overrides: []
-        bindings: []
-        parameterBindings: []
-    - rid: 3342399495413957130
-      type: {class: PassiveFragmentStep, ns: , asm: Assembly-CSharp}
-      data:
-        id: damage
-        successSignal: 
-        successValueVariable: 
-        fragment: {fileID: 5402757226293991048}
-        overrides: []
-        bindings: []
-        parameterBindings: []
-    - rid: 8714093773343949126
+    - rid: 1027
       type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
       data:
         id: accumulate
@@ -815,7 +1390,7 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
-    - rid: 8714093773343949127
+    - rid: 1028
       type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
       data:
         id: reload-speed
@@ -854,6 +1429,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 27
         operation: 1
@@ -869,8 +1445,12 @@ MonoBehaviour:
           add: 0
           minimum: -1000000
           maximum: 1000000
-          upgrades: []
-    - rid: 8714093773343949128
+          upgrades:
+          - upgradeId: roma.passive.fast-hands
+            operation: 0
+            value: 10
+        minimumVariable: 
+    - rid: 1029
       type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
       data:
         id: aim-mobility
@@ -909,6 +1489,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 28
         operation: 0
@@ -924,8 +1505,187 @@ MonoBehaviour:
           add: 0
           minimum: -1000000
           maximum: 1000000
+          upgrades:
+          - upgradeId: roma.passive.mobile-aim
+            operation: 0
+            value: 15
+        minimumVariable: 
+    - rid: 1030
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: clear-floor
+        successSignal: 
+        successValueVariable: 
+        variable: redline-floor
+        operation: 2
+        amount:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
           upgrades: []
-    - rid: 8714093773343949129
+    - rid: 1031
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: clear-slips
+        successSignal: 
+        successValueVariable: 
+        variable: slip-uses
+        operation: 2
+        amount:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1032
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: clear-pressure
+        successSignal: 
+        successValueVariable: 
+        variable: pressure-hits
+        operation: 2
+        amount:
+          source: 0
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1033
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: redline
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 1
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children:
+          - kind: 7
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 0.7
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: roma.passive.redline
+            number:
+              source: 0
+              value: 0
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+          - kind: 5
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 0.7
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 0
+              value: 0
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+        whenTrue:
+        - rid: 1043
+        whenFalse: []
+    - rid: 1034
       type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
       data:
         id: consume
@@ -946,7 +1706,7 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
-    - rid: 8714093773343949130
+    - rid: 1035
       type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
       data:
         id: activate
@@ -967,7 +1727,7 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
-    - rid: 8714093773343949131
+    - rid: 1036
       type: {class: PassiveExpiryStep, ns: , asm: Assembly-CSharp}
       data:
         id: duration
@@ -988,7 +1748,781 @@ MonoBehaviour:
           upgrades: []
         variables:
         - surge-active
+        - redline-floor
+        - slip-uses
+        - pressure-hits
         expirySignal: 
+        cancelOnUpgradeChange: 1
+    - rid: 1037
+      type: {class: PassiveResourceStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: restore
+        successSignal: 
+        successValueVariable: 
+        operation: 0
+        target:
+          mode: 0
+          filter: 0
+          radius: 5
+        amount:
+          source: 0
+          value: 10
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades:
+          - upgradeId: roma.passive.perfect-recovery
+            operation: 0
+            value: 5
+        percentOfMaximum: 0
+    - rid: 1038
+      type: {class: PassiveConversionStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: convert
+        successSignal: 
+        successValueVariable: 
+        source: 20
+        destination: 12
+        fraction:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        ratio:
+          source: 0
+          value: 4
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades:
+          - upgradeId: roma.passive.deep-reserve
+            operation: 0
+            value: 1
+    - rid: 1039
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: maximum
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 7
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: roma.passive.stamina-reserve
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children: []
+        stat: 12
+        operation: 0
+        value:
+          source: 0
+          value: 10
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        minimumVariable: 
+    - rid: 1040
+      type: {class: PassiveDynamicModifierStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: damage
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 5
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children: []
+        stat: 0
+        operation: 1
+        value:
+          source: 4
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 50
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades:
+          - upgradeId: roma.passive.desperate-power
+            operation: 2
+            value: 1.2
+        minimumVariable: redline-floor
+    - rid: 1041
+      type: {class: PassiveExpiryEventStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: dash
+        successSignal: 
+        successValueVariable: 
+        timerVariable: surge-active
+        identity: 2
+        steps:
+        - rid: 1044
+        - rid: 1045
+    - rid: 1042
+      type: {class: PassiveExpiryEventStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: shot
+        successSignal: 
+        successValueVariable: 
+        timerVariable: surge-active
+        identity: 1
+        steps:
+        - rid: 1046
+        - rid: 1047
+        - rid: 1048
+        - rid: 1049
+    - rid: 1043
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: capture
+        successSignal: 
+        successValueVariable: 
+        variable: redline-floor
+        operation: 2
+        amount:
+          source: 4
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 50
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades:
+          - upgradeId: roma.passive.desperate-power
+            operation: 2
+            value: 1.2
+    - rid: 1044
+      type: {class: PassiveReserveAmmoStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: transfer
+        successSignal: slip-reload
+        successValueVariable: 
+        amount:
+          source: 12
+          value: 0
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 1
+          multiply: 0.25
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1045
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: count-success
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 10
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children: []
+        whenTrue:
+        - rid: 1050
+        whenFalse: []
+    - rid: 1046
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: count
+        successSignal: 
+        successValueVariable: 
+        variable: pressure-hits
+        operation: 0
+        amount:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1047
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: at-5
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 1
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children:
+          - kind: 14
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 5
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+          - kind: 16
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 5
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+        whenTrue:
+        - rid: 1051
+        whenFalse: []
+    - rid: 1048
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: at-10
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 1
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children:
+          - kind: 14
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 10
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+          - kind: 16
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 10
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+        whenTrue:
+        - rid: 1052
+        whenFalse: []
+    - rid: 1049
+      type: {class: PassiveBranchStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: at-15
+        successSignal: 
+        successValueVariable: 
+        condition:
+          kind: 1
+          eventTarget: 0
+          eventType: 0
+          threshold:
+            source: 0
+            value: 0.7
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          id: 
+          number:
+            source: 0
+            value: 0
+            reference: 
+            multiplyParameter: 
+            multiplyVariable: 
+            roundToInteger: 0
+            ceilToInteger: 0
+            multiply: 1
+            add: 0
+            minimum: -1000000
+            maximum: 1000000
+            upgrades: []
+          status: {fileID: 0}
+          minimumStacks: 1
+          targetIdentity: 0
+          children:
+          - kind: 14
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 15
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+          - kind: 16
+            eventTarget: 0
+            eventType: 0
+            threshold:
+              source: 0
+              value: 15
+              reference: 
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            id: 
+            number:
+              source: 5
+              value: 0
+              reference: pressure-hits
+              multiplyParameter: 
+              multiplyVariable: 
+              roundToInteger: 0
+              ceilToInteger: 0
+              multiply: 1
+              add: 0
+              minimum: -1000000
+              maximum: 1000000
+              upgrades: []
+            status: {fileID: 0}
+            minimumStacks: 1
+            targetIdentity: 0
+            children: []
+        whenTrue:
+        - rid: 1053
+        whenFalse: []
+    - rid: 1050
+      type: {class: PassiveAccumulatorStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: count
+        successSignal: 
+        successValueVariable: 
+        variable: slip-uses
+        operation: 0
+        amount:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1051
+      type: {class: PassiveExtendExpiryStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: extend-5
+        successSignal: pressure-extension
+        successValueVariable: 
+        timerVariable: surge-active
+        seconds:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        maximumExtension:
+          source: 0
+          value: 3
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1052
+      type: {class: PassiveExtendExpiryStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: extend-10
+        successSignal: pressure-extension
+        successValueVariable: 
+        timerVariable: surge-active
+        seconds:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        maximumExtension:
+          source: 0
+          value: 3
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+    - rid: 1053
+      type: {class: PassiveExtendExpiryStep, ns: , asm: Assembly-CSharp}
+      data:
+        id: extend-15
+        successSignal: pressure-extension
+        successValueVariable: 
+        timerVariable: surge-active
+        seconds:
+          source: 0
+          value: 1
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
+        maximumExtension:
+          source: 0
+          value: 3
+          reference: 
+          multiplyParameter: 
+          multiplyVariable: 
+          roundToInteger: 0
+          ceilToInteger: 0
+          multiply: 1
+          add: 0
+          minimum: -1000000
+          maximum: 1000000
+          upgrades: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1009,7 +2543,7 @@ MonoBehaviour:
     normal shot consumes 100 to activate Combat Surge for 5 seconds: +30% reload
     speed and 50% less aim movement penalty. Momentum cannot build during Combat
     Surge.'
-  upgradeTree: {fileID: 0}
+  upgradeTree: {fileID: 11400000, guid: 5f8e5c302befde848b47775d8525b354, type: 2}
   recipe: {fileID: -729455128634228935}
   hudPrefab: {fileID: 4924810807773998140, guid: dd3cf635ef050a242be8002c2afd3bb1, type: 3}
   definitionId: f332ba5a200446b4594e61646b3144bf
@@ -1075,6 +2609,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         whenTrue:
         - rid: 3342399495413957134
@@ -1179,6 +2714,7 @@ MonoBehaviour:
             upgrades: []
           status: {fileID: 0}
           minimumStacks: 1
+          targetIdentity: 0
           children: []
         stat: 0
         operation: 1
@@ -1195,6 +2731,7 @@ MonoBehaviour:
           minimum: -1000000
           maximum: 1000000
           upgrades: []
+        minimumVariable: 
 --- !u!114 &6556558672849175701
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -74,6 +74,8 @@ MonoBehaviour:
     estimatedChargeSpeed: 8
     knockbackDistance: 2
     knockbackSeconds: 0.4
+    slideDistance: 1.5
+    slideSeconds: 0.35
   icon: {fileID: 21300000, guid: 622b3ff651b5e9a40a1e45bed2acbd9b, type: 3}
   displayName: 
   skillId: aires.skill.2.morph
@@ -91,6 +93,10 @@ MonoBehaviour:
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
+  partyCommandPlacementMode: 0
+  partyCommandNoTargetPlacement: 0
+  partyCommandTargetDistance: 1.5
+  partyCommandPlayerDistance: 3
   baseEffectDuration: 0
   baseHealPower: 0
   upgradeTree: {fileID: 0}
@@ -119,10 +125,13 @@ MonoBehaviour:
     humanoidBone: 18
     localPosition: {x: 0, y: 0, z: 0}
     localEulerAngles: {x: 270, y: -0.00000038855094, z: 0}
-    localScale: {x: 1.0000006, y: 0.9999999, z: 0.99999976}
+    localScale: {x: 1.0000005, y: 0.99999946, z: 0.99999946}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
   hitLagDuration: 0.06
@@ -167,6 +176,9 @@ MonoBehaviour:
       anchorMode: 0
       loopKey: 
       extraLife: 0
+      lifetimeMode: 0
+      explicitLifetime: 0
+      sessionEndMode: 0
       allowParticlesToFinish: 1
       animClip: {fileID: 0}
     - cueIndex: 1
@@ -181,6 +193,9 @@ MonoBehaviour:
       anchorMode: 0
       loopKey: 
       extraLife: 0
+      lifetimeMode: 0
+      explicitLifetime: 0
+      sessionEndMode: 0
       allowParticlesToFinish: 1
       animClip: {fileID: 0}
   blockablePreCast: 0
@@ -192,6 +207,8 @@ MonoBehaviour:
   preCastIndicatorPrefab: {fileID: 0}
   cancelPreCastOnStun: 1
   cancelPreCastOnStagger: 1
+  placementTimingSource: 0
+  placementPointNormalized: 0.35
   references:
     version: 2
     RefIds: []

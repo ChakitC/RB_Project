@@ -1153,6 +1153,9 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
                 float next = _cutsceneNormalizedTime + delta / Mathf.Max(0.0001f, cutsceneClip.length);
                 if (next >= 1f)
                 {
+                    _cutsceneNormalizedTime = 1f;
+                    SampleCutsceneTimelineVfx(cutsceneClip, false);
+                    authoringTarget?.CompleteTimelineVfxPreviewSession();
                     _playheadInCutscene = false;
                     normalizedTime = 0f;
                     AnimationClip skillClip = GetClip(source);
@@ -1229,6 +1232,7 @@ public sealed partial class SkillAnimationVfxEditorWindow : EditorWindow
                         ConfigureMainPreview(mainSource, animator, clip);
                         previewSession.Sample(normalizedTime);
                         SampleTimelineVfx(clip, false);
+                        authoringTarget?.CompleteTimelineVfxPreviewSession();
                     }
                 }
                 else

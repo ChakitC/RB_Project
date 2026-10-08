@@ -482,3 +482,16 @@ The migration changes the following previously scattered behavior:
 Initialized, enabled admission and required module availability are prerequisites.
 A held-fire resumption cannot cancel reload. A new request may cancel it and
 fire a Semi round in that same command.
+
+## Weapon aim source
+
+`CharacteContext.WeaponAim` is the shared, explicitly authored `WeaponAimSource`.
+The base ResolveReferences resolves it through owner-scoped peer lookup. Player's
+existing `thirdPersonAim` and Ally's `AimTargetDriver` still own subtype initialization;
+they assign the common binding when creating their source. Enemy and Summon prefabs
+bind their AIAimTargetDriver directly. Multiple candidate sources require an explicit
+binding rather than choosing a first match.
+
+WeaponSystem reads the common source for aim samples and movement spread input.
+Weapon muzzle authoring is local to `WeaponMuzzleBinding` on the spawned/integrated
+visual model. It is not a shared context module or a serialized actor anchor.

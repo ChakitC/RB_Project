@@ -54,6 +54,16 @@ into the configured capacity as space becomes available.
 
 ## Inventory Window UI
 
+All eighteen accessory definitions use square chibi vintage screen-print icons
+in `Assets/Spain/Accessory_Icon/Chibi`. Category-colored radial backgrounds and
+halftone patterns unify the set; earlier images remain in their original folders.
+Orange identifies offensive/gun accessories (coin, lighter, shades, holster,
+magazine, ammo box, Feno's field pack, RabbitGlove). Green identifies defensive
+accessories (rosary, ring, vest, Carrotleaf armor, RabbitHat). Blue identifies
+utility accessories (pager, shoes, watch, RabbitCharm, RabbitLag). These colors
+are an art convention, not a runtime category field. Import as single Sprites
+with mipmaps disabled and a 1024 maximum texture size.
+
 `InventoryUI` presents inventory capacity as a nine-column responsive grid. The
 cell size is calculated from the available viewport so four complete rows remain
 visible without crossing the window boundary. Additional rows stay inside a

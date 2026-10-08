@@ -39,6 +39,11 @@ public sealed class SkillDefensiveBlockSettings
     [Min(0.01f)] public float estimatedChargeSpeed = 8f;
     [Min(0f)] public float knockbackDistance = 2f;
     [Min(0.01f)] public float knockbackSeconds = 0.4f;
+    [Header("Defender Recoil (Player and Ally)")]
+    [Tooltip("Distance both defenders slide back on a successful Block. Zero disables recoil movement.")]
+    [Min(0f)] public float slideDistance = 1.5f;
+    [Tooltip("Duration of defender recoil, also used as the minimum Block impact animation duration.")]
+    [Min(0.01f)] public float slideSeconds = 0.35f;
     public int FindWindow(float time)
     {
         if (!HasMultipleWindowData) return time >= windowStartNormalized && time <= windowEndNormalized ? 0 : -1;
@@ -95,5 +100,7 @@ public sealed class SkillDefensiveBlockSettings
             approachStandOff > 0f && !float.IsInfinity(approachStandOff))) &&
         commandRange > 0f && windupSeconds >= 0f && WindowsAreValid &&
         knockbackDistance >= 0f && knockbackSeconds > 0f &&
+        slideDistance >= 0f && !float.IsInfinity(slideDistance) &&
+        slideSeconds > 0f && !float.IsInfinity(slideSeconds) &&
         threatHalfWidth > 0f && threatForwardReach >= 0f && estimatedChargeSpeed > 0f;
 }

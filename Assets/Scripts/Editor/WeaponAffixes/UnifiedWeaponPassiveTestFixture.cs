@@ -221,7 +221,7 @@ public sealed class UnifiedWeaponPassiveTestFixture
     }
     WeaponSystem Weapon(CharacteContext actor, int ammo = 1)
     {
-        var weapon = actor.gameObject.AddComponent<WeaponSystem>(); actor.WeaponSystem = weapon; weapon.ctx = actor; weapon.firePoint = actor.transform;
+        var weapon = actor.gameObject.AddComponent<WeaponSystem>(); actor.WeaponSystem = weapon; weapon.ctx = actor; WeaponAimTestSource.Bind(weapon, actor.transform);
         var gun = ScriptableObject.CreateInstance<GunConfig>(); owned.Add(gun); gun.magazine = gun.maxMagazine = 20;
         typeof(WeaponSystem).GetField("currentWeapon", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(weapon, gun);
         typeof(WeaponSystem).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(weapon, null);
@@ -294,7 +294,7 @@ public sealed class UnifiedWeaponPassiveTestFixture
         {
             var actor = Actor(); var body = actor.gameObject;
             if (nested) { body = new GameObject("Nested weapon modules"); body.transform.SetParent(actor.transform, false); }
-            var weapon = body.AddComponent<WeaponSystem>(); weapon.ctx = actor; weapon.firePoint = actor.transform; actor.WeaponSystem = weapon;
+            var weapon = body.AddComponent<WeaponSystem>(); weapon.ctx = actor; WeaponAimTestSource.Bind(weapon, actor.transform); actor.WeaponSystem = weapon;
             var gun = ScriptableObject.CreateInstance<GunConfig>(); owned.Add(gun); gun.magazine = gun.maxMagazine = 20;
             typeof(WeaponSystem).GetField("currentWeapon", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(weapon, gun);
             typeof(WeaponSystem).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(weapon, null);

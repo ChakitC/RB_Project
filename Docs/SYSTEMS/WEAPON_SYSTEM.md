@@ -13,6 +13,15 @@ by this snapshot (1.3 for +30% speed). That reload keeps its speed if the buff
 expires; a later reload samples again. Existing `ReloadTime` modifiers still apply.
 See [Passives](PASSIVES.md) for Roma's charge, activation and expiry rules.
 
+`TransferReserveToMagazine(int amount)` returns the actual number transferred,
+limited by free magazine space and available reserve. It respects infinite
+reserve, synchronizes the equipped instance and ammo UI, and neither starts a
+reload animation nor emits Reload. An existing full-magazine or per-bullet reload
+continues using the updated ammo state. Roma's Slip Reload uses this API with
+ceil(25% current capacity); its per-Dash and per-Surge limits belong to the passive.
+Existing free `RestoreMagazine` APIs retain their original behavior. Fast Hands
+raises the Surge reload-speed snapshot from 1.3 to 1.4.
+
 ## Main Files
 
 - `Assets\Scripts\Player\WeaponSystem.cs`
@@ -42,7 +51,7 @@ External callers currently use `WeaponSystem` for:
   `RestoreMagazine`, `CanRestoreReserveAmmo`, `RestoreReserveAmmo`,
   `GrantFreeAmmo`
 - aim/visual: `OnAim`, `IsAiming`, `FirePoint`, `BindFirePoint`,
-  `RefreshFirePointReference`, public `ctx`
+  public `ctx`
 - runtime effects: `SpawnAffixProjectile`
 
 Public mirror fields such as `damage`, `fireRate`, `magazine`,
@@ -62,6 +71,21 @@ Current migrated callers:
   `BindFirePoint`.
 
 ## Equip Flow
+
+At player startup, `PlayerInventory.Start` fills the equipped magazine and finite
+reserve after loading the saved loadout (or equipping the default weapon). It uses
+the weapon facade's restore APIs, so current stat limits, instance state and ammo
+notifications stay synchronized. This runs once per player initialization; ordinary
+weapon switching and disable/re-enable do not refill ammo. Infinite reserve is unchanged.
+Restoring an instance on equip clamps its magazine to the derived capacity, including
+capacity upgrades, rather than the base gun capacity.
+
+Validation: `StartingAmmoTests.StartupFillsAmmoAndEquipPreservesIt` covers the
+no-save-manager startup path in both Start orders, finite/infinite reserve,
+instance synchronization, repeat equip and derived magazine limits. It passed
+in Edit Mode; the existing Reload Play Mode filter passed 6/6 at time scale 1.
+The original time scale 0.1 was restored. Assembly validation passed with 0 errors
+and 110 warnings. A real saved-loadout startup and HUD playthrough remain unverified.
 
 `CharacterEquipment` and `PlayerInventory` can both lead into weapon equip.
 `CharacterEquipment.Equip` updates character equipment state, mirrors the
@@ -114,6 +138,57 @@ Weapon stats come from `WeaponStatSnapshotBuilder` and `StatsHub`.
 `StatsHub` calculates base character stats, weapon stats, level scaling, status
 modifiers, passive modifiers, affix modifiers, and upgrade modifiers through
 `IStatModifierProvider`.
+
+### Modifier scope and calculation order
+
+`CharacterStatFormula` applies `(base + sum Flat) * (1 + sum AddPercent / 100) * product Multiply`
+in two layers. `WeaponOnly` modifies the weapon contribution first; character
+level-scaled stats are added next, then `Global` modifiers apply once. Damage,
+CritRate and CritMultiplier use this split; CritMultiplier adds the character
+bonus above 1. Skill base damage uses character damage and Global modifiers only.
+Weapon-only upgrades and affixes therefore do not increase skill base damage.
+
+WeaponOnly supports Damage, CritRate, CritMultiplier, FireInterval, ReloadTime,
+ReloadSpeed, Stability, BulletSpeed, MaxMagazine and MaxReserveAmmo. Other stats
+remain Global; unsupported scope/stat pairs are authoring errors and are ignored
+by the weapon layer. Existing generic modifiers default to Global (enum value 0).
+Direct shot/pre-damage patches retain their existing combat phase.
+
+Weapon-origin modifiers carry the granting weapon instance ID. Matching by
+GunConfig alone is insufficient: two inventory instances can share one config.
+Unbound WeaponOnly modifiers from accessories/character passives affect the
+equipped weapon. StatsHub signatures include scope, modifier binding and current
+weapon instance; unequip/swap refreshes the cache. Foreign-weapon getter queries
+exclude modifiers bound to the equipped instance. Inventory previews use their
+own instance ID and do not mutate inventory.
+
+Clamp and round after both layers. The 20% minimum for Damage, MoveSpeed, MaxHP
+and MaxStamina uses the original pre-modifier base, not the upgraded weapon
+contribution. Stamina regeneration conversion remains a post-formula operation.
+For character damage 20, gun damage 80, weapon +20%, Global flat +10 and Global
++30%, attack damage is `(80*1.2 + 20 + 10)*1.3 = 163.8`; skill base damage is 39.
+
+`StatModifierRules.StackValue` aggregates upgrade steps as well as passive/status
+stacks: Flat/AddPercent multiply by count; Multiply uses `max(0, 1+(value-1)*count)`.
+Zero factors are valid and must not be skipped as empty bonuses. Independent
+modifier groups still multiply. Milestone reload buffs explicitly enable modifier
+and duration overrides and retain their granting weapon instance binding.
+
+`Tools > RB > Stats > Preview Scope Migration` reports legacy weapon data;
+`Apply Scope Migration` upgrades each definition/curve once using a schema marker.
+Changed affix passive graphs are copied into weapon-owned subassets, preserving
+the original graph for other consumers and preserving passive/rule/step IDs.
+Original subassets are retained. Numeric rolls, upgrade levels and save files are
+not rewritten. New recipe generation authors supported weapon stats as WeaponOnly.
+
+The 2026-10-08 migration updated 28 assets (one curve, 27 affix definitions);
+a repeat changed zero assets. Evidence and before/after synthetic stat samples:
+`../../../BuildArtifacts/StatScopes/migration-applied.json`. For character Damage 20
+and gun Damage 80, the default curve at level 10 changes attack Damage from 102
+to 101.6 and skill base from 20.4 to 20. The maximum Damage affix roll changes
+104 to 103.2 and skill base 20.8 to 20. These are controlled examples, not a
+rebalance of the authored numeric values. Conditional combat affixes are idle in
+the report's preview samples; their lifecycle is covered by runtime tests.
 
 `MaxReserveAmmo` is resolved after `MaxMagazine`, because weapons without an
 explicit reserve limit derive their capacity from magazine size. The final
@@ -233,14 +308,13 @@ Known asset-only limitations:
 
 `Stability` is authored and exposed as a percentage from `0` to `100`:
 
-- `0%` keeps the weapon's full authored sway speed and sway angle.
-- `50%` halves both sway speed and sway angle.
-- `100%` removes weapon sway completely.
+- `0%` keeps the full authored projectile spread.
+- `50%` halves the combined base spread, movement penalty and bloom.
+- `100%` removes projectile spread.
 
-The runtime sway multiplier is `1 - (Stability / 100)`. Stability also scales
-return speed from `1x` at `0%` to `2x` at `100%`. This stat controls weapon
-sway only; recoil, projectile spread, and other accuracy behavior remain
-separate systems.
+The spread multiplier is `1 - (Stability / 100)`, shared by Player and AI.
+The old FirePoint rotation sway and return-speed settings are removed.
+Camera recoil remains separate from projectile spread.
 
 Final Stability is clamped to `0-100%` after all modifiers. A `Flat` Stability
 modifier adds percentage points, so `30 Stability + 10 Flat = 40%`. Author
@@ -554,7 +628,7 @@ They can contribute stat modifiers and react to equip/shot events.
 - Do not add new external reads or writes of `WeaponSystem` public mirror
   fields. Use facade properties such as `CurrentAmmo`, `IsMagazineEmpty`,
   `IsAiming`, `IsFiringActivity`, `Damage`, and `FirePoint`.
-- Use `BindFirePoint` instead of assigning `WeaponSystem.firePoint` directly.
+- Use `BindFirePoint` with a model-owned `WeaponMuzzleBinding`. The current muzzle is runtime-only; actor prefabs do not serialize a fire point.
 - Preserve public mirror fields until prefab/inspector compatibility is
   intentionally retired.
 - Raise `IStatModifierProvider.StatModifiersChanged` whenever a provider's stat
@@ -617,3 +691,38 @@ Prepared damage travels with the projectile and survives passive removal. Extra
 affix shots use ordinary preparation without a passive reservation/multiplier.
 RestoreMagazineActual returns the actual ammo restored before notifications;
 RestoreMagazine retains its bool contract. See PASSIVES.md for composition.
+
+## Shared weapon aim and model muzzles (2026-10-07)
+
+Player, Ally, Enemy and Summon weapon shots use `CharacteContext.WeaponAim` and
+`WeaponAimResolver`. `ThirdPersonAimController` supplies the camera hit/ray;
+`AIAimTargetDriver` supplies the current override or live sensor aim point and
+an actor-to-target reference direction. AI reads its target at shot time, without
+waiting for LateUpdate. A missing target is not a forward-fire instruction.
+AI range, facing and LOS admission still belongs to the existing behavior tasks.
+
+All actors apply the same hip/aim spread, stability, bloom and recovery formula.
+Player movement penalty uses input magnitude; AI uses planar agent velocity divided
+by agent speed. Stationary actors have no movement penalty. Camera recoil remains
+player feedback. The former FirePoint rotation sway and GunConfig sway settings are
+removed. Passive shots that inherit a primary direction do not resample spread.
+
+Put `WeaponMuzzleBinding` on the weapon model root and bind a child Transform at
+the barrel tip (+Z outward). `CharacterVisualController` installs the right-hand
+muzzle when using both hands, or the left muzzle for left-only characters.
+An integrated model such as the turret has the same binding on its visual root.
+Equip, unequip, model replacement and disable clear the current reference; model
+binding and pool re-enable install the current muzzle. No actor-name search,
+bone-name reparenting, actor-origin fallback or forward-direction fallback remains
+in weapon firing. Invalid launch/aim input is rejected before ammo/cooldown/passive
+reservation. `WeaponProjectileSpawner` requires an explicit nonzero finite direction.
+
+The shared muzzle probe uses owner/team/hurtbox rules through TargetIdentity.
+Cover is still handled by projectile physics; the probe does not cancel the shot
+or prevent an animated muzzle from penetrating a wall.
+
+`Tools > RB > Weapons > Validate Weapon Muzzles` reports missing models/bindings,
+invalid context aim sources and obsolete actor anchors. Four incomplete GunConfig
+assets remain intentionally unfilled: Mons_GR01_Weapone, Rifle_GR02, ShotGun_001,
+and Weapone_N_GRS_01. Rifle_GR02 remains in its shop catalog. No replacement model
+or combat stats were invented for these entries.

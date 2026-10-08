@@ -234,6 +234,7 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
         var spec = new StatusApplicationSpec
         {
             effect = statusEffect,
+            weaponInstanceId = instanceId,
             stacks = 1,
             modifiers = new List<StatusEffectModifier>
             {
@@ -241,12 +242,15 @@ public class WeaponUpgradeRuntimeController : MonoBehaviour, IStatModifierProvid
                 {
                     statType = effect.statType,
                     operation = effect.modifierOp,
+                    scope = effect.scope,
                     value = effect.value
                 }
             },
             durationOverride = Mathf.Max(0f, effect.buffDurationSeconds),
         };
 
+        spec.SetModifierOverride(spec.modifiers);
+        spec.SetDurationOverride(effect.buffDurationSeconds);
         statusEffectController.ApplyEffect(spec, gameObject);
         return true;
     }

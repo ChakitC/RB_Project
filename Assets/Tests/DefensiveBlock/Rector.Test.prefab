@@ -483,6 +483,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa80e7c49c3b6754993a425b90a5b9f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  aimCollisionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  muzzleProbeRadius: 0.045
   sensor: {fileID: 3460112191394717880}
   skillUserSystem: {fileID: 6384766249520719936}
   aimTarget: {fileID: 0}
@@ -1964,7 +1968,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2256168314404166533}
-  - {fileID: 5462156353484774203}
   - {fileID: 3854660227717322522}
   - {fileID: 967262727020017454}
   m_Father: {fileID: 0}
@@ -2046,6 +2049,7 @@ MonoBehaviour:
   Equipment: {fileID: 6149185041057082933}
   AccessoryLoadout: {fileID: 0}
   WeaponSystem: {fileID: 6582638231958283938}
+  WeaponAim: {fileID: 6760142913998925899}
   AnimBrain: {fileID: 5141047713374118960}
   AnimDriver: {fileID: 1873566231782117093}
   RootMotionDriver: {fileID: 0}
@@ -2236,6 +2240,11 @@ MonoBehaviour:
   statusEffectController: {fileID: 3772492716986634946}
   runtimePassives: []
   extraPassives: []
+  runtimeGrantIds: []
+  extraGrantIds: []
+  runtimeGrantDefinitions: []
+  extraGrantDefinitions: []
+  diagnostics: 0
   maxEventDepth: 8
   chainStateTtlSeconds: 10
 --- !u!114 &8420739103081615170
@@ -2281,7 +2290,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characteContext: {fileID: 2051509402577002897}
   statsHub: {fileID: 686625181687967863}
-  castOrigin: {fileID: 5462156353484774203}
+  castOrigin: {fileID: 0}
+  useWeaponMuzzleForCastOrigin: 1
   aimTransform: {fileID: 0}
   maximumEnergy: 0
   currentEnergy: 0
@@ -2338,6 +2348,7 @@ MonoBehaviour:
     rarity: 0
     mainAffix:
       affixId: 
+      grantId: 
       hasPrimaryValue: 0
       primaryValue: 0
       hasSecondaryValue: 0
@@ -3229,37 +3240,6 @@ Transform:
   m_Children:
   - {fileID: 3005555957817770973}
   m_Father: {fileID: 1422063063467273081}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &3454660031908948011
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5462156353484774203}
-  m_Layer: 0
-  m_Name: FirePoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5462156353484774203
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3454660031908948011}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 1, z: 1.2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5746590244649584709}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3558490058554453377
 GameObject:
@@ -4790,11 +4770,6 @@ MonoBehaviour:
   leftLocalPos: {x: 0, y: 0, z: 0}
   leftLocalRotEuler: {x: 0, y: 0, z: 0}
   leftLocalScale: {x: 1, y: 1, z: 1}
-  firePointName: FirePoint
-  firePointBoneName: c_traj
-  firePointLocalPos: {x: 0, y: 1, z: 1.2}
-  firePointLocalRotEuler: {x: -90, y: 0, z: 0}
-  firePointLocalScale: {x: 1, y: 1, z: 1}
   healthBarPrefab: {fileID: 3196080228300109906, guid: b6b91f21e65c3634eb2a54a84bd884bd, type: 3}
   healthBarHight: 3
   healthBarBoneName: c_traj
@@ -5315,6 +5290,7 @@ MonoBehaviour:
     rarity: 0
     mainAffix:
       affixId: 
+      grantId: 
       hasPrimaryValue: 0
       primaryValue: 0
       hasSecondaryValue: 0
@@ -5329,7 +5305,6 @@ MonoBehaviour:
     upgradeExp: 0
     unlockedUpgradeMilestoneIds: []
     affixRuntimeStates: []
-  firePoint: {fileID: 5462156353484774203}
   gunType: 0
   damage: 0
   fireRate: 0

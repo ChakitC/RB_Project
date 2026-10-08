@@ -18,6 +18,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1200129
   standAhead: 2.5
+  standSideways: 0
   minimumStandAhead: 0.8
   approachClearance: 4.2
   guardCenterHeight: 1.2
@@ -26,8 +27,6 @@ MonoBehaviour:
   guardHalfDepth: 0.05
   guardForwardOffset: 1.4
   timeoutSeconds: 2
-  slideDistance: 1.5
-  slideSeconds: 0.35
   warpFadeOutSeconds: 0.04
   warpFadeInSeconds: 0.08
   impactVfx: {fileID: 7849791404790678207, guid: 42913e44bd86c194f80b76492e6fe2fd, type: 3}
@@ -67,3 +66,18 @@ MonoBehaviour:
   cameraBlendInSeconds: 0.25
   cameraHoldSeconds: 0.12
   cameraBlendOutSeconds: 0.4
+  cooperativeCameraLocalPosition: {x: 1.9, y: 2.2, z: -3.4}
+  cooperativeCameraLocalEulerAngles: {x: 10, y: -12, z: 8}
+  cooperativeCameraFieldOfView: 55
+  cooperativeCameraBlendSeconds: 0.2
+  normalImpactShakeDegrees: 1.2
+  normalImpactShakeSeconds: 0.15
+  normalImpactShakeFrequency: 20
+  cooperativeImpactShakeDegrees: 1.8
+  cooperativeImpactShakeSeconds: 0.22
+  cooperativeImpactShakeFrequency: 22
+  cooperativeStruggleShakeDegrees: 0.12
+  cooperativeStruggleShakeFrequency: 9
+  cooperativeSuccessShakeDegrees: 1.8
+  cooperativeSuccessShakeSeconds: 0.2
+  cooperativeSuccessShakeFrequency: 20

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum PassiveConditionKind { Always, All, Any, Not, HealthBelow, StaminaBelow, HasStatus, HasUpgrade, EventSource, OriginPassive, LastSucceeded, EventType, LastFailed, LastSkipped, NumberAtLeast, NumberGreater, NumberAtMost, AmmoConsumed, LastRound, HeadHit, EnteredChainReady, TrackedTarget, Chance }
+public enum PassiveConditionKind { Always, All, Any, Not, HealthBelow, StaminaBelow, HasStatus, HasUpgrade, EventSource, OriginPassive, LastSucceeded, EventType, LastFailed, LastSkipped, NumberAtLeast, NumberGreater, NumberAtMost, AmmoConsumed, LastRound, HeadHit, EnteredChainReady, TrackedTarget, Chance, NormalWeaponHit, TargetIdentity }
 
 [Serializable]
 public sealed class PassiveCondition
@@ -15,6 +15,7 @@ public sealed class PassiveCondition
     public PassiveNumber number = new();
     public StatusEffectDef status;
     public int minimumStacks = 1;
+    public AITargetIdentity targetIdentity;
     public List<PassiveCondition> children = new();
     public bool UsesResource
     {
@@ -56,6 +57,12 @@ public sealed class PassiveCondition
         var actor = eventTarget ? execution.EventTarget : execution.Owner;
         switch (kind)
         {
+            case PassiveConditionKind.TargetIdentity: return execution.EventTarget != null && execution.EventTarget.TargetIdentity == targetIdentity;
+            case PassiveConditionKind.NormalWeaponHit:
+                return execution.Event.Type == PassiveEventType.Hit && execution.Event.Origin == PassiveEventOrigin.External &&
+                    execution.Event.Metadata.SourceKind == CombatSourceKind.Weapon && execution.Event.Metadata.AppliedDamage > 0 &&
+                    !execution.Event.Metadata.IsWeaponAffixGenerated && string.IsNullOrEmpty(execution.Event.Metadata.FollowUpSkillId) &&
+                    CharacterContextModuleLookup.ResolveContext(execution.Event.Actor) == execution.Owner;
             case PassiveConditionKind.Chance:
                 float chance = Mathf.Clamp01(threshold.Resolve(execution));
                 return chance >= 1 || chance > 0 && execution.Runtime.RandomValue() <= chance;

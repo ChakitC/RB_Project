@@ -66,6 +66,73 @@ public sealed class GameplayHudIntegrationTests
         }
     }
 
+    [Test]
+    public void AllyPortraitTracksLateCharacterDataAndChangesOnSameContext()
+    {
+        GameObject hud = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(HudPath));
+        GameObject actor = new GameObject("HudTestPlayer");
+        GameObject allyObject = new GameObject("HudTestAlly");
+        CharacterStats first = ScriptableObject.CreateInstance<CharacterStats>();
+        CharacterStats second = ScriptableObject.CreateInstance<CharacterStats>();
+        Texture2D texture = new Texture2D(2, 2);
+        Sprite firstIcon = Sprite.Create(texture, new Rect(0, 0, 1, 1), Vector2.zero);
+        Sprite secondIcon = Sprite.Create(texture, new Rect(1, 1, 1, 1), Vector2.zero);
+        try
+        {
+            PlayerContext player = actor.AddComponent<PlayerContext>();
+            player.fieldAllyManager = actor.AddComponent<FieldAllyManager>();
+            AllyContext ally = allyObject.AddComponent<AllyContext>();
+            FieldAllyMember member = allyObject.AddComponent<FieldAllyMember>();
+            var serialized = new SerializedObject(member);
+            serialized.FindProperty("actorRole").intValue = (int)ChainActorRole.PartySlot1;
+            serialized.FindProperty("actorContext").objectReferenceValue = ally;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            player.fieldAllyManager.Register(member);
+            GameplayHudPresenter presenter = hud.AddComponent<GameplayHudPresenter>();
+            presenter.Bind(player);
+            var portrait = hud.transform.Find("AllyTop/PortraitMask/PortraitIcon")
+                .GetComponent<UnityEngine.UI.Image>();
+            Assert.That(portrait.enabled, Is.False);
+
+            first.icon = firstIcon;
+            ally.baseStats = first;
+            RefreshHud(presenter);
+            Assert.That(portrait.sprite, Is.SameAs(firstIcon));
+            Assert.That(portrait.enabled, Is.True);
+
+            second.icon = secondIcon;
+            ally.baseStats = second;
+            RefreshHud(presenter);
+            Assert.That(portrait.sprite, Is.SameAs(secondIcon));
+
+            second.icon = null;
+            RefreshHud(presenter);
+            Assert.That(portrait.sprite, Is.Null);
+            Assert.That(portrait.enabled, Is.False);
+
+            second.icon = firstIcon;
+            RefreshHud(presenter);
+            Assert.That(portrait.sprite, Is.SameAs(firstIcon));
+            Assert.That(portrait.enabled, Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(hud);
+            Object.DestroyImmediate(actor);
+            Object.DestroyImmediate(allyObject);
+            Object.DestroyImmediate(first);
+            Object.DestroyImmediate(second);
+            Object.DestroyImmediate(firstIcon);
+            Object.DestroyImmediate(secondIcon);
+            Object.DestroyImmediate(texture);
+        }
+    }
+
+    static void RefreshHud(GameplayHudPresenter presenter) =>
+        typeof(GameplayHudPresenter).GetMethod("Refresh",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Invoke(presenter, null);
+
     static void AssertHealthMeshFollowsBar(UnityEngine.UI.Image image,
         SlantedBarFillEffect effect)
     {

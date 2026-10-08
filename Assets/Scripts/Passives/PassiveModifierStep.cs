@@ -21,7 +21,7 @@ public sealed class PassiveModifierStep : PassiveStep
             var controller = actor.PassiveController;
             if (controller != null && controller.TryApplyRuntimeModifier(modifier,
                 string.IsNullOrWhiteSpace(modifier.modifierKeyOverride) ? execution.Key : modifier.modifierKeyOverride,
-                controller.Clock, execution.Runtime.Grant.Upgrades)) (succeeded ??= new()).Add(actor);
+                controller.Clock, execution.Runtime.Grant.Upgrades, execution.Grant.Options?.WeaponInstanceId)) (succeeded ??= new()).Add(actor);
         }
         return new PassiveResult(0, succeeded);
     }

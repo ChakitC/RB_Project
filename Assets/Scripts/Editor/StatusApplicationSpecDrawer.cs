@@ -50,7 +50,7 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
         int modifierCount = GetDisplayedModifierCount(property);
         // effect + stacks + modifier header + column header + rows + duration + tick header (+ two tick fields when active)
         int scalarLines = 2 + (ShouldShowTickFields(property) ? 2 : 0);
-        int bodyLines = 2 + 2 + Mathf.Max(1, modifierCount) + scalarLines;
+        int bodyLines = 2 + 2 + Mathf.Max(1, modifierCount * 2) + scalarLines;
         return line + Spacing + bodyLines * (line + Spacing);
     }
 
@@ -87,6 +87,7 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
         {
             for (int i = 0; i < modifierCount; i++)
             {
+                DrawModifierScope(NextLine(indented, ref y, line), property, i);
                 if (DrawModifierRow(NextLine(indented, ref y, line), property, i, modifierCount))
                     break;
             }
@@ -193,7 +194,7 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
             SerializedProperty modifiers = GetModifiers(property);
             int index = modifiers.arraySize;
             modifiers.InsertArrayElementAtIndex(index);
-            SetModifierValues(modifiers.GetArrayElementAtIndex(index), StatType.Damage, ModifierOp.Flat, 0f);
+            SetModifierValues(modifiers.GetArrayElementAtIndex(index), StatType.Damage, ModifierOp.Flat, 0f, StatModifierScope.Global);
         }
     }
 
@@ -204,6 +205,24 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
         EditorGUI.LabelField(stat, "Stat Type", EditorStyles.miniLabel);
         EditorGUI.LabelField(operation, "Operation", EditorStyles.miniLabel);
         EditorGUI.LabelField(value, "Value", EditorStyles.miniLabel);
+    }
+
+    static void DrawModifierScope(Rect rect, SerializedProperty property, int index)
+    {
+        bool overridden = HasModifierOverride(property);
+        var source = overridden ? null : GetDefinitionModifiers(property)[index];
+        var scope = overridden
+            ? (StatModifierScope)GetModifiers(property).GetArrayElementAtIndex(index).FindPropertyRelative("scope").intValue
+            : source?.scope ?? StatModifierScope.Global;
+        ReadModifierValues(property, index, overridden, out StatType stat, out _, out _);
+        EditorGUI.BeginChangeCheck();
+        var next = (StatModifierScope)EditorGUI.EnumPopup(rect,
+            new GUIContent(StatModifierRules.IsValidScope(stat, scope) ? "Scope" : "Scope (unsupported stat)", StatModifierRules.ValueTooltip), scope);
+        if (EditorGUI.EndChangeCheck())
+        {
+            EnsureModifierOverride(property);
+            GetModifiers(property).GetArrayElementAtIndex(index).FindPropertyRelative("scope").intValue = (int)next;
+        }
     }
 
     static bool DrawModifierRow(Rect rect, SerializedProperty property, int index, int modifierCount)
@@ -541,7 +560,8 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
                 modifiers.GetArrayElementAtIndex(i),
                 modifier != null ? modifier.statType : StatType.Damage,
                 modifier != null ? modifier.operation : ModifierOp.Flat,
-                modifier != null ? modifier.value : 0f);
+                modifier != null ? modifier.value : 0f,
+                modifier != null ? modifier.scope : StatModifierScope.Global);
         }
 
         SetModifierOverrideEnabled(property, true);
@@ -585,11 +605,12 @@ public sealed class StatusApplicationSpecDrawer : PropertyDrawer
         SerializedProperty modifier,
         StatType statType,
         ModifierOp operation,
-        float value)
+        float value, StatModifierScope? scope = null)
     {
         modifier.FindPropertyRelative("statType").intValue = (int)statType;
         modifier.FindPropertyRelative("operation").intValue = (int)operation;
         modifier.FindPropertyRelative("value").floatValue = value;
+        if (scope.HasValue) modifier.FindPropertyRelative("scope").intValue = (int)scope.Value;
     }
 }
 #endif

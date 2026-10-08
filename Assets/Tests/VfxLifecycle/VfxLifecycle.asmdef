@@ -1,0 +1,11 @@
+{
+    "name": "VfxLifecycle.Tests",
+    "references": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "includePlatforms": [
+        "Editor"
+    ]
+}

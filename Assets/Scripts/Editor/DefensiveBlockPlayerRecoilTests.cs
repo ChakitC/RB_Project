@@ -57,6 +57,52 @@ public sealed class DefensiveBlockPlayerRecoilTests
     }
 
     [Test]
+    public void SkillRecoilIsSharedAndCapturedPerGuard()
+    {
+        var skill = ScriptableObject.CreateInstance<SkillGemDefinition>(); created.Add(skill);
+        skill.defensiveBlock = new SkillDefensiveBlockSettings { slideDistance = 3f, slideSeconds = .8f };
+        var sourceObject = Go("Recoil source"); sourceObject.SetActive(false);
+        var source = sourceObject.AddComponent<DefensiveBlockAttack>(); source.skill = skill;
+        var playerObject = Go("Player guard"); playerObject.SetActive(false);
+        var allyObject = Go("Ally guard"); allyObject.SetActive(false);
+        var playerGuard = playerObject.AddComponent<DefensiveBlockController>();
+        var allyGuard = allyObject.AddComponent<DefensiveBlockController>();
+        var capture = typeof(DefensiveBlockController).GetMethod("CaptureRecoil", Hidden);
+        capture.Invoke(playerGuard, new object[] { source });
+        capture.Invoke(allyGuard, new object[] { source });
+        Assert.That(playerGuard.slideDistance, Is.EqualTo(3f));
+        Assert.That(allyGuard.slideSeconds, Is.EqualTo(.8f));
+        skill.defensiveBlock.slideDistance = .5f;
+        skill.defensiveBlock.slideSeconds = .2f;
+        Assert.That(playerGuard.slideDistance, Is.EqualTo(3f));
+        Assert.That(allyGuard.slideSeconds, Is.EqualTo(.8f));
+        capture.Invoke(playerGuard, new object[] { source });
+        Assert.That(playerGuard.slideDistance, Is.EqualTo(.5f));
+        Assert.That(playerGuard.slideSeconds, Is.EqualTo(.2f));
+    }
+
+    [Test]
+    public void SkillRecoilCopyAndValidation()
+    {
+        var settings = new SkillDefensiveBlockSettings { slideDistance = 0f, slideSeconds = .9f };
+        var copy = settings.Copy();
+        Assert.That(copy.IsConfigured, Is.True);
+        Assert.That(copy.slideDistance, Is.Zero);
+        Assert.That(copy.slideSeconds, Is.EqualTo(.9f));
+        foreach (float invalid in new[] { -1f, float.NaN, float.PositiveInfinity })
+        {
+            copy.slideDistance = invalid;
+            Assert.That(copy.IsConfigured, Is.False);
+        }
+        copy.slideDistance = 2f;
+        foreach (float invalid in new[] { 0f, -1f, float.NaN, float.PositiveInfinity })
+        {
+            copy.slideSeconds = invalid;
+            Assert.That(copy.IsConfigured, Is.False);
+        }
+    }
+
+    [Test]
     public void WallStopsPlayerBeforePenetration()
     {
         var wall = Go("Recoil wall"); wall.transform.position = Origin + new Vector3(0, 1, -1);

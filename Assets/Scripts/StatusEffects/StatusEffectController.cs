@@ -378,7 +378,8 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
     static void ApplyStrongestOnlyMagnitude(StatusEffectInstance existing, StatusApplicationSpec spec, float now)
     {
         List<StatusEffectModifier> incomingModifiers = StatusEffectInstance.ResolveModifiers(spec, existing.Definition);
-        bool sameShape = StatusEffectInstance.HasSameModifierShape(existing.ResolvedModifiers, incomingModifiers);
+        bool sameShape = StatusEffectInstance.HasSameModifierShape(existing.ResolvedModifiers, incomingModifiers) &&
+            string.Equals(existing.WeaponInstanceId, spec.weaponInstanceId, System.StringComparison.Ordinal);
 
         if (!sameShape)
         {
@@ -386,7 +387,7 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
             return;
         }
 
-        float incomingScore = StatusEffectInstance.ComputeStrengthScore(incomingModifiers);
+        float incomingScore = StatusEffectInstance.ComputeStrengthScore(incomingModifiers, existing.CurrentStacks);
         if (incomingScore > existing.StrengthScore)
             existing.AdoptMagnitude(spec, now);
     }
@@ -1007,15 +1008,13 @@ public sealed class StatusEffectController : MonoBehaviour, IStatModifierProvide
                 if (modifier == null)
                     continue;
 
-                float stackedValue = modifier.operation == ModifierOp.Multiply
-                    ? Mathf.Pow(modifier.value, instance.CurrentStacks)
-                    : modifier.value * instance.CurrentStacks;
+                float stackedValue = StatModifierRules.StackValue(modifier.operation, modifier.value, instance.CurrentStacks);
 
                 buffer.Add(new RuntimeStatModifier(
                     modifier.statType,
                     modifier.operation,
                     stackedValue,
-                    modifierKey));
+                    modifierKey, modifier.scope, instance.WeaponInstanceId));
             }
         }
     }

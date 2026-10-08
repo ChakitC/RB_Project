@@ -12,6 +12,9 @@ public sealed class VfxRigSpawnPlayer : MonoBehaviour
     [SerializeField] AnimationClip _clip;
     [SerializeField] string _stateName = "Spawn";
     [SerializeField] int _layer = 0;
+    AnimatorOverrideController runtimeOverride;
+    RuntimeAnimatorController originalController;
+    AnimationClip overriddenClip;
 
 #if UNITY_EDITOR
     double _lastEditorTime;
@@ -72,13 +75,31 @@ public sealed class VfxRigSpawnPlayer : MonoBehaviour
         if (_animator == null || _clip == null || _animator.runtimeAnimatorController == null)
             return;
 
-        var overrideController = new AnimatorOverrideController(_animator.runtimeAnimatorController);
+        if (runtimeOverride != null && overriddenClip == _clip &&
+            _animator.runtimeAnimatorController == runtimeOverride)
+            return;
+        if (runtimeOverride == null)
+        {
+            originalController = _animator.runtimeAnimatorController;
+            runtimeOverride = new AnimatorOverrideController(originalController);
+        }
+        var overrideController = runtimeOverride;
         var overrides = new List<KeyValuePair<AnimationClip, AnimationClip>>(overrideController.overridesCount);
         overrideController.GetOverrides(overrides);
         for (int i = 0; i < overrides.Count; i++)
             overrides[i] = new KeyValuePair<AnimationClip, AnimationClip>(overrides[i].Key, _clip);
         overrideController.ApplyOverrides(overrides);
         _animator.runtimeAnimatorController = overrideController;
+        overriddenClip = _clip;
+    }
+
+    void OnDestroy()
+    {
+        if (runtimeOverride == null) return;
+        if (_animator != null && _animator.runtimeAnimatorController == runtimeOverride)
+            _animator.runtimeAnimatorController = originalController;
+        if (Application.isPlaying) Destroy(runtimeOverride);
+        else DestroyImmediate(runtimeOverride);
     }
 
 #if UNITY_EDITOR

@@ -283,14 +283,14 @@ public sealed class StateHubArchitectureTests
         weapon.projectileConfig = Own(ScriptableObject.CreateInstance<ProjectileConfig>());
         weapon.projectileConfig.lifeTime = 0.05f;
         Own(ProjectilePool.Instance.gameObject);
-        weapon.firePoint = root.transform;
+        WeaponAimTestSource.Bind(weapon, root.transform);
         root.SetActive(true);
         yield return null;
         var view = root.GetComponent<StateHubDebugView>(); if (view) view.Configure(false, false, false, Vector2.zero);
         foreach (FiringMode mode in Enum.GetValues(typeof(FiringMode)))
         {
             gun.firingModes = mode;
-            weapon.Equip(gun, null);
+            weapon.Equip(gun, null); WeaponAimTestSource.Bind(weapon, weapon.ctx.transform);
             weapon.magazine = 3; // Existing public ammo authoring mirror; commands synchronize it.
             int starts = 0; Action<float> onReload = _ => starts++;
             hub.ReloadStarted += onReload;
@@ -304,7 +304,7 @@ public sealed class StateHubArchitectureTests
             hub.RequestCanceledFire();
             hub.ReloadStarted -= onReload;
         }
-        gun.firingModes = FiringMode.Auto; weapon.Equip(gun, null); weapon.magazine = 3;
+        gun.firingModes = FiringMode.Auto; weapon.Equip(gun, null); WeaponAimTestSource.Bind(weapon, weapon.ctx.transform); weapon.magazine = 3;
         weapon.projectilePrefab = null; // Observe resumed intent without draining the completed magazine.
         hub.RequestReload(); hub.SetDesiredFireHeld(true);
         yield return null;
@@ -348,7 +348,7 @@ public sealed class StateHubArchitectureTests
         foreach (string restriction in new[] { "Config", "Empty", "Stun", "Menu", "ShootLock" })
         {
             gun.shootInterruptsReload = restriction != "Config";
-            weapon.Equip(gun, null); weapon.magazine = restriction == "Empty" ? 0 : 3;
+            weapon.Equip(gun, null); WeaponAimTestSource.Bind(weapon, weapon.ctx.transform); weapon.magazine = restriction == "Empty" ? 0 : 3;
             hub.RequestReload();
             int uiToken = restriction == "Menu" ? hub.AcquireUIStateToken(UIStateId.Inventory) : 0;
             int lockToken = restriction == "ShootLock" ? hub.AcquireExternalControlBlockToken(ControlBlockFlags.Shoot) : 0;
@@ -382,13 +382,13 @@ public sealed class StateHubArchitectureTests
         dashSettings.obstacleMask = 0;
         typeof(DashSystem).GetField("dashSetting", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(ctx.DashSystem, dashSettings);
         weapon = root.AddComponent<WeaponSystem>(); ctx.WeaponSystem = weapon; weapon.ctx = ctx;
-        weapon.firePoint = root.transform;
+        WeaponAimTestSource.Bind(weapon, root.transform);
         gun = Own(ScriptableObject.CreateInstance<GunConfig>());
         gun.maxMagazine = 8; gun.magazine = 3; gun.maxReserveAmmo = 32;
         gun.magazineReload = true; gun.reloadTime = 5;
         root.SetActive(true); yield return null;
         var view = root.GetComponent<StateHubDebugView>(); if (view) view.Configure(false, false, false, Vector2.zero);
-        weapon.Equip(gun, null); weapon.magazine = 3;
+        weapon.Equip(gun, null); WeaponAimTestSource.Bind(weapon, weapon.ctx.transform); weapon.magazine = 3;
         ctx.baseStats.animProfile.reloadBodyMode = CharacterAnimProfileSO.ReloadBodyMode.FullBody;
         hub.RequestReload();
         Assert.That(hub.CanMove(), Is.False);

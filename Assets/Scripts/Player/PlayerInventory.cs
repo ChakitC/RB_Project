@@ -124,16 +124,19 @@ public class PlayerInventory : MonoBehaviour, IGameSaveAble, ISaveOrder
             Debug.Log("Save Manager Missing");
             EnsureDefaultWeaponInstance();
             ApplyEquippedWeaponIfPossible();
-            ForceRefreshCurrencyUI();
-            return;
+        }
+        else
+        {
+            SaveManager.Instance.Load();
+            if (!HasCurrentSlotSaveData())
+            {
+                EnsureDefaultWeaponInstance();
+                ApplyEquippedWeaponIfPossible();
+            }
         }
 
-        SaveManager.Instance.Load();
-        if (!HasCurrentSlotSaveData())
-        {
-            EnsureDefaultWeaponInstance();
-            ApplyEquippedWeaponIfPossible();
-        }
+        weaponSystem?.RestoreMagazine(0, fillToMax: true);
+        weaponSystem?.RestoreReserveAmmo(0, fillToMax: true);
         ForceRefreshCurrencyUI();
     }
 

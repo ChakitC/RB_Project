@@ -34,13 +34,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     [SerializeField] private Vector3 leftLocalRotEuler;
     [SerializeField] private Vector3 leftLocalScale = Vector3.one;
 
-    [Header("Fire Point")]
-    [SerializeField] private string firePointName = "FirePoint";
-    [SerializeField] private string firePointBoneName = "c_traj";
-    [SerializeField] private Vector3 firePointLocalPos;
-    [SerializeField] private Vector3 firePointLocalRotEuler;
-    [SerializeField] private Vector3 firePointLocalScale = Vector3.one;
-
     [Header("Health Bar")]
     [SerializeField] private GameObject healthBarPrefab;
     [SerializeField] private float healthBarHight = 2f;
@@ -52,11 +45,8 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
     private CharacterContextPartyLoader _partyLoader;
     private WeaponSystem _weaponSystem;
     private HealthSystem _healthSystem;
-    private Transform _defaultFirePointParent;
-    private Transform _firePoint;
     private GameObject _healthBarInstance;
     private CharacterOverheadBarsView _overheadBarsView;
-    private bool _loggedMissingFirePointBone;
     private bool _loggedMissingHealthBarBone;
 
     private GameObject _currentModel;
@@ -101,7 +91,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         if (!Application.isPlaying)
             return;
 
-        ApplyFirePointOffset(resolveContextReferences: false);
         ApplyHealthBarOffset();
     }
 
@@ -233,7 +222,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         }
 
         BindCurrentModelReferences();
-        AttachFirePointToModelBone();
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
         ConfigureAnimatorRuntime();
@@ -317,7 +305,7 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         RuntimeAnimatorController controllerOverride = null,
         Avatar avatarOverride = null)
     {
-        DetachFirePointFromCurrentModel();
+        _weaponSystem?.BindFirePoint(null);
         DestroyHealthBarInstance();
         ClearCurrentModelReferences();
 
@@ -340,7 +328,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         }
 
         BindCurrentModelReferences();
-        AttachFirePointToModelBone();
         CreateHealthBarOnModelBone();
         BuildModelFromWeaponDef();
 
@@ -525,7 +512,9 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
     public void BuildModelFromWeaponDef()
     {
+        EnsureReferences();
         BuildWeaponModels();
+        RebindWeaponFirePoint();
 
         // ZLZ_CharacterVFX caches its renderer list, so a weapon that was just mounted, swapped or
         // removed is invisible to the dither until the list is rebuilt — the body would fade while
@@ -537,6 +526,15 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
 
     void BuildWeaponModels()
     {
+        _weaponSystem?.BindFirePoint(null);
+        if (_rightObj) Destroy(_rightObj);
+        if (_leftObj) Destroy(_leftObj);
+        _rightObj = null;
+        _leftObj = null;
+
+        // An integrated weapon (for example a turret) explicitly authors its own binding.
+        if (_currentModel != null && _currentModel.GetComponent<WeaponMuzzleBinding>() != null)
+            return;
         if (!animator || _ctx == null || _ctx.currentWeapon == null)
             return;
 
@@ -611,6 +609,36 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         }
     }
 
+    public bool RebindWeaponFirePoint()
+    {
+        if (_weaponSystem == null) _weaponSystem = _ctx != null ? _ctx.WeaponSystem : null;
+        if (_weaponSystem == null) return false;
+        _weaponSystem.BindFirePoint(null);
+        if (!isActiveAndEnabled || _currentModel == null || _weaponSystem.CurrentWeapon == null ||
+            _weaponSystem.CurrentWeapon.WeaponPrefab == null)
+            return false;
+
+        WeaponMuzzleBinding binding = _currentModel.GetComponent<WeaponMuzzleBinding>();
+        if (binding == null)
+        {
+            CharacterStats stats = GetCurrentCharacterStats();
+            GameObject primary = ShouldUseRightHand(stats) ? _rightObj :
+                ShouldUseLeftHand(stats) ? _leftObj : null;
+            if (primary != null) binding = primary.GetComponent<WeaponMuzzleBinding>();
+        }
+        return binding != null && binding.TryBind(_weaponSystem);
+    }
+
+    void OnEnable()
+    {
+        RebindWeaponFirePoint();
+    }
+
+    void OnDisable()
+    {
+        _weaponSystem?.BindFirePoint(null);
+    }
+
     WeaponModelMountOffset CreateRightWeaponMountFallback()
     {
         return new WeaponModelMountOffset
@@ -629,33 +657,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
             localRotationEuler = leftLocalRotEuler,
             localScale = leftLocalScale
         };
-    }
-
-    private void AttachFirePointToModelBone()
-    {
-        if (!_currentModel || string.IsNullOrWhiteSpace(firePointBoneName))
-            return;
-
-        var firePoint = GetFirePoint();
-        if (!firePoint)
-            return;
-
-        var targetBone = FindChildByName(_currentModel.transform, firePointBoneName);
-        if (!targetBone)
-        {
-            if (!_loggedMissingFirePointBone)
-            {
-                Debug.LogWarning($"[CharacterVisualController] Fire point bone '{firePointBoneName}' not found in '{_currentModel.name}'.", this);
-                _loggedMissingFirePointBone = true;
-            }
-
-            return;
-        }
-
-        _loggedMissingFirePointBone = false;
-
-        firePoint.SetParent(targetBone, false);
-        ApplyFirePointOffset();
     }
 
     /// <summary>
@@ -768,29 +769,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         return parentMeter != null ? parentMeter : GetComponentInChildren<StaggerMeter>(true);
     }
 
-    private void DetachFirePointFromCurrentModel()
-    {
-        var firePoint = GetFirePoint();
-        if (!firePoint || !_defaultFirePointParent || !modelRoot || !firePoint.IsChildOf(modelRoot))
-            return;
-
-        firePoint.SetParent(_defaultFirePointParent, true);
-        _weaponSystem?.RefreshFirePointReference();
-    }
-
-    private void ApplyFirePointOffset(bool resolveContextReferences = true)
-    {
-        var firePoint = _firePoint ? _firePoint : GetFirePoint(resolveContextReferences);
-        if (!firePoint)
-            return;
-
-        firePoint.localPosition = firePointLocalPos;
-        firePoint.localRotation = Quaternion.Euler(firePointLocalRotEuler);
-        firePoint.localScale = firePointLocalScale;
-
-        _weaponSystem?.RefreshFirePointReference();
-    }
-
     private void ApplyHealthBarOffset()
     {
         if (!_healthBarInstance || _healthSystem == null)
@@ -800,43 +778,6 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         _healthBarInstance.transform.localRotation = Quaternion.Euler(healthBarLocalRotEuler);
         Vector3 prefabScale = healthBarPrefab ? healthBarPrefab.transform.localScale : Vector3.one;
         _healthBarInstance.transform.localScale = Vector3.Scale(prefabScale, healthBarLocalScale);
-    }
-
-    private Transform GetFirePoint(bool resolveContextReferences = true)
-    {
-        EnsureReferences(resolveContextReferences);
-
-        Transform firePoint = _firePoint ? _firePoint : null;
-
-        if (!firePoint && _weaponSystem && IsValidExternalFirePoint(_weaponSystem.FirePoint))
-            firePoint = _weaponSystem.FirePoint;
-
-        if (!firePoint)
-        {
-            Transform ownerRoot = _ctx ? _ctx.transform : transform;
-            firePoint = FindChildByNameExcluding(ownerRoot, firePointName, modelRoot);
-        }
-
-        if (!firePoint && _weaponSystem)
-            firePoint = _weaponSystem.FirePoint;
-
-        if (!firePoint)
-            return null;
-
-        _firePoint = firePoint;
-
-        if (_defaultFirePointParent == null)
-            _defaultFirePointParent = firePoint.parent ? firePoint.parent : transform;
-
-        if (_weaponSystem && _weaponSystem.FirePoint != firePoint)
-            _weaponSystem.BindFirePoint(firePoint);
-
-        return firePoint;
-    }
-
-    private bool IsValidExternalFirePoint(Transform firePoint)
-    {
-        return firePoint && (!modelRoot || !firePoint.IsChildOf(modelRoot));
     }
 
     private CharacterStats GetCurrentCharacterStats()
@@ -909,24 +850,5 @@ public class CharacterVisualController : MonoBehaviour, IGameSaveAble, ISaveOrde
         return null;
     }
 
-    private static Transform FindChildByNameExcluding(Transform root, string targetName, Transform excludedRoot)
-    {
-        if (!root)
-            return null;
 
-        if (excludedRoot && root != excludedRoot && root.IsChildOf(excludedRoot))
-            return null;
-
-        if (root.name == targetName)
-            return root;
-
-        for (int i = 0; i < root.childCount; i++)
-        {
-            var found = FindChildByNameExcluding(root.GetChild(i), targetName, excludedRoot);
-            if (found)
-                return found;
-        }
-
-        return null;
-    }
 }

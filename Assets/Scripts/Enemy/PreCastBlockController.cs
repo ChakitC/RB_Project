@@ -29,7 +29,7 @@ public sealed class PreCastBlockController : MonoBehaviour
     ActiveSkillCastInfo activeCast;
     SkillGemDefinition activeSkillDef;
     GameObject activeIndicator;
-    GameObject activeBlockWindowVfx;
+    VfxLease activeBlockWindowVfx;
     bool hasActiveBlockableCast;
     bool preCastWindowOpen;
     EnemyContext ctx;
@@ -471,7 +471,7 @@ public sealed class PreCastBlockController : MonoBehaviour
 
     void SpawnBlockWindowVfx()
     {
-        if (activeBlockWindowVfx != null || blockWindowVfxPrefab == null)
+        if (activeBlockWindowVfx.IsValid || blockWindowVfxPrefab == null)
             return;
 
         Transform anchor = ResolveBlockWindowVfxAnchor();
@@ -480,38 +480,15 @@ public sealed class PreCastBlockController : MonoBehaviour
         Transform parent = parentBlockWindowVfxToAnchor ? anchor : null;
         VfxSpawner spawner = VfxSpawner.Instance;
 
-        activeBlockWindowVfx = spawner != null
-            ? spawner.SpawnLoopingVfx(
-                blockWindowVfxPrefab,
-                position,
-                rotation,
-                parent,
-                blockWindowVfxScale)
-            : Instantiate(blockWindowVfxPrefab, position, rotation, parent);
-
-        if (activeBlockWindowVfx != null && spawner == null)
-            activeBlockWindowVfx.transform.localScale *= Mathf.Max(0f, blockWindowVfxScale);
+        activeBlockWindowVfx = new VfxLease(spawner?.SpawnLoopingVfx(
+            blockWindowVfxPrefab, position, rotation, parent, blockWindowVfxScale,
+            followWithoutParent: allowBlockWindowVfxParticlesToFinish));
     }
 
     void DespawnBlockWindowVfx()
     {
-        if (activeBlockWindowVfx == null)
-            return;
-
-        VfxSpawner spawner = VfxSpawner.Instance;
-        if (spawner != null)
-        {
-            spawner.StopLoopingVfx(
-                activeBlockWindowVfx,
-                allowBlockWindowVfxParticlesToFinish,
-                blockWindowVfxExtraLife);
-        }
-        else
-        {
-            Destroy(activeBlockWindowVfx);
-        }
-
-        activeBlockWindowVfx = null;
+        activeBlockWindowVfx.Stop(allowBlockWindowVfxParticlesToFinish, blockWindowVfxExtraLife);
+        activeBlockWindowVfx = default;
     }
 
     Transform ResolveBlockWindowVfxAnchor()

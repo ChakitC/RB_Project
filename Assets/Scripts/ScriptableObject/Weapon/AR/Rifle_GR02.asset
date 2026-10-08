@@ -15,10 +15,33 @@ MonoBehaviour:
   itemId: 
   displayName: 
   description: 
+  icon: {fileID: 0}
+  pickupVisualPrefab: {fileID: 0}
+  pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
+  pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
+  pickupVisualScale: {x: 1, y: 1, z: 1}
   itemType: 0
   stackable: 1
   maxStack: 99
+  baseBuyPrice: 0
+  baseSellPrice: 0
+  BulletPrefab: {fileID: 0}
   WeaponPrefab: {fileID: 0}
+  upgradeCurve: {fileID: 0}
+  overrideWeaponModelMountOffset: 0
+  rightHandWeaponModelMount:
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotationEuler: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+  leftHandWeaponModelMount:
+    localPosition: {x: 0, y: 0, z: 0}
+    localRotationEuler: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+  fireCue: {fileID: 0}
+  hitCue: {fileID: 0}
+  emptyCue: {fileID: 0}
+  reloadCue: {fileID: 0}
+  equipCue: {fileID: 0}
   WeaponType: 0
   firingModes: 0
   damage: 0
@@ -29,6 +52,11 @@ MonoBehaviour:
   critMultiplier: 1
   stability: 0
   BulletSpeed: 30
+  infiniteReserveAmmo: 0
+  maxReserveAmmo: 0
+  overrideStartingReserveAmmo: 0
+  startingReserveAmmo: 0
+  staggerPower: 10
   autoloader: 0
   magazineReload: 0
   reloadTime: 0
@@ -37,8 +65,13 @@ MonoBehaviour:
   perBulletInsertTime: 0
   endInsertDelay: 0
   shootInterruptsReload: 0
-  baseSwaySpeed: 0
-  baseMaxSwayAngle: 0
-  baseReturnSpeed: 0
+  hipSpreadDegrees: 2.2
+  aimSpreadDegrees: 0.35
+  moveSpreadPenaltyDegrees: 1
+  spreadPerShotDegrees: 0.45
+  maximumSpreadBloomDegrees: 3
+  spreadRecoveryDegreesPerSecond: 3.5
+  cameraRecoilPitch: 1.1
+  cameraRecoilYaw: 0.45
   burstCount: 3
   burstInterval: 0.08

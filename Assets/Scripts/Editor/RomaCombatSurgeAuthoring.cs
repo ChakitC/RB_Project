@@ -9,6 +9,7 @@ public static class RomaCombatSurgeAuthoring
     {
         var definition = AssetDatabase.LoadAssetAtPath<PassiveDefinition>(Path);
         Configure(definition.recipe);
+        RomaPassiveTreeAuthoring.InstallTree(definition);
         definition.description = "Perfect Dash restores 10 Stamina once per Dash. Convert each +1 Stamina Regen bonus into +4 Max Stamina. Below 70% Stamina, gain +0.5% Damage per 1% missing Stamina. Spending Stamina builds Momentum to 100. The next successful normal shot consumes 100 to activate Combat Surge for 5 seconds: +30% reload speed and 50% less aim movement penalty. Momentum cannot build during Combat Surge.";
         EditorUtility.SetDirty(definition.recipe);
         EditorUtility.SetDirty(definition);
@@ -52,6 +53,7 @@ public static class RomaCombatSurgeAuthoring
                 new PassiveExpiryStep { id = "duration", duration = new(5), variables = new List<string> { "surge-active" } }
             }
         });
+        RomaPassiveTreeAuthoring.Configure(recipe);
         var errors = PassiveRecipeValidator.Validate(recipe);
         if (errors.Count > 0) throw new System.InvalidOperationException(string.Join("\n", errors));
     }

@@ -41,6 +41,8 @@ MonoBehaviour:
     estimatedChargeSpeed: 8
     knockbackDistance: 2
     knockbackSeconds: 0.4
+    slideDistance: 1.5
+    slideSeconds: 0.35
   icon: {fileID: 21300000, guid: 73a0de7d0c96da64595a213edb0df596, type: 3}
   displayName: Aires.Skill.1
   skillId: aires.skill.1
@@ -58,6 +60,10 @@ MonoBehaviour:
   projectileSpeed: 5
   AreaofEffec: 0
   baseRadius: 0
+  partyCommandPlacementMode: 0
+  partyCommandNoTargetPlacement: 0
+  partyCommandTargetDistance: 1.5
+  partyCommandPlayerDistance: 3
   baseEffectDuration: 0
   baseHealPower: 0
   upgradeTree: {fileID: 11400000, guid: 0e0c5a48ecedd994083b1cf170d0681a, type: 2}
@@ -94,10 +100,13 @@ MonoBehaviour:
     humanoidBone: 18
     localPosition: {x: 0.00000017881393, y: 1.3519998, z: -0.46399957}
     localEulerAngles: {x: 318.32056, y: 180, z: 180}
-    localScale: {x: 1.0000002, y: 1.0000002, z: 1}
+    localScale: {x: 1.0000004, y: 1.0000002, z: 0.9999999}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
   - cueIndex: 1
@@ -106,12 +115,15 @@ MonoBehaviour:
     anchor: 0
     customAnchorPath: 
     humanoidBone: 18
-    localPosition: {x: 0.0000005066395, y: 0, z: 0.99}
-    localEulerAngles: {x: 0, y: 0, z: 0}
-    localScale: {x: 1.2757996, y: 1.2758, z: 1.2757996}
+    localPosition: {x: 0.0000006556511, y: 0, z: 0.9899997}
+    localEulerAngles: {x: -0, y: 0, z: 0}
+    localScale: {x: 1.2757995, y: 1.2758, z: 1.2757995}
     parentToAnchor: 0
     loopKey: 
     extraLife: 0
+    lifetimeMode: 0
+    explicitLifetime: 0
+    sessionEndMode: 0
     allowParticlesToFinish: 1
     animClip: {fileID: 0}
   hitLagDuration: 0.06

@@ -38,6 +38,9 @@ public interface IAnimationVfxCue
     Vector3 LocalEulerAngles { get; }
     Vector3 LocalScale { get; }
     string LoopKey { get; }
+    VfxLifetimeMode LifetimeMode { get; }
+    float ExplicitLifetime { get; }
+    VfxSessionEndMode SessionEndMode { get; }
     float ExtraLife { get; }
     bool AllowParticlesToFinish { get; }
     AnimationClip AnimClip { get; }
@@ -64,6 +67,9 @@ public sealed class AnimationVfxCue : IAnimationVfxCue
     public AnimationVfxAnchorMode anchorMode;
     public string loopKey;
     [Min(0f)] public float extraLife;
+    public VfxLifetimeMode lifetimeMode;
+    [Min(0f)] public float explicitLifetime;
+    public VfxSessionEndMode sessionEndMode;
     public bool allowParticlesToFinish = true;
     public AnimationClip animClip;
 
@@ -78,6 +84,9 @@ public sealed class AnimationVfxCue : IAnimationVfxCue
     Vector3 IAnimationVfxCue.LocalEulerAngles => localEulerAngles;
     Vector3 IAnimationVfxCue.LocalScale => localScale;
     string IAnimationVfxCue.LoopKey => loopKey;
+    VfxLifetimeMode IAnimationVfxCue.LifetimeMode => lifetimeMode;
+    float IAnimationVfxCue.ExplicitLifetime => explicitLifetime;
+    VfxSessionEndMode IAnimationVfxCue.SessionEndMode => sessionEndMode;
     float IAnimationVfxCue.ExtraLife => extraLife;
     bool IAnimationVfxCue.AllowParticlesToFinish => allowParticlesToFinish;
     AnimationClip IAnimationVfxCue.AnimClip => animClip;
@@ -326,6 +335,20 @@ public static class AnimationVfxValidation
 
         if (cue.Action != AnimationVfxAction.StopLoop && cue.Prefab == null)
             issues.Add($"{label} requires a VFX prefab.");
+
+        if (cue.Action == AnimationVfxAction.OneShot && cue.Prefab != null)
+        {
+            if (cue.LifetimeMode == VfxLifetimeMode.Explicit &&
+                (!float.IsFinite(cue.ExplicitLifetime) || cue.ExplicitLifetime <= 0f))
+                issues.Add($"{label} requires a positive finite Explicit Lifetime.");
+            if (cue.LifetimeMode == VfxLifetimeMode.Auto && cue.ExtraLife <= 0f &&
+                cue.AnimClip == null && VfxSpawner.EstimateLifetime(cue.Prefab) <= 0f)
+                issues.Add($"{label} cannot estimate lifetime for '{cue.Prefab.name}'; set Explicit Lifetime or Extra Life.");
+        }
+        if (cue.Action == AnimationVfxAction.StartLoop && cue.Prefab != null &&
+            cue.SessionEndMode == VfxSessionEndMode.FinishParticles &&
+            cue.Prefab.GetComponentInChildren<ParticleSystem>(true) == null)
+            issues.Add($"{label} uses Finish Particles without a Particle System; use Immediate for mesh/shader effects.");
 
         if ((cue.Anchor == AnimationVfxAnchor.CustomChildPath || cue.Anchor == AnimationVfxAnchor.GenericBone) &&
             string.IsNullOrWhiteSpace(cue.CustomAnchorPath))

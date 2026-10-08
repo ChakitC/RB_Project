@@ -803,8 +803,14 @@ events. `SkillVfxPresenter` maps animation request ids to sessions owned by the
 shared `AnimationVfxPresenter`; the shared presenter does not depend on
 `SkillGemDefinition`. Loop instances are isolated per session and are stopped
 when that request ends or is interrupted.
-Request completion and interruption clear remaining loop groups immediately.
-Graceful particle completion is reserved for explicit `StopLoop` cues.
+Request completion and interruption use each StartLoop's `sessionEndMode`:
+`Immediate` preserves existing data behavior, while `FinishParticles` detaches and
+stops emission, transferring the bounded tail to the VFX pool. Explicit StopLoop
+cues retain their own finish/extra-life settings. Session groups hold rental leases,
+so a late cleanup cannot affect a new rental. Scene unload/pool shutdown clears tails.
+OneShot cues expose `lifetimeMode` (Auto by default) and `explicitLifetime`; Explicit
+is an exact cutoff, while Auto keeps the existing estimate/minimum/extra-life rule.
+Authoring, cue conversion and preview preserve these fields.
 
 Payload runtimes created when the cast point is reached can only receive named
 timeline events that occur after `castPointNormalized`. When such a runtime
@@ -1857,13 +1863,13 @@ conditional as the generic ally tree, then runs `AiRotateToTarget` to yaw the
 `Row` bone (yaw-only, unclamped, ~220°/sec) toward the acquired target. The
 tree's `RotateRoot` shared variable is bound per-instance (not in the shared
 asset) to the `Row` transform via a `SharedVariable` override on that
-component. `CharacterVisualController.firePointBoneName` is overridden to
-`Row` (with a zeroed local offset) so `FirePoint` follows the turret's
-rotation and stays aim-aligned.
+component. `WeaponMuzzleBinding` on the turret visual root references its
+barrel-tip FirePoint under Row/Terret/FirePoint.Bone. The muzzle follows the model
+and WeaponSystem computes its shot direction through the shared aim resolver.
 
-Actual weapon firing (ammo, fire-rate, projectile spawn) is still **not**
-implemented; only targeting and rotation are wired up. Part B therefore has
-its data and runtime contract in place but no shooting effect yet — see
+The shared WeaponSystem launch path supports the turret muzzle and AI source.
+The rotation-only behavior tree still needs to request firing to produce shots.
+Part B retains its data/runtime contract — see
 [Upgrade-Gated Status On Hit](WEAPON_SYSTEM.md#upgrade-gated-status-on-hit).
 
 Its Active Skill tree is `Feno.Skill_MinigunTerret_Tree`:
@@ -2216,3 +2222,15 @@ uses its Combo-owned upgrade snapshot (`party-combo` / `comboId`), shares the sk
 pool, ignores Energy, and still stamps cooldown on commit. Callers receive
 request-scoped commit, failure, and cancellation callbacks; `CastReleased` is
 not a commit signal. See [Party Follow-Up Skill System](PARTY_FOLLOW_UP.md).
+
+### Gameplay VFX ownership (2026-10-07)
+
+Defensive block impact and targeted-delivery impact now spawn through VfxSpawner.
+Their positive authored lifetimes use Explicit and normal game time, preserving the
+previous Destroy(seconds) clock instead of adding world slow. Targeted delivery's
+legacy zero lifetime remains untimed until scene cleanup; the inspected production
+Milano Skill 3 payload uses 3 seconds. Use a positive authored duration for bounded
+impact effects. Cooperative block cleanup retains a VfxLease rather than destroying
+the returned object. Projectile ball, pre-cast window, status loops and animation
+loops also retain leases. Grenade/status/pre-cast fallback paths no longer bypass the
+central spawn switch. Indicators and editor preview objects retain their own owners.

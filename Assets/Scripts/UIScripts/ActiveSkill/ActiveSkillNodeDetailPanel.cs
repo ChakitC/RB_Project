@@ -29,12 +29,21 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
     Action _closeRequested;
     Coroutine _transition;
     bool _isOpen;
+    bool _descriptionAutoSize;
+    float _descriptionMin, _descriptionMax, _descriptionSize;
 
     public bool IsOpen => _isOpen;
     public bool IsTransitioning => _transition != null;
 
     void Awake()
     {
+        if (descriptionText != null)
+        {
+            _descriptionAutoSize = descriptionText.enableAutoSizing;
+            _descriptionMin = descriptionText.fontSizeMin;
+            _descriptionMax = descriptionText.fontSizeMax;
+            _descriptionSize = descriptionText.fontSize;
+        }
         if (drawerRoot == null)
             drawerRoot = transform as RectTransform;
         if (unlockButton != null)
@@ -94,9 +103,24 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
         if (titleText != null)
             titleText.text = node.ResolvedDisplayName;
         if (descriptionText != null)
+        {
             descriptionText.text = BuildDescription(node, passiveAsset);
+            if (passiveAsset != null)
+            {
+                descriptionText.enableAutoSizing = true;
+                descriptionText.fontSizeMin = 12f;
+                descriptionText.fontSizeMax = 20f;
+            }
+            else
+            {
+                descriptionText.enableAutoSizing = _descriptionAutoSize;
+                descriptionText.fontSizeMin = _descriptionMin;
+                descriptionText.fontSizeMax = _descriptionMax;
+                descriptionText.fontSize = _descriptionSize;
+            }
+        }
         if (requirementText != null)
-            requirementText.text = BuildRequirementText(node, unlocked, reason);
+            requirementText.text = BuildRequirementText(node, unlocked, reason, passiveAsset != null ? passiveAsset.upgradeTree : null);
         if (statPreviewText != null)
             statPreviewText.text = BuildStatPreview(before, after, summonBefore, summonAfter);
         if (unlockButton != null)
@@ -222,23 +246,27 @@ public sealed class ActiveSkillNodeDetailPanel : MonoBehaviour
 
     static string BuildDescription(SkillUpgradeNodeData node, PassiveDefinition passiveAsset)
     {
-        if (passiveAsset == null || string.IsNullOrWhiteSpace(passiveAsset.description))
+        if (!string.IsNullOrWhiteSpace(node.description) || passiveAsset == null)
             return node.description;
-
-        return string.IsNullOrWhiteSpace(node.description)
-            ? passiveAsset.description
-            : $"{passiveAsset.description}\n\n{node.description}";
+        return passiveAsset.description;
     }
 
-    static string BuildRequirementText(SkillUpgradeNodeData node, bool unlocked, string reason)
+    static string BuildRequirementText(SkillUpgradeNodeData node, bool unlocked, string reason, SkillUpgradeTreeDefinition tree = null)
     {
         if (unlocked)
             return "Unlocked";
 
         var builder = new StringBuilder();
+        var requiredNames = new System.Collections.Generic.List<string>();
+        if (node.requiredNodeIds != null) foreach (string id in node.requiredNodeIds)
+        {
+            string name = tree != null && tree.TryGetNode(id, out var prerequisite) ? prerequisite.ResolvedDisplayName : id;
+            requiredNames.Add(name);
+            if (!string.IsNullOrEmpty(reason)) reason = reason.Replace(id, name);
+        }
         builder.Append("Character level ").Append(Mathf.Max(1, node.requiredCharacterLevel));
         if (node.requiredNodeIds != null && node.requiredNodeIds.Count > 0)
-            builder.Append(" | Requires: ").Append(string.Join(", ", node.requiredNodeIds));
+            builder.Append(" | Requires: ").Append(string.Join(", ", requiredNames));
         if (!string.IsNullOrWhiteSpace(reason))
             builder.AppendLine().Append(reason);
         return builder.ToString();

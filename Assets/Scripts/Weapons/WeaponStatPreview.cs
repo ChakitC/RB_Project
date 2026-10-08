@@ -30,7 +30,8 @@ public static class WeaponStatPreview
         {
             // Neutral character: crit multiplier is multiplicative, so its identity is 1, not 0.
             CharacterCritMultiplier = CharacterStatFormula.BaseCritMultiplier,
-            Weapon = weapon
+            Weapon = weapon,
+            WeaponInstanceId = instance?.instanceId
         };
 
         ModifierBuffer.Clear();
@@ -107,6 +108,6 @@ public static class WeaponStatPreview
             return;
         float roll = rolledAffix.hasPrimaryValue ? rolledAffix.primaryValue : 0f;
         PassiveStatPreview.Append(new PassiveGrant(definition.passiveDefinition, "weapon:" + instance.instanceId,
-            rolledAffix.grantId ?? definition.affixId, options: new PassiveGrantOptions(parameters: new Dictionary<string, float> { ["roll"] = roll })), buffer);
+            rolledAffix.grantId ?? definition.affixId, options: new PassiveGrantOptions(weaponInstanceId: instance.instanceId, parameters: new Dictionary<string, float> { ["roll"] = roll })), buffer);
     }
 }

@@ -1,5 +1,34 @@
 # Face Switcher Visibility
 
+## Linked preview images (2.8.0)
+
+Local source rigs store packed Image pointers on `FSExpression.preview_image`.
+Linking only the character Collection brings these images as dependencies; Library
+Overrides can display them without generating previews in each animation file.
+Images generated on an override remain Scene-local and take precedence over the
+source image. The source rig and its packed images are not edited by that operation.
+
+Legacy Scene records on local rigs migrate after registration and on file load.
+Matching records are removed once attached to the expression. Conflicting images
+across scenes remain Scene-local until the user generates a new shared preview.
+Open/save old source files with this version, then reload their library in animation
+files. Source image updates require Save and Reload; a destination-specific preview
+continues to take precedence. Preview generation resolves all source meshes before
+creating copies to avoid stale view-layer entries on overrides.
+
+Validation: `tests/test_linked_previews.py` renders actual previews, writes a temporary
+Collection library, links/overrides it in a new Scene and checks pixels and icons.
+It also verifies destination-only regeneration, migration, failure cleanup and
+saved Image dependencies through Append without reopening the user's file.
+
+## Add-on activation (2.7.2)
+
+Blender enables add-ons under RestrictBlend, where scene data cannot be read.
+Selector-range migration is scheduled once after registration instead of accessing
+`bpy.data.objects` in register. Unregister cancels the pending timer and removes
+the load handler. `tests/test_registration_live.py` exercises the real
+addon_utils disable/enable path and checks stored group data survives the toggle.
+
 ## Cycles on selector curves (add-on 2.7.1)
 
 ARP Action export accepts Constant face selectors with Cycles in Repeat/Mirror
@@ -80,11 +109,11 @@ From 2.4.1, previews use Flat lighting with shadows, cavity and specular highlig
 disabled. Refresh existing previews to apply this appearance. The generator inherits
 the portable mesh/material restrictions of Face Presets. Refresh after editing the
 source mesh/material; thumbnails are static and may differ from shader renders.
-Images are packed in the blend file and stored in the scene, with per-rig/group/ID
-references. Modes/pages/row counts are stored per control slot. Adding/removing other slots
+Images are packed in the blend file. From 2.8.0 source images are stored on the rig's
+expressions; destination overrides use Scene-local records. Modes/pages/row counts are stored per control slot. Adding/removing other slots
 or changing its group preserves that slot's row count. Save the file to retain them.
-Override workflows require expression mesh overrides in the current view layer;
-preview images are local to the animation file and do not auto-sync across files.
+Generating on an override requires expression mesh overrides in the current view
+layer. Displaying inherited previews uses the linked rig's packed Image references.
 
 ## Face Controls group display (add-on 2.3.4)
 

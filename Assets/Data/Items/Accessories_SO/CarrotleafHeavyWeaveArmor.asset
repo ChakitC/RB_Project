@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Carrotleaf Heavy Weave Armor
   description: Increases maximum HP by 5% and adds 2 armor, but reduces stamina regeneration
     rate by 10%.
-  icon: {fileID: 21300000, guid: 18cbbd28d32341146a962e8fbb248e42, type: 3}
+  icon: {fileID: 21300000, guid: bde27cc0a946c9d41ab7e56ee5315508, type: 3}
   pickupVisualPrefab: {fileID: 625717932374746569, guid: f5fda9291f6894d49b60bba6b6fe7fa4, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}
@@ -30,6 +30,7 @@ MonoBehaviour:
   - HP
   - Armor
   - Stamina
+  uniqueEquip: 0
   statModifiers:
   - statType: 11
     operation: 1

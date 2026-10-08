@@ -27,8 +27,6 @@ MonoBehaviour:
   guardHalfDepth: 0.05
   guardForwardOffset: 1.4
   timeoutSeconds: 2
-  slideDistance: 1.5
-  slideSeconds: 0.35
   warpFadeOutSeconds: 0.1
   warpFadeInSeconds: 0.08
   impactVfx: {fileID: 1746675453279186, guid: 01638115f50284b4fb616d584a6fabff, type: 3}

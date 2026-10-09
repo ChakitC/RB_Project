@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: 4ba02b51837fe1b4dbfaa15823cd780c
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: -6700269974436014284
+    second: Active_Ualtimad_Skill_Close_Hud_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: Active_Ualtimad_Skill_Close_Hud_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 728
+        height: 737
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 437968235fbd303a0800000000000000
+      internalID: -6700269974436014284
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []
@@ -109,7 +134,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Active_Ualtimad_Skill_Close_Hud_0: -6700269974436014284
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

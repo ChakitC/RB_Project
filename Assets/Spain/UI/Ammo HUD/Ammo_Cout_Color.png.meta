@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: 8091038e9ad208144a878db9b8b87ae4
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: -8187826474052238019
+    second: Ammo_Cout_Color_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: Ammo_Cout_Color_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 976
+        height: 598
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d35c39be33ffe5e80800000000000000
+      internalID: -8187826474052238019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []

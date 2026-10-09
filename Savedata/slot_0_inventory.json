@@ -148,7 +148,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 0,
+                "currentMagazine": 14,
                 "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 6,
@@ -1312,7 +1312,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 100,
+                "currentMagazine": 98,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
@@ -1642,8 +1642,8 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 10,
-                "currentReserveAmmo": 8,
+                "currentMagazine": 14,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 2,
                 "upgradeTier": 0,
@@ -1656,8 +1656,8 @@
                         "entries": [
                             {
                                 "key": "progress",
-                                "intValue": 2,
-                                "floatValue": 2.0,
+                                "intValue": 4,
+                                "floatValue": 4.0,
                                 "boolValue": false,
                                 "stringValue": ""
                             }

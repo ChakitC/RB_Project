@@ -193,7 +193,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 4711907931718446655}
+    m_TransformParent: {fileID: 7417341170223828928}
     m_Modifications:
     - target: {fileID: 1220223250825506773, guid: 9001473d1df37e24293d9cd4edc08eb0, type: 3}
       propertyPath: m_LocalScale.x
@@ -3390,16 +3390,13 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 593976350e751b340bc9e474264dda15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1611598608029220727}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3426458149886446305}
     - targetCorrespondingSourceObject: {fileID: 6557261358173935261, guid: 593976350e751b340bc9e474264dda15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 483420669959712699}
-    - targetCorrespondingSourceObject: {fileID: 2306131421498131988, guid: 593976350e751b340bc9e474264dda15, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 3426458149886446305}
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 264734965316847765}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4721252970738780161}
@@ -3707,11 +3704,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2401103757933000225, guid: 593976350e751b340bc9e474264dda15, type: 3}
   m_PrefabInstance: {fileID: 7018025505562503211}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &4711907931718446655 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2306131421498131988, guid: 593976350e751b340bc9e474264dda15, type: 3}
-  m_PrefabInstance: {fileID: 7018025505562503211}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &4731914171166400989 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2363875085081479670, guid: 593976350e751b340bc9e474264dda15, type: 3}
@@ -3869,7 +3861,7 @@ MonoBehaviour:
   - {fileID: 7729113750275205715}
   - {fileID: 3956625630916304535}
   - {fileID: 1464696871685722196}
-  - {fileID: 6481336112827770016}
+  - {fileID: 0}
   - {fileID: 4554967464665698090}
   - {fileID: 4461461154588124632}
   - {fileID: 2158363599647500312}
@@ -3895,7 +3887,7 @@ MonoBehaviour:
   - {fileID: 2478495693734154433}
   - {fileID: 1166455147594415609}
   - {fileID: 8986264317661785628}
-  - {fileID: 4711907931718446655}
+  - {fileID: 0}
   - {fileID: 3426458149886446305}
   - {fileID: 4816034907133348484}
   - {fileID: 4731914171166400989}
@@ -3914,11 +3906,6 @@ MonoBehaviour:
   - {fileID: 3760286684700703814}
   - {fileID: 7138723440966720899}
   - {fileID: 483420669959712699}
---- !u!4 &6481336112827770016 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -5145540861573100405, guid: 593976350e751b340bc9e474264dda15, type: 3}
-  m_PrefabInstance: {fileID: 7018025505562503211}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &6682700953367664079 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4456505482534452708, guid: 593976350e751b340bc9e474264dda15, type: 3}
@@ -3984,31 +3971,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 593976350e751b340bc9e474264dda15, type: 3}
   m_PrefabInstance: {fileID: 7018025505562503211}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &264734965316847765
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7900546102575895930}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d1c549d247b7f0419a3188b7b78bda4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CurrentBackFaceOutlineMethod: 0
-  BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 1}
-  BackFaceOutlineWidth: 3.86
-  BackFaceOutlineFadeStartEnd: {x: 50, y: 50}
-  ScaleWidthAsScreenSpaceOutline: 1
-  CenterPositionOffset: {x: 0, y: -0.1, z: 0}
-  _overrideMode: 0
-  _mainLightColorOverride: 0
-  _mainLightColorOverrideValue: {r: 0, g: 0, b: 0, a: 0}
-  _mainLightStrengthOverrideValue: 0
-  _overrideLightAngle: {x: 0, y: 0, z: 0}
-  HeadBoneTransform: {fileID: 0}
-  CreateMaterialInstanceOnPlay: 0
 --- !u!114 &4721252970738780161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4022,6 +3984,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CharacterPositionCollider: {fileID: 9119139966090994977}
+  hitZones: []
 --- !u!4 &8003060870161265797 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8181461116448842578, guid: 593976350e751b340bc9e474264dda15, type: 3}

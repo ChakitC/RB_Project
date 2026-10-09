@@ -38,7 +38,6 @@ public class CoverSystem : MonoBehaviour
     
     private CoverPoint _currentCover;
 
-    [SerializeField]
     public bool IsInCover   => _isInCover;
     public bool IsCrouching => _isCrouching;
     public CoverPoint CurrentCover => _currentCover;

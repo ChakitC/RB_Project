@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: b60cc5b41062313409bd6dfd3536f2cb
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: -4555223897967975158
+    second: Skill_Text_Compled_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: Skill_Text_Compled_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 953
+        height: 480
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a05af39dff798c0c0800000000000000
+      internalID: -4555223897967975158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []

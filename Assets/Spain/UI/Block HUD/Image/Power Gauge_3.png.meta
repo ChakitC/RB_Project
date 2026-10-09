@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: 8a6a2d2d06328f743a8cbc224ccfd604
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: 3804822881667605569
+    second: Power Gauge_3_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: Power Gauge_3_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1769
+        height: 1075
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 144631780427dc430800000000000000
+      internalID: 3804822881667605569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []

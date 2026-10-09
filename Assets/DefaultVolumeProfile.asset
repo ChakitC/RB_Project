@@ -34,6 +34,9 @@ MonoBehaviour:
   highQualityFiltering:
     m_OverrideState: 1
     m_Value: 0
+  filter:
+    m_OverrideState: 0
+    m_Value: 0
   downscale:
     m_OverrideState: 1
     m_Value: 0
@@ -220,70 +223,6 @@ MonoBehaviour:
   saturation:
     m_OverrideState: 1
     m_Value: 0
---- !u!114 &-3682433950645674895
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: db4e9ad3e9694425b66636e55d88ae56, type: 3}
-  m_Name: ASPSreenSpaceOutline
-  m_EditorClassIdentifier: 
-  active: 1
-  EnableOutline:
-    m_OverrideState: 1
-    m_Value: 0
-  OutlineWidth:
-    m_OverrideState: 1
-    m_Value: 1
-  OutlineColor:
-    m_OverrideState: 1
-    m_Value: {r: 0, g: 0, b: 0, a: 1}
-  EnableSceneObjectOutline:
-    m_OverrideState: 1
-    m_Value: 0
-  EnableMaterialEdge:
-    m_OverrideState: 1
-    m_Value: 1
-  MaterialEdgeThreshold:
-    m_OverrideState: 1
-    m_Value: 1
-  EnableAlbedoEdge:
-    m_OverrideState: 1
-    m_Value: 1
-  AlbedoEdgeThreshold:
-    m_OverrideState: 1
-    m_Value: 1
-  EnableDepthEdge:
-    m_OverrideState: 1
-    m_Value: 1
-  DepthEdgeThreshold:
-    m_OverrideState: 1
-    m_Value: 1
-  EnableNormalsEdge:
-    m_OverrideState: 1
-    m_Value: 1
-  NormalsEdgeThreshold:
-    m_OverrideState: 1
-    m_Value: 1
-  EnableDistanceFalloff:
-    m_OverrideState: 1
-    m_Value: 1
-  DistanceFalloffStartEnd:
-    m_OverrideState: 1
-    m_Value: {x: 2, y: 15}
-  EnableDebugMode:
-    m_OverrideState: 1
-    m_Value: 0
-  DebugBackground:
-    m_OverrideState: 1
-    m_Value: {r: 1, g: 1, b: 1, a: 1}
-  ScreenSpaceOutlineDebugMode:
-    m_OverrideState: 1
-    m_Value: 6
 --- !u!114 &-3084545345939451875
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -366,34 +305,6 @@ MonoBehaviour:
   - {fileID: 2515617998526283706}
   - {fileID: 2498861796885823669}
   - {fileID: -8808504382145131012}
-  - {fileID: 345741348837433689}
-  - {fileID: -3682433950645674895}
-  - {fileID: 775537240842701763}
---- !u!114 &345741348837433689
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a453c28f6a48485f9c40d2a8e393a61c, type: 3}
-  m_Name: ASPToneMap
-  m_EditorClassIdentifier: 
-  active: 1
-  ToneMapType:
-    m_OverrideState: 1
-    m_Value: 1
-  Exposure:
-    m_OverrideState: 1
-    m_Value: 0.937
-  IgnoreCharacterPixels:
-    m_OverrideState: 1
-    m_Value: 0
-  CharacterPixelsToneMapStrength:
-    m_OverrideState: 1
-    m_Value: 0
 --- !u!114 &775537240842701763
 MonoBehaviour:
   m_ObjectHideFlags: 3

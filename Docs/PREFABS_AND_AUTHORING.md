@@ -4226,3 +4226,49 @@ pairs across accessory, status, upgrade, recipe and fragment assets/subassets.
 Changed affix graphs are isolated from existing references; do not delete their
 original subassets as part of migration. Existing saves keep weapon IDs, rolls and
 upgrade levels. This change requires no character prefab reference cleanup.
+
+## Rendering after ASP removal (2026-10-08)
+
+ASP is retired. Do not add ASPCharacterPanel, ASP renderer features, volume
+components, or ASPSmoothModel importer markers. ZLZ remains the character shader;
+PC/Mobile renderer features remain ZLZ plus the existing PC SSAO/MK Toon features.
+
+- Nine remaining ASP/Character materials were migrated in place to
+  ZLZ/AnimeToon/Character, retaining material GUIDs, base textures/colors, UV scale
+  and offset, culling and alpha cutoff. ASP-specific shading effects are not an
+  exact visual match; final art tuning is required on these legacy materials.
+- ASP panels were removed from 16 prefabs (17 components), and six ASP renderer
+  features plus five ASP volume overrides were removed. An orphaned missing
+  ASPScreenSpaceLensFlareFeature subasset was also removed.
+- Shared URP settings now live in Assets/Settings/ProjectURP with unchanged GUIDs.
+  BasementSkybox.mat is in Assets/Skyboxes; the referenced sky HDR, default ramp
+  and diamond matcap are preserved under Assets/Textures/RetainedArt.
+- Assets/ASP contains authored ramp textures, not the retired plugin. These are
+  retained as art assets. Existing smooth-reference FBX files are retained; the
+  obsolete ASP userData markers were cleared on 18 model importers.
+- Assets/Plugins/ASP and its separate ASPLocalizationData asset were removed.
+  Model importing no longer runs the old ASP smooth-normal postprocessor.
+
+## Character accessory slot artwork
+
+`Assets/Spain/UI/CharacterMenuAssosry/Slor All/Slor All.prefab` contains the five
+accessory slot illustrations as 20 separate uGUI Images plus five dummy item Images. The root Canvas uses
+Screen Space Overlay and a 1920x1080 Scale With Screen Size reference (match 0.5).
+All source PNGs retain their full-canvas transparent padding: keep each Image
+stretched to its slot group, with zero offsets and no extra rotation.
+
+The PSD top-to-bottom group order is reversed for Unity drawing: Slot 4, Slot 2,
+Slot 3, Slot 1, Slot 5. Within each group, draw Disclipstion_Color first, then
+BG_Disclipstion, BG_Icon_Color, and Icon Fame_Color. Original asset spelling is
+preserved. These Images are decorative and have raycastTarget disabled. This
+prefab contains no scene background, character, BACK button, or
+interaction logic. Instantiate the prefab to display the complete artwork;
+its groups and individual layers remain editable. A Unity camera preview was
+checked at 1920x1080; gameplay integration has not been exercised.
+
+Each slot includes a decorative `DummyItemIcon` between its icon background and
+frame, using existing sprites from `Assets/Spain/Accessory_Icon/Chibi`. Slots
+1-5 show RabbitLag, RabbitHat, CasinoLuckyCoin, FenosFieldPack, and GangSignetRing.
+These are static preview assignments, not runtime inventory bindings. Replace
+the Image sprite or disable the child to change the dummy. Icon anchors preserve
+the reference positions; individual sizes and rotations match the tilted frames.

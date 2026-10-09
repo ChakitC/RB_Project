@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: c03a63a54da860447b6fdd5dd58febc9
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: 623074556877291865
+    second: BG_AllyStatus_Stamina_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: BG_AllyStatus_Stamina_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1196
+        height: 755
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 951414f120b95a800800000000000000
+      internalID: 623074556877291865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []

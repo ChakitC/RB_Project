@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: c9b2c32f4492d554ea6b7b901ad46713
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: -861552631413602498
+    second: BG_Hp_Cout_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -95,7 +98,29 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: BG_Hp_Cout_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 745
+        height: 1002
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e370a4942762b04f0800000000000000
+      internalID: -861552631413602498
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     customData: 
     physicsShape: []

@@ -4373,3 +4373,56 @@ lifetime precedence, session-end policy, pooling callbacks/leases and migration.
 - Before/after values are recorded in [migration-applied.json](../../BuildArtifacts/StatScopes/migration-applied.json); migration never compensates balance values automatically. Triggered kill/reload buffs are excluded from idle samples.
 - This validates isolated runtime fixtures and representative prefab references, not a full manually played match or balance review. Newly exposed Inspector controls still need a manual visual authoring pass. Existing unrelated shader errors remain unresolved.
 - Documentation updated: `SYSTEMS/WEAPON_SYSTEM.md`, `SYSTEMS/PASSIVES.md`, `PREFABS_AND_AUTHORING.md` and this validation record.
+
+## Unity 6.3 LTS upgrade validation (2026-10-08, in progress)
+
+ProjectVersion is 6000.3.25f1; URP/Core/Shader Graph resolved to 17.3.0.
+The pre-upgrade checkpoint is b1d834aa (tag before-unity-6.3), and migration
+work is on upgrade/unity-6.3-lts.
+
+- Removed the invalid SerializeField attribute from CoverSystem.IsInCover,
+  a computed read-only property with no serializable backing field. No field,
+  public property, or gameplay behavior was removed.
+- Removed duplicate standalone main-light shadow keyword directives from both
+  forward passes of Toon City's TC_CustomToon and TC_CustomToon_Fade. The combined
+  main-light/cascade/screen shadow variant directive remains intact.
+- Unity's log reports a successful script build including Assembly-CSharp-Editor
+  after the C# fix. The Editor then stopped servicing main-thread MCP requests;
+  final domain readiness and successful test discovery are not yet verified.
+- Initial pre-fix EditMode run: 0/266 passed, with missing Editor fixture types.
+  This is blocked test infrastructure, not evidence of 266 gameplay regressions.
+- ASP SmoothNormalTools model imports still require investigation (missing mesh
+  keys for Noemi, Feno, Body.001 and Milano). Renderer-feature missing-script
+  messages must be rechecked after successful domain reload. FBX zero-framerate
+  import messages also remain unverified.
+- PlayMode, shader visual checks, and a standalone player build have not passed
+  validation yet. Do not treat the upgrade as certified.
+- The first external assembly check failed with a locked ASPDemo.dll output.
+  A fresh check uses a separate artifact root: ../BuildArtifacts/Unity63Final;
+  its log is ../BuildArtifacts/Unity63Final-build.log (paths relative to project).
+
+## ASP retirement and Unity 6.3 validation (2026-10-08)
+
+The user requested removal of the old ASP shader instead of repairing its importer.
+The rendering migration and retained art locations are documented in
+PREFABS_AND_AUTHORING.md, "Rendering after ASP removal".
+
+Compilation: CheckAssemblyBuild.ps1 passed after removal with **0 errors,
+104 warnings**; log: ../BuildArtifacts/NoASP-build.log. Unity's native probe
+reports scriptCompilationFailed=false after domain reload. The earlier
+pre-removal clean check passed with 0 errors and 147 warnings.
+
+Native asset audit: all 16 touched prefabs have zero missing MonoBehaviours;
+PC, Mobile and retained ProjectURP renderers contain no missing features.
+ZLZ/AnimeToon/Character and both corrected Toon City shaders report no shader
+errors. Evidence: ../BuildArtifacts/NoASP-validation.txt. A project-wide scan also
+finds eight unrelated unresolved demo materials (seven DamageNumbersPro HDRP
+samples and one MagicaCloth2 example); these were not migrated as ASP materials.
+
+PrefabGrouping tests passed: **EditMode 23/23 and PlayMode 2/2**. Evidence:
+../BuildArtifacts/NoASP-EditMode.json and NoASP-PlayMode.json. Play tests used
+time scale 1; the original toolbar/time scale 0.1 was restored afterwards.
+GameSetup Play Mode rendered all four lobby characters and the scene without
+visible missing-shader pink; no new Console errors occurred during the final
+capture. Image: ../BuildArtifacts/NoASP-GameSetup.png. This is a lobby visual
+smoke check, not full combat/art parity coverage or a standalone player build.

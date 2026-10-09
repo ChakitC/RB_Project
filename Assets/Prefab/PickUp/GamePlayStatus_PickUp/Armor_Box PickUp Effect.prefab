@@ -69,9 +69,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1855408333382260626}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 7022436330129754878}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
       insertIndex: -1
@@ -90,33 +87,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f9b9d1c2af5f83445807570d769815c4, type: 3}
   m_PrefabInstance: {fileID: 7388097846467881370}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1855408333382260626
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7657986376407110859}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d1c549d247b7f0419a3188b7b78bda4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  CurrentBackFaceOutlineMethod: 0
-  BackfaceOutlineColor: {r: 0, g: 0, b: 0, a: 0}
-  BackFaceOutlineWidth: 3.8
-  BackFaceOutlineFadeStartEnd: {x: 50, y: 50}
-  ScaleWidthAsScreenSpaceOutline: 1
-  CenterPositionOffset: {x: 0, y: 0, z: 0}
-  _overrideMode: 0
-  _mainLightColorOverride: 0
-  _mainLightColorOverrideValue: {r: 0, g: 0, b: 0, a: 0}
-  _mainLightStrengthOverrideValue: 0
-  _overrideLightAngle: {x: 0, y: 0, z: 0}
-  HeadBoneTransform: {fileID: 0}
-  _CharacterCenterCubeSize: 1
-  UseSimpleAABBCutOffForCharacterShadow: 0
-  CreateMaterialInstanceOnPlay: 0
 --- !u!136 &7022436330129754878
 CapsuleCollider:
   m_ObjectHideFlags: 0

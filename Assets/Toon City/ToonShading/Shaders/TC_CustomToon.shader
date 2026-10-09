@@ -195,8 +195,6 @@ Shader "Toon/TC_CustomToon"
 			#define ASE_NEEDS_VERT_NORMAL
 			#define ASE_NEEDS_FRAG_SHADOWCOORDS
 			#pragma multi_compile _ _MIXED_LIGHTING_SUBTRACTIVE
-			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
-			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
 			#pragma multi_compile _ _SHADOWS_SOFT
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
 			#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
@@ -1000,8 +998,6 @@ Shader "Toon/TC_CustomToon"
 			#define ASE_NEEDS_VERT_NORMAL
 			#define ASE_NEEDS_FRAG_SHADOWCOORDS
 			#pragma multi_compile _ _MIXED_LIGHTING_SUBTRACTIVE
-			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
-			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
 			#pragma multi_compile _ _SHADOWS_SOFT
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
 			#pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS

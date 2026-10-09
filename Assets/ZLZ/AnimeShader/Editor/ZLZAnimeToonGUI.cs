@@ -1707,7 +1707,7 @@ namespace ZLZ.AnimeShader.Editor
                 if (prop == null) continue;
 
                 // Unity 6000.0 exposes these flags through MaterialProperty.flags.
-                if ((prop.flags & MaterialProperty.PropFlags.HideInInspector) != 0)
+                if ((prop.propertyFlags & ShaderPropertyFlags.HideInInspector) != 0)
                     continue;
 
                 string n = prop.name;

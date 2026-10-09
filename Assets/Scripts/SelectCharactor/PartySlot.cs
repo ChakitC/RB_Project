@@ -24,6 +24,8 @@ public class PartySlot : MonoBehaviour
     public int CurrentSlot => SaveManager.Instance != null ? SaveManager.Instance.currentSlot : currentSlot;
     public int PartyIndex => partyIndex;
     public CharacterStats Selected => selected;
+    public Transform PresentationRoot => visualPreview != null && visualPreview.PresentationRoot != null
+        ? visualPreview.PresentationRoot : transform;
     public event System.Action<CharacterStats> SelectedChanged;
 
     void Awake()

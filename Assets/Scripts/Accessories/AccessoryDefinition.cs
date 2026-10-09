@@ -2,9 +2,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum AccessoryCategory
+{
+    Offensive = 0,
+    Defensive = 1,
+    Utility = 2
+}
+
 [CreateAssetMenu(fileName = "NewAccessory", menuName = "Game/Accessory")]
 public class AccessoryDefinition : ItemDefinition
 {
+    [Header("Accessory Category")]
+    public AccessoryCategory category = AccessoryCategory.Offensive;
+
     [Header("Accessory Tags")]
     public List<string> tags = new();
 

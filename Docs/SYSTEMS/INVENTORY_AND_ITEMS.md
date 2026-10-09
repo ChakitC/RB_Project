@@ -61,7 +61,7 @@ Orange identifies offensive/gun accessories (coin, lighter, shades, holster,
 magazine, ammo box, Feno's field pack, RabbitGlove). Green identifies defensive
 accessories (rosary, ring, vest, Carrotleaf armor, RabbitHat). Blue identifies
 utility accessories (pager, shoes, watch, RabbitCharm, RabbitLag). These colors
-are an art convention, not a runtime category field. Import as single Sprites
+are an art convention; set the definition's `category` separately to match. Import as single Sprites
 with mipmaps disabled and a 1024 maximum texture size.
 
 `InventoryUI` presents inventory capacity as a nine-column responsive grid. The
@@ -157,6 +157,63 @@ Important concepts:
 
 Accessory loadouts should resolve through `CharacteContext.AccessoryLoadout`
 when possible.
+
+`AccessoryDefinition.category` exposes an Inspector dropdown with
+`AccessoryCategory.Offensive` (0), `Defensive` (1), and `Utility` (2).
+New definitions and existing assets without a serialized category default to
+`Offensive`; choose the appropriate category manually for each definition.
+All eighteen existing definitions have explicit categories matching their icon
+backgrounds: eight orange `Offensive`, five green `Defensive`, and five blue
+`Utility`. The item-to-color mapping is listed under Inventory Window UI above.
+The field classifies the item only; it does not change equip rules or effects.
+
+### Basement Accessory screen
+
+The character details panel has an **Accessory** button next to the existing
+Equipment entry. `UILoadLaval.OpenAccessoryScreen()` requires its explicitly
+bound `PartySlot`; it does not fall back to the first party member. The original
+combined weapon/accessory Equipment screen remains available.
+
+`BasementAccessoryScreenController.Open(PartySlot, PlayerInventory)` presents
+five independently authored slots, numbered 1–5 and mapped to data indices 0–4.
+Clicking a slot opens an accessory-only `UIEquipment` picker. Clicking an item
+calls `EquipmentAssignmentService.TryEquip` for that character owner and slot;
+UNEQUIP calls `TryUnequip`. Success closes the picker, refreshes the cards, and
+raises `EquipmentChanged` so the character status preview refreshes. Failed
+assignments leave the picker open with an explanation. The existing instance
+ownership, unique-equip rules and save/cache-refresh paths remain authoritative.
+
+Cards show the modifier-qualified name, a two-line effect summary, and full
+details on hover. Each card's authored `Color` Images follow the equipped
+`AccessoryDefinition.category`: Offensive orange, Defensive green, Utility blue;
+empty/unknown categories use white. Rebinding after equip/unequip updates all
+three accents immediately without tinting the item icon, black artwork or text.
+The solid frame immediately around the item icon uses a lighter tint of that
+category (55% toward white); the dotted frame and arrow keep the main color.
+Empty cards still open the picker. BACK/Escape dismisses the
+picker first, then exits the screen. Opening and closing lock input during the
+0.8-second camera blend. The screen fades in over the final 0.5 seconds of the
+actual Cinemachine blend (starting around 0.3 seconds), finishing with the camera.
+Both use unscaled time. Input unlocks after the transition; closing or disabling
+the screen cancels any pending reveal. The source lens is temporarily converted
+to an equivalent physical lens so projection mode does not switch at the blend
+midpoint; the source lens, output camera mode and brain time settings are restored.
+Background canvases/raycasters, character dragging,
+other party members' renderer visibility, and the output camera viewport are
+restored to their previous states when the screen closes or is disabled.
+
+Other party previews fade out over 0.45 seconds as the camera enters, and fade
+back in during the return. The selected preview stays unchanged. The fade uses
+unscaled time and temporary material instances (ZLZ dither, URP Lit alpha for
+eye/prop exceptions); original materials and pre-existing hidden renderer flags
+are restored on close/disable. Rendering is suppressed only after full fade-out.
+
+The artwork is a fixed 1920×1080 composition, uniformly scaled and letterboxed
+with a matching camera viewport on other aspect ratios. Sarabun supplies Latin
+and Thai glyphs for this screen and its picker tooltips. `InventorySlotUI` has an
+optional `tooltipFont`; the tooltip's optional `fontOverride` preserves the
+default font for callers that do not supply it. No save schema changes or
+body-part restrictions are introduced.
 
 ### Reforge
 

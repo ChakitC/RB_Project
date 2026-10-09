@@ -1627,6 +1627,78 @@ rarity-colored borders for weapon instances. Keep its icon image set to
 preserve aspect ratio and leave pointer raycasts on the slot root rather than on
 the icon, amount label, or hover overlay.
 
+## Basement Accessory screen
+
+`Assets/Prefab/User Interface/BasementAccessoryScreen.prefab` is the runtime
+screen assembled from `Assets/Spain/UI/CharacterMenuAssosry/Slor All/Slor All.prefab`.
+The original artwork stays unchanged. The screen owns its Overlay Canvas,
+GraphicRaycaster, CanvasGroup, BACK button, five `BasementAccessorySlotView`
+bindings, accessory picker, and four letterbox bars. Keep decorative Images'
+raycast targets disabled; only the five localized hit targets receive clicks.
+Bind the cards in numeric Slot 1–5 order, not the source prefab's sibling order.
+
+Each `BasementAccessorySlotView.categoryColorImages` explicitly binds the three
+Images ending in `Color` under its artwork `Slot N` root (description/arrow accent,
+icon background and dotted frame). Some child names have copied slot numbers;
+use the owning `Slot N` hierarchy, not those embedded numbers. The Inspector
+palette defaults to Offensive `#EB7E11`, Defensive `#87A63E`, Utility `#4FB5D8`;
+empty/unknown uses white. Keep non-Color artwork, icons and text out of this array.
+`iconBackground` identifies the solid icon frame (`BG_Icon_Color`). Its
+`iconFrameLighten` defaults to 0.55, blending the category color toward white.
+The dotted `Icon Fame_Color` and description/arrow accent keep the base color.
+
+`BasementAccessoryReferenceFrame` keeps a fixed 1920×1080 design rectangle and
+uniformly fits it to its parent. Do not add a LayoutGroup/AspectRatioFitter to
+this rectangle or stretch the full-canvas art independently. Description masks
+bound the rotated text, and the card view truncates long names with an ellipsis.
+Keep the picker ScrollRect's Viewport, Content, grid and ContentSizeFitter wired.
+`BasementAccessoryPickerSlot.prefab` is a SlotUI variant with its tooltip font
+set to the screen's Sarabun font; ordinary inventory slots retain their defaults.
+
+The Basement scene overrides the controller's `cameraManager`,
+`characterSelection`, and `backgroundRoots` (UI, CanvaCharactorInfo, MapUI).
+These are existing GameObjects, not newly added components on prefab instances.
+All descendant Canvas and GraphicRaycaster enabled states are cached/restored.
+`UILoadLaval` binds `accessoryScreen` and `accessoryScreenButton`; the new button
+calls `OpenAccessoryScreen`. Keep the original Equipment button's callback.
+
+`CameraManager` binds the scene's `AccessoryCamera` CinemachineCamera and existing
+MainCamera CinemachineBrain. The reference FBX is authoring-only: its root-local
+camera position `(0.682654, 2.017028, 2.782889)` and Euler rotation
+`(18.879890, 170.777700, 11.420010)` are baked into the manager. The virtual camera
+copies the physical lens (36×24 sensor, 24 mm focal length / 53.1301° vertical
+sensor FOV, Horizontal gate fit, zero lens shift). Its transform is computed
+relative to `PartySlot.PresentationRoot`, exposed by `PartySlotVisualPreview`.
+The FBX marker's import-axis rotation/100× scale is not an actor transform.
+No reference FBX Camera is instantiated during play.
+
+`BasementAccessoryBlends.asset` supplies 0.8-second EaseInOut blends to/from
+AccessoryCamera; the existing default 2-second stage-selection blend stays intact.
+Keep the manager's `accessoryBlendDuration` matched to that asset. The controller's
+`fadeInDuration` is the final 0.5-second portion of the actual blend: its CanvasGroup
+eases from transparent to opaque while the camera settles. Clicks stay blocked
+until both finish. `GetAccessoryRevealProgress` exposes that shared timing.
+The manager updates the camera target before Cinemachine's LateUpdate and uses
+unscaled time for this menu. It temporarily matches the character-selection lens
+to the reference's physical Horizontal gate fit, preserving the original vertical
+FOV. This avoids Cinemachine's discrete perspective/physical switch at 50%.
+Do not change the reference gate fit without reviewing that conversion.
+The output viewport interpolates into the fitted 16:9 rectangle instead of snapping.
+Closing restores the original source lens, output projection and brain timing.
+
+`otherCharactersFadeDuration` on the screen defaults to 0.45 seconds for fading
+unselected PartySlots out/in. `BasementAccessoryRendererFade` temporarily instances
+their materials: ZLZ character materials use `_DitherAlpha`, and URP Lit exceptions
+use alpha blending. It never edits shared material assets or adds runtime property
+blocks (which can interfere with character lighting). Materials using another
+shader log an authoring warning and are hidden only at fade completion; add fade
+support before using such a shader on a Basement preview or its equipment.
+
+`Assets/Fonts/Sarabun/Sarabun-Regular SDF.asset` bakes ASCII, Thai and punctuation
+into one static 1024² atlas (72-point sampling, 8-pixel padding). Its source font
+and OFL license are retained alongside it, from the
+[Google Fonts Sarabun distribution](https://github.com/google/fonts/tree/main/ofl/sarabun).
+
 ## Equipment Upgrade UI
 
 `Assets/Prefab/User Interface/UIWeaponUpgrade.prefab` is the shared weapon upgrade and equipment

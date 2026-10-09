@@ -26,16 +26,19 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 0
   tags:
   - Critical
   - Projectile
   - Enforcer
   uniqueEquip: 0
   statModifiers:
-  - statType: 9
+  - scope: 0
+    statType: 9
     operation: 0
     value: 4
-  - statType: 17
+  - scope: 0
+    statType: 17
     operation: 1
     value: 8
   passives: []

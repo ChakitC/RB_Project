@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: SP_RB_01
   displayName: MilanoGun
   description: 
-  icon: {fileID: 21300000, guid: 36788f48fd211894f85a298b1729f565, type: 3}
+  icon: {fileID: 21300000, guid: 7ceda38434b211b45ae1dbe58e827796, type: 3}
   pickupVisualPrefab: {fileID: 5725529956108131639, guid: 65f6571260dbfc2499d587ab41c550c7, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

@@ -7,6 +7,8 @@ public class UILoadLaval : MonoBehaviour
     [SerializeField] private BasementContext CTX;
     [SerializeField] private GameObject weaponEquipmentObject;
     [SerializeField] private GameObject accessoryEquipmentObject;
+    [SerializeField] private BasementAccessoryScreenController accessoryScreen;
+    [SerializeField] private UnityEngine.UI.Button accessoryScreenButton;
 
     [Tooltip("Optional. Used to resolve static weapon affix stat bonuses for the status preview. " +
              "When empty, any loaded WeaponAffixDatabase is used instead.")]
@@ -53,6 +55,7 @@ public class UILoadLaval : MonoBehaviour
 
         ResolveWeaponEquipmentUI();
         ResolveAccessoryEquipmentUI();
+        if (accessoryScreen != null) accessoryScreen.EquipmentChanged += RefreshStats;
     }
     
     private void BindLevelSystem(LevelSystem newLs)
@@ -91,6 +94,7 @@ public class UILoadLaval : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (accessoryScreen != null) accessoryScreen.EquipmentChanged -= RefreshStats;
         UnsubscribeEquipmentChanged();
 
         if (activeSkillScreenInstance != null)
@@ -109,6 +113,7 @@ public class UILoadLaval : MonoBehaviour
     public void BindSlot(PartySlot slot)
     {
         _slot = slot;
+        if (accessoryScreenButton != null) accessoryScreenButton.interactable = slot != null && slot.Selected != null;
 
         ClearUI();
 
@@ -219,6 +224,12 @@ public class UILoadLaval : MonoBehaviour
 
         accessoryEquipmentObject.SetActive(true);
         SendAccessoryEquipmentData();
+    }
+
+    public void OpenAccessoryScreen()
+    {
+        if (_slot == null || _slot.Selected == null || accessoryScreen == null || CTX == null) return;
+        accessoryScreen.Open(_slot, CTX.playerInventory);
     }
 
     public void OpenActiveSkillTree()
@@ -417,6 +428,8 @@ public class UILoadLaval : MonoBehaviour
         for (int i = 0; i < equipmentUIs.Length; i++)
         {
             UIEquipment candidate = equipmentUIs[i];
+            if (candidate != null && candidate.GetComponentInParent<BasementAccessoryScreenController>(true) != null)
+                continue;
             if (candidate == null || candidate == excludedUI || candidate.EquipmentKind != itemKind)
                 continue;
 
@@ -429,6 +442,8 @@ public class UILoadLaval : MonoBehaviour
         for (int i = 0; i < equipmentUIs.Length; i++)
         {
             UIEquipment candidate = equipmentUIs[i];
+            if (candidate != null && candidate.GetComponentInParent<BasementAccessoryScreenController>(true) != null)
+                continue;
             if (candidate != null && candidate != excludedUI)
                 return candidate;
         }

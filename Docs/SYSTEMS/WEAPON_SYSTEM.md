@@ -22,6 +22,19 @@ ceil(25% current capacity); its per-Dash and per-Surge limits belong to the pass
 Existing free `RestoreMagazine` APIs retain their original behavior. Fast Hands
 raises the Surge reload-speed snapshot from 1.3 to 1.4.
 
+## Inventory icon art
+
+Weapon inventory sprites use `Assets/Spain/Weapon_Icon/ScreenPrint/`.
+The six square PNGs retain the original weapon silhouettes in a flat vintage
+print style; the original renders remain in the parent directory.
+Import as Single Sprite, with mipmaps disabled, Clamp wrap and Bilinear filtering.
+Existing GunConfig icon references for SMG_RB01, SMG_RB02, SMG_GR01, HMG_RB01
+and SR_RB_01 point to the matching new sprites. Enemy SMG and HMG turret variants
+continue sharing their corresponding weapon icon.
+PT_RB01 is imported but has no matching GunConfig or existing serialized icon
+consumer. Configurations without both a model and icon were left unchanged.
+Generation prompts and source provenance: `Docs/Art/WeaponIconPrompts.txt`.
+
 ## Main Files
 
 - `Assets\Scripts\Player\WeaponSystem.cs`

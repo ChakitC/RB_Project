@@ -113,9 +113,9 @@
             "slotCount": 5,
             "equippedAccessories": [
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
+                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "Modifier.Vital",
                     "upgradeLevel": 0
                 },
                 {
@@ -155,9 +155,9 @@
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_48d80ae398834f0d981f7682f562a77e",
-                    "accessoryId": "Accessory.RabbitLag",
-                    "modifierId": "Modifier.Vital",
+                    "instanceId": "acc_7361796132da442db4dbac8b12ce0082",
+                    "accessoryId": "Accessory.CasinoLuckyCoin",
+                    "modifierId": "Modifier.Fleet",
                     "upgradeLevel": 0
                 },
                 {
@@ -173,9 +173,9 @@
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
-                    "accessoryId": "Accessory.RabbitGlove",
-                    "modifierId": "Modifier.Vital",
+                    "instanceId": "acc_3bb9c17653ee4d5fa188a862887ceb19",
+                    "accessoryId": "Accessory.UnderSuitVest",
+                    "modifierId": "",
                     "upgradeLevel": 0
                 }
             ]

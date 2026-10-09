@@ -2055,6 +2055,113 @@ If validation fails:
 4. Keep new Unity classes in their intended `.cs` files.
 5. If the generated `.csproj` is stale, refresh Unity/reimport/regenerate project
    files instead of changing file ownership.
+## Basement Accessory screen (2026-10-09)
+
+### Follow-up: item category colors
+
+- **Solid-frame correction:** `iconFrameLighten=0.55` makes only `BG_Icon_Color`
+  lighter than the dotted frame and arrow. Actual prefab checks covered five
+  slots × three categories, correct solid-frame bindings, unchanged main accents,
+  and white empty resets. `light-frame-build.log` reports 0 errors / 106 warnings;
+  Unity compilation and PlayMode `OpenPickCancelEquipAndRestore` passed 1/1.
+  No new production-scene screenshot was taken for this shade-only correction;
+  `CategoryColors.png` below shows the previous equal-shade version.
+- **Compilation:** default assembly check passed with 0 errors / 106 warnings;
+  log: `../BuildArtifacts/BasementAccessory/category-colors-build.log`. Unity
+  compilation completed successfully.
+- **Automated:** existing `PrefabAndSceneBindingsAreComplete` passed 1/1.
+  An additional Editor check instantiated the real prefab and verified all three
+  category colors across all five slots (45 Image values), all 15 empty resets,
+  and unchanged colors on every non-Color Image.
+- **Runtime/visual:** GameSetup to Basement; bound temporary display-only item
+  data for each category and verified all 15 runtime Image colors. Inspected
+  `../BuildArtifacts/BasementAccessory/CategoryColors.png` with Overlay UI.
+  Inventory/equipment assignments were not changed; original UI, save-file
+  hashes and Editor play-start setting were restored afterward. The scene-load
+  MCP request timed out, but loading completed and the runtime check succeeded.
+- **Not repeated:** other aspect ratios and standalone player builds; this change
+  only updates the existing Image colors and serialized references.
+
+### Follow-up: other party members fade
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed, 0 errors / 106 warnings;
+  `../BuildArtifacts/BasementAccessory/ally-fade-build.log`. Unity runtime and
+  Editor test fixture compilation passed.
+- **Automated:** `BasementAccessoryPlayModeTests.OpenPickCancelEquipAndRestore`
+  passed with additional checks for partial ally fade-out/in, unscaled timing,
+  full-hide suppression, unchanged selected/shared materials, URP eye alpha,
+  original material reference restoration and previously hidden renderers.
+- **Production runtime:** GameSetup to Basement, all four selections showed
+  intermediate fade-out and fade-in values. All live body/weapon materials used
+  supported shaders; exact original material arrays were restored after every
+  close. Save files were backed up/restored with matching hashes. Validation
+  script: `../BuildArtifacts/BasementAccessoryAllyFadeQA.cs`.
+- **Limits:** this run covers the current four-member party and its equipment,
+  not every costume or future shader. No standalone player performance capture.
+
+### Follow-up: smooth camera and synchronized reveal
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed with 0 errors and 106 warnings;
+  log: `../BuildArtifacts/BasementAccessory/blend-sync-build.log`. Unity compiled
+  the runtime and updated Editor fixture successfully after correcting a test
+  API reference. Production teardown exposed a destroyed-output-camera access;
+  `EndAccessoryView` now guards it, and the final PlayMode run includes that
+  destruction order and passes without new errors.
+- **Automated tests:** EditMode 3/3 and PlayMode 1/1 passed. Expanded
+  `OpenPickCancelEquipAndRestore` verifies hidden UI during early travel, fade
+  overlapping the actual blend while timeScale is zero, constant physical
+  projection mode through the midpoint, input locking, interrupted reveal,
+  close/reopen, camera destruction before UI cleanup, and restoration of source
+  lens/output mode/brain timing.
+  This successful run supersedes the earlier stalled fade-only test attempt.
+- **Production runtime:** GameSetup to Basement, all four PartySlots passed
+  camera/fade overlap and close restoration checks. Samples in
+  `../BuildArtifacts/BasementAccessory/blend-sync-runtime.csv` show alpha starting
+  around 0.3 seconds and reaching one with the 0.8-second blend; gate-fitted FOV
+  changes continuously through the midpoint. The first sample run includes a
+  long sampling gap, so this is not a frame-time performance benchmark.
+  Camera-only capture: `BlendSync-Final.png` in the same directory (the MCP camera
+  capture excludes Overlay UI). Original save files were backed up and restored
+  with matching hashes; Editor play-start settings were restored.
+- **Not rechecked:** fresh motion captures at 16:10/21:9 and standalone player
+  performance. The static composition checks below predate this timing change.
+
+### Initial screen implementation
+
+- **Compilation:** `Assets/Scripts/CheckAssemblyBuild.ps1` passed after the final
+  runtime changes: 0 errors, 104 warnings (existing package/reference and source
+  warnings). Unity compilation also completed without errors. Build output is
+  outside Assets at `../BuildArtifacts/BasementAccessory/assembly-build.log`.
+- **EditMode:** `BasementAccessoryTests` passed 3/3: all five slot assignments,
+  replacement and explicit-empty persistence; unique-item and other-owner
+  rejection; authored prefab/scene/button/camera/lens/blend bindings. Tests use
+  an isolated save-slot number and restore any pre-existing test-slot files.
+- **PlayMode:** `BasementAccessoryPlayModeTests.OpenPickCancelEquipAndRestore`
+  passed 1/1. It exercises real UIEquipment item-click dispatch, selected-slot
+  equip/unequip, picker cancellation, close/reopen, disable cleanup and exact
+  restoration of previously enabled/disabled background canvases and selection.
+- **Production runtime:** entered from GameSetup into Basement. Exercised Roma,
+  Aires, Feno and Milano across all four PartySlots; all five icon hit regions
+  resolved to the correct EventSystem target. Repeated opens were ignored;
+  picker BACK preserved the main screen; final BACK restored controls and the
+  output camera viewport. A real unused inventory accessory was selected in the
+  picker, assigned to Milano, and survived `SaveManager.Load()`. Existing
+  Equipment open/close still worked. Original save files were backed up and
+  restored byte-for-byte after the run.
+- **Visual checks:** inspected the five-card composition and picker in Game View
+  at 1920×1080 and 1280×720. At 1280×800 the UI/camera share a 1280×720 rectangle
+  starting at y=40; at 2560×1080 they share a 1920×1080 rectangle starting at x=320.
+  Artwork scales uniformly, with black bars outside that rectangle. Verified
+  Thai card text, bounded descriptions, empty cards and isolation of the selected
+  member's renderers. Captures are outside Assets under
+  `../BuildArtifacts/BasementAccessory/`.
+- **Console:** no new runtime errors during the production acceptance route.
+  An earlier MCP request timeout was a tooling error, not a game compilation error.
+- **Not covered:** a standalone player build, hardware keyboard injection for
+  Escape (the shared Back path was exercised), and exhaustive testing of every
+  character costume/animation combination. No scene/character rendering changes
+  beyond the Accessory presentation are asserted by these checks.
+
 # Active Skill Tree validation
 
 `SkillUpgradeTreeValidator` (`Assets/Scripts/Editor/ActiveSkill/SkillUpgradeTreeValidator.cs`)

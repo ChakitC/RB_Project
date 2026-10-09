@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: SMG_GR01
   displayName: SMG_GR01
   description: "SMG \u0E02\u0E2D\u0E07 GR\n"
-  icon: {fileID: 21300000, guid: 72e7306472887494c9e7dc530e9d5fcf, type: 3}
+  icon: {fileID: 21300000, guid: f8f8281cf7ef8d04a8efea667483c4ed, type: 3}
   pickupVisualPrefab: {fileID: 3491401369918143333, guid: ac96f38a10dcca647b07513064f22f1b, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

@@ -26,13 +26,15 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 0
   tags:
   - Ammo
   - Reserve
   - Crew
   uniqueEquip: 0
   statModifiers:
-  - statType: 21
+  - scope: 0
+    statType: 21
     operation: 1
     value: 15
   passives: []

@@ -30,6 +30,7 @@ public class PartySlotVisualPreview : MonoBehaviour
     private int partyIndex;
 
     public Animator Animator => animator;
+    public Transform PresentationRoot => modelRoot;
 
     public void SetPartyContext(int saveSlot, int partyMemberIndex)
     {

@@ -26,16 +26,19 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 0
   tags:
   - Magazine
   - Reload
   - Improvised
   uniqueEquip: 0
   statModifiers:
-  - statType: 18
+  - scope: 0
+    statType: 18
     operation: 1
     value: 5
-  - statType: 14
+  - scope: 0
+    statType: 14
     operation: 1
     value: 2
   passives: []

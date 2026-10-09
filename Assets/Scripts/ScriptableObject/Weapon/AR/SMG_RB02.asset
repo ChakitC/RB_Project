@@ -15,7 +15,7 @@ MonoBehaviour:
   itemId: SMG_RB02
   displayName: AiresGUN
   description: AiresGUN
-  icon: {fileID: 21300000, guid: f8e1f23a8b944b64587ad76ac5ba00cd, type: 3}
+  icon: {fileID: 21300000, guid: a525e52cc8e7653429c124e7c20c659b, type: 3}
   pickupVisualPrefab: {fileID: 6124780253990639866, guid: 8858a72d851712d4e95c8334aff953f0, type: 3}
   pickupVisualPositionOffset: {x: 0, y: 0, z: 0}
   pickupVisualRotationOffset: {x: 0, y: 0, z: 0}

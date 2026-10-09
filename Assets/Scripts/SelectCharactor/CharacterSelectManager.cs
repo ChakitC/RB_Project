@@ -19,6 +19,14 @@ public class CharacterSelectManager : MonoBehaviour
         HandleClickAndDrag();
     }
 
+    public void CancelDrag()
+    {
+        if (_selected != null) ResetY();
+        if (_selectedSelectable != null) _selectedSelectable.SetPicked(false);
+        _selected = null;
+        _selectedSelectable = null;
+    }
+
     void HandleClickAndDrag()
     {
         if (Input.GetMouseButtonDown(0))

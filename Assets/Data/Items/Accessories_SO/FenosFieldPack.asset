@@ -26,13 +26,15 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 250
   baseSellPrice: 75
+  category: 0
   tags:
   - Ammo
   - Reserve
   - Feno
   uniqueEquip: 1
   statModifiers:
-  - statType: 21
+  - scope: 0
+    statType: 21
     operation: 1
     value: 25
   passives:

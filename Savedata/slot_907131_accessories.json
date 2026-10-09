@@ -1,0 +1,40 @@
+{
+    "entries": [
+        {
+            "ownerId": "character:AccessoryScreenTest",
+            "slotCount": 5,
+            "equippedAccessories": [
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
+                    "upgradeLevel": 0
+                }
+            ]
+        }
+    ]
+}

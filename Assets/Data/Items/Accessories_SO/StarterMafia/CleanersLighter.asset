@@ -26,6 +26,7 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 250
   baseSellPrice: 75
+  category: 0
   tags:
   - Damage
   - Kill

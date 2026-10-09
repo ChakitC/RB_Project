@@ -25,15 +25,18 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 2
   tags:
   - Stamina
   - Regen
   uniqueEquip: 0
   statModifiers:
-  - statType: 12
+  - scope: 0
+    statType: 12
     operation: 1
     value: 6
-  - statType: 20
+  - scope: 0
+    statType: 20
     operation: 1
     value: 5
   passives: []

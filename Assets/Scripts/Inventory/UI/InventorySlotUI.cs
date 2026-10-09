@@ -18,6 +18,7 @@ public class InventorySlotUI : MonoBehaviour,
     [SerializeField] private Image iconImage;
     [SerializeField] private Image equippedCharacterIconImage;
     [SerializeField] private TMP_Text amountText;
+    [SerializeField] private TMP_FontAsset tooltipFont;
     [SerializeField] private GameObject hoverHighlight;
     [SerializeField] private Outline borderOutline;
     [SerializeField, Min(0f)] private float hoverDetailDelay = 3f;
@@ -41,6 +42,7 @@ public class InventorySlotUI : MonoBehaviour,
     bool hasPointerPosition;
     Vector2 lastPointerScreenPosition;
     Coroutine hoverDetailRoutine;
+    public TMP_FontAsset TooltipFont => tooltipFont;
 
     void Awake()
     {
@@ -321,7 +323,8 @@ public class InventorySlotUI : MonoBehaviour,
             slotData,
             ResolveTooltipScreenPosition(),
             rootCanvas,
-            ResolveEventCamera());
+            ResolveEventCamera(),
+            tooltipFont);
     }
 
     void HideHoverDetails()

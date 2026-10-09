@@ -26,13 +26,15 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 250
   baseSellPrice: 75
+  category: 0
   tags:
   - Critical
   - Kill
   - Casino
   uniqueEquip: 1
   statModifiers:
-  - statType: 9
+  - scope: 0
+    statType: 9
     operation: 0
     value: 3
   passives:

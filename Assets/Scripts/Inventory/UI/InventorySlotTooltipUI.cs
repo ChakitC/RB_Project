@@ -80,7 +80,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
         if (instance == null || !instance.gameObject.activeSelf || instance.activeOwner != slot)
             return;
 
-        instance.ShowFor(slot, slotData, screenPosition, rootCanvas, eventCamera);
+        instance.ShowFor(slot, slotData, screenPosition, rootCanvas, eventCamera, slot.TooltipFont);
     }
 
     void Awake()
@@ -109,9 +109,10 @@ public class InventorySlotTooltipUI : MonoBehaviour
         InventorySlotData slotData,
         Vector2 screenPosition,
         Canvas rootCanvas,
-        Camera eventCamera = null)
+        Camera eventCamera = null,
+        TMP_FontAsset fontOverride = null)
     {
-        ShowFor(slot as Component, slotData, screenPosition, rootCanvas, eventCamera);
+        ShowFor(slot as Component, slotData, screenPosition, rootCanvas, eventCamera, fontOverride);
     }
 
     public void ShowFor(
@@ -119,7 +120,8 @@ public class InventorySlotTooltipUI : MonoBehaviour
         InventorySlotData slotData,
         Vector2 screenPosition,
         Canvas rootCanvas,
-        Camera eventCamera = null)
+        Camera eventCamera = null,
+        TMP_FontAsset fontOverride = null)
     {
         if (owner == null || slotData == null || slotData.IsEmpty || slotData.item == null || rootCanvas == null)
         {
@@ -129,6 +131,7 @@ public class InventorySlotTooltipUI : MonoBehaviour
 
         AttachToCanvas(rootCanvas);
         activeOwner = owner;
+        titleText.font = bodyText.font = fontOverride != null ? fontOverride : ResolveDefaultFont();
         ApplySlot(slotData);
 
         if (!gameObject.activeSelf)

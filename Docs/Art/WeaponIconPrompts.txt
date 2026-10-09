@@ -1,0 +1,27 @@
+Weapon icon artwork — 2026-10-09
+Generator: built-in imagegen for SMG_RB02, SP_RB01, PT_RB01.
+Background: item-icon/assets/gun-background.png.
+
+HMG_RB01
+Source: C:/Users/HYPERL~1/AppData/Local/Temp/codex-clipboard-8dfc13d1-8f0d-470b-83c0-9d9e809a8537.png
+User-supplied approved image, copied unchanged.
+
+SMG_GR01
+Source: C:/Users/HYPERL~1/AppData/Local/Temp/codex-clipboard-28774584-1d5d-4cd8-99a1-215c64eac71b.png
+User-supplied approved image, copied unchanged.
+
+SMG_RB01
+Source: C:/Users/HYPERL~1/AppData/Local/Temp/codex-clipboard-3585b7f1-238c-4eb4-a1da-3753d3872dd7.png
+User-supplied approved image, copied unchanged.
+
+SMG_RB02
+Source: C:/Users/Hyperlore14/.codex/generated_images/01a11eed-8ddf-7522-86bc-7a8f92474045/exec-e85928d9-28d7-4568-a77f-6550f34f5850.png
+Create ONE square inventory icon for SMG_RB02. Image 1 is the fixed background/edit base: preserve its exact orange/cream colors, cropped letters, diagonal band, positions, solid fills and texture; do not retype or redesign. Image 2 is strict weapon geometry: preserve original diagonal lower-left to upper-right orientation, viewpoint, proportions, long brown wooden fore-end and narrow barrel, circular upright sight, large round drum magazine, cream taped rear grip and foregrip. No chibi or invented parts. Image 3 is foreground print STYLE only, do not copy its gun. Use flat charcoal body fills, sparse thin cream internal cuts and brown/cream accents matching source. Black is fill not contour strokes; no extra black outlines, no cream sticker halo. Keep original silhouette and relative lengths, whole weapon centered with margins. Light sparse ink chips, no realistic shading, gradients or shadows. No green markings. Add only this gun over image 1.
+
+SP_RB01
+Source: C:/Users/Hyperlore14/.codex/generated_images/01a11eed-8ddf-7522-86bc-7a8f92474045/exec-b612aab9-d7ae-4729-91b9-1467de216c2d.png
+Create ONE square inventory icon for SP_RB01 sniper rifle. Image 1 is FIXED background/base, retain exact colors, diagonal band, typography placement/cropping and texture; no redesign or retyping. Image 2 is STRICT weapon geometry: preserve its original upper-left stock to lower-right muzzle diagonal orientation, perspective, long slim silhouette, brown wooden stock/body, exceptionally long thin dark barrel with angular muzzle, two upright round optic caps and cream tape. Do not mirror, rotate, chibify, shorten or fatten gun. Image 3 is foreground print STYLE only, not geometry. Render gun with flat charcoal body fills, thin cream internal separations and flat brown wood/cream tape accents. Black is fill not added outlines; no thick sticker halo. Very sparse ink chips, no realistic material shading or gradients or cast shadows. Whole weapon centered with all parts inside comfortable margins at about 85 percent canvas extent. No green marks or drum magazine; no invented parts. Add only the source rifle over background.
+
+PT_RB01
+Source: C:/Users/Hyperlore14/.codex/generated_images/01a11eed-8ddf-7522-86bc-7a8f92474045/exec-158449cb-68f6-4017-ad78-aeee571e51c8.png
+Create ONE square PT_RB01 revolver inventory icon. Image 1 is FIXED approved background/base; preserve its existing orange/cream colors, letter shapes and cropping, diagonal band positions and localized texture. Do not retype or redesign. Image 2 is strict original pistol silhouette/proportion/view reference: right-facing slightly upward barrel, large revolver cylinder, long upper barrel with open polygonal muzzle, thinner ejector rod underneath, curved trigger guard and angled brown grip with cream tape. Preserve relative sizes and lengths, no chibi deformation, no new parts. Image 3 is flat print STYLE only, not its weapon design. Foreground gun flat charcoal body fills, a few thin cream cuts separating internal parts, brown grip and cream tape. Black is fill, not additional black contour strokes; no cream sticker halo. Minimal light ink wear, no realistic shading, gloss, gradients or cast shadows. Scale entire original pistol uniformly to about 80 percent square with comfortable margins and centered. No green marks, drum magazine or rifle components. Add only pistol over image 1.

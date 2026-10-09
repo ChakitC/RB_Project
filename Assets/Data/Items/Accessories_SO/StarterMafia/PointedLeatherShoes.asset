@@ -26,16 +26,19 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 2
   tags:
   - Movement
   - Stamina
   - Mafia
   uniqueEquip: 0
   statModifiers:
-  - statType: 8
+  - scope: 0
+    statType: 8
     operation: 1
     value: 3
-  - statType: 12
+  - scope: 0
+    statType: 12
     operation: 1
     value: 6
   passives: []

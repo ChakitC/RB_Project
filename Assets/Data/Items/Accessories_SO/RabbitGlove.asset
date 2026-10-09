@@ -25,16 +25,19 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 150
   baseSellPrice: 45
+  category: 0
   tags:
   - Weapon
   - Stability
   - Reload
   uniqueEquip: 0
   statModifiers:
-  - statType: 16
+  - scope: 0
+    statType: 16
     operation: 0
     value: 3
-  - statType: 14
+  - scope: 0
+    statType: 14
     operation: 1
     value: -4
   passives: []

@@ -25,16 +25,19 @@ MonoBehaviour:
   maxStack: 1
   baseBuyPrice: 200
   baseSellPrice: 60
+  category: 1
   tags:
   - Armor
   - Health
   - Mafia
   uniqueEquip: 0
   statModifiers:
-  - statType: 7
+  - scope: 0
+    statType: 7
     operation: 0
     value: 2
-  - statType: 11
+  - scope: 0
+    statType: 11
     operation: 1
     value: 4
   passives: []

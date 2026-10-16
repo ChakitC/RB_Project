@@ -8,7 +8,7 @@ public class CharacterSelectable : MonoBehaviour
     public Animator animator;
     public CapsuleCollider capsuleCollider;
 
-    [Header("Animator Conditions Name")]
+    [Header("Legacy Animator Setting (retained for serialized compatibility)")]
     public string pickedBoolName = "IsPicked";
 
     [Header("Definition Sync")]
@@ -23,11 +23,19 @@ public class CharacterSelectable : MonoBehaviour
     Coroutine cacheCo;
     Coroutine outlineCo;
 
-    CharacterDefHolder _defRef;
     PartySlot _parentSlot;
     CharacterStats _lastDef;
     ZLZ_SelectionController _outline;
     bool _picked;
+    BasementCharacterPresentation presentation;
+
+    public void BindPresentation(BasementCharacterPresentation value)
+    {
+        presentation = value;
+        animator = presentation != null ? presentation.Animator : null;
+        _picked = presentation != null && presentation.IsPicked;
+        _outline = null;
+    }
 
     void OnEnable() => ScheduleCache(true);
 
@@ -55,20 +63,27 @@ public class CharacterSelectable : MonoBehaviour
         bool colliderInvalid = capsuleCollider == null || !capsuleCollider.transform.IsChildOf(transform);
 
         if (force || animatorInvalid)
-            animator = GetComponentInChildren<Animator>(true);
+        {
+            // Slot/drag owners provide their instance, never search for an animation player.
+            if (presentation == null)
+            {
+                var slotPreview = GetComponent<PartySlotVisualPreview>();
+                var dragPreview = GetComponent<CharacterDragVisualPreview>();
+                presentation = slotPreview != null ? slotPreview.Presentation : dragPreview != null ? dragPreview.Presentation : null;
+            }
+            animator = presentation != null ? presentation.Animator : null;
+        }
 
         if (force || colliderInvalid)
             capsuleCollider = GetComponentInChildren<CapsuleCollider>(true);
-
-        if (force || _defRef == null || !_defRef.transform.IsChildOf(transform))
-            _defRef = GetComponentInChildren<CharacterDefHolder>(true);
 
         if (force || _parentSlot == null)
             _parentSlot = GetComponentInParent<PartySlot>(true);
 
         bool outlineInvalid = _outline == null || !_outline.transform.IsChildOf(transform);
         if (force || outlineInvalid)
-            _outline = GetComponentInChildren<ZLZ_SelectionController>(true);
+            _outline = presentation != null && presentation.Model != null
+                ? presentation.Model.GetComponentInChildren<ZLZ_SelectionController>(true) : null;
     }
 
     /// <summary>
@@ -105,7 +120,7 @@ public class CharacterSelectable : MonoBehaviour
     public void RefreshSelectionOutline()
     {
         if (_outline == null || !_outline.transform.IsChildOf(transform))
-            _outline = GetComponentInChildren<ZLZ_SelectionController>(true);
+            CacheRefs(false);
 
         if (_outline == null) return;
 
@@ -128,18 +143,11 @@ public class CharacterSelectable : MonoBehaviour
 
     void SyncDefToSlot(bool force)
     {
-        if (_parentSlot == null) return;
+        if (_parentSlot == null || presentation == null || presentation.CurrentDef == null) return;
 
-        var def = (_defRef != null) ? _defRef.def : null;
+        var def = presentation.CurrentDef;
 
         if (!force && def == _lastDef) return;
-
-        if (def == null)
-        {
-            _lastDef = def;
-            _parentSlot.SetCharacterDef(null, true);
-            return;
-        }
 
         _lastDef = def;
         _parentSlot.SetCharacterDef(def, true);
@@ -156,19 +164,18 @@ public class CharacterSelectable : MonoBehaviour
         _picked = isPicked;
         ApplySelectionOutline(isPicked);
 
-        if (!animator)
-        {
-            Debug.LogWarning($"[CharacterSelectable] Animator not found under {name}.", this);
-            return;
-        }
-
-        animator.SetBool(pickedBoolName, isPicked);
+        // A missing animation binding must not block picking or its outline.
+        if (presentation != null)
+            presentation.SetPicked(isPicked);
     }
+
+    public void BeginDrag(Camera camera, Vector2 screenPosition) => presentation?.BeginDrag(camera, screenPosition);
+    public void UpdateDrag(Vector2 screenPosition) => presentation?.UpdateDrag(screenPosition);
 
     void ApplySelectionOutline(bool isPicked)
     {
         if (_outline == null || !_outline.transform.IsChildOf(transform))
-            _outline = GetComponentInChildren<ZLZ_SelectionController>(true);
+            CacheRefs(false);
 
         if (_outline == null) return;
 

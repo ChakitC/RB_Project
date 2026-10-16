@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33db7c17d36d893438765545e01368f9, type: 3}
+  m_Name: Feno_AccessoryMenuCamera
+  m_EditorClassIdentifier: Assembly-CSharp::BasementMenuCameraPresetSO
+  sourceFbx: {fileID: 919132149155446097, guid: 0be6b622a979e9d4297bcf349d0d6c3c, type: 3}
+  cameraPath: Feno Camera Accessory Menu
+  position: {x: 0.8982455, y: 2.46894, z: 2.58761}
+  rotation: {x: -0.10244908, y: -0.9661442, z: 0.23235545, w: -0.04561308}
+  lens:
+    FieldOfView: 53.130104
+    OrthographicSize: 0.0049999845
+    NearClipPlane: 0.099999994
+    FarClipPlane: 1000
+    Dutch: 0
+    ModeOverride: 3
+    PhysicalProperties:
+      GateFit: 2
+      SensorSize: {x: 36, y: 24}
+      LensShift: {x: 0, y: 0}
+      FocusDistance: 10
+      Iso: 200
+      ShutterSpeed: 0.005
+      Aperture: 16
+      BladeCount: 5
+      Curvature: {x: 2, y: 11}
+      BarrelClipping: 0.25
+      Anamorphism: 0

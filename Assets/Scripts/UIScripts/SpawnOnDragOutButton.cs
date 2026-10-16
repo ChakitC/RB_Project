@@ -15,6 +15,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
     [Header("Spawn")]
     public GameObject prefab;
+    [SerializeField] private BasementCharacterPresentation presentationPrefab;
     public Transform worldParent;
     public Camera worldCamera;
     public Animator _Animator;
@@ -291,6 +292,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             return;
 
         prefab = source.prefab;
+        presentationPrefab = source.presentationPrefab;
         worldParent = source.worldParent;
         worldCamera = source.worldCamera;
         poolRoot = source.poolRoot;
@@ -354,9 +356,9 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
 
         _Animator = _dragVisual.Animator;
+        _dragVisual.SetPicked(true);
         if (_Animator != null)
         {
-            _dragVisual.SetPicked(true);
             BuildDragWeaponPreview(selected);
         }
         else
@@ -377,6 +379,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
         // ตั้งทีเดียว
         _current.transform.SetPositionAndRotation(pos, rot);
+        _dragVisual.Presentation.BeginDrag(worldCamera, screenPos);
         PlaySelectCharacterVoice(selected, _current.transform.position);
 
         _startY = _current.transform.position.y;
@@ -408,7 +411,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             dragObject.layer = prefab.layer;
 
         dragObject.AddComponent<CharacterDefHolder>();
-        dragObject.AddComponent<CharacterDragVisualPreview>();
+        dragObject.AddComponent<CharacterDragVisualPreview>().presentationPrefab = presentationPrefab;
         dragObject.AddComponent<CharacterDragWeaponPreview>();
         dragObject.transform.SetParent(GetPoolParent(), false);
         dragObject.SetActive(false);
@@ -499,7 +502,6 @@ public class SpawnOnDragOutButton : MonoBehaviour,
         if (!weaponPreview)
             weaponPreview = _current.AddComponent<CharacterDragWeaponPreview>();
 
-        weaponPreview.SetAnimator(_Animator);
         weaponPreview.Build(selected, partyIndex: -1);
     }
 
@@ -515,6 +517,7 @@ public class SpawnOnDragOutButton : MonoBehaviour,
 
     void DragFollowGround(Vector2 screenPos)
     {
+        _dragVisual?.Presentation?.UpdateDrag(screenPos);
         Ray ray = worldCamera.ScreenPointToRay(screenPos);
 
         if (Physics.Raycast(ray, out var hit, maxRayDistance, groundLayer))
@@ -657,48 +660,14 @@ public class SpawnOnDragOutButton : MonoBehaviour,
             return;
         }
 
-        // ลบของเก่า "เฉพาะใน slot นี้"
-        for (int i = best.childCount - 1; i >= 0; i--)
-        {
-            var child = best.GetChild(i);
-            if (!child) continue;
-
-            if (child == newRoot) continue; // กันไม่ลบของใหม่แบบชัวร์
-            
-            if (!IsReplaceableSlotChild(child, newRoot))
-                continue;
-
-            child.gameObject.SetActive(false);
-            Destroy(child.gameObject);
-        }
-
+        // The slot's presentation replaces its own model. Dropping never deletes
+        // arbitrary slot children based on their names or components.
         SyncDroppedCharacterToSlot(best, newRoot);
         }
         finally
         {
             ReleaseDragObject(newObj);
         }
-    }
-
-    bool IsReplaceableSlotChild(Transform child, Transform newRoot)
-    {
-        if (!child)
-            return false;
-
-        if (child == newRoot || child.IsChildOf(newRoot))
-            return false;
-
-        if (!requireSelectableInSlot)
-            return true;
-
-        if (child.GetComponentInChildren<CharacterSelectable>(true) != null)
-            return true;
-
-        if (child.GetComponentInChildren<CharacterDefHolder>(true) != null)
-            return true;
-
-        string childName = child.name;
-        return childName.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     void SyncDroppedCharacterToSlot(Transform slotTransform, Transform characterRoot)

@@ -18,6 +18,8 @@ MonoBehaviour:
   CharacterWeaponType: 0
   CharacterPrefab: {fileID: 8110434242060674094, guid: 01aa34cc79aac4b46b16fa5d16afe69c, type: 3}
   CharacterPrefabBasement: {fileID: 6957377695244800489, guid: 55d5e2de30de1084cbf841c3c208a4cb, type: 3}
+  basementAnimationProfile: {fileID: 11400000, guid: 2712ff7ddb4add149b1b81ef067e5b36, type: 2}
+  basementAnimatorPath: Milano
   characterAvatar: {fileID: 9000000, guid: ef38f6af2a6e2fe45a5743a4c01a14d3, type: 3}
   controller: {fileID: 9100000, guid: fce933fc6f421e0499ea7ba70a7cade0, type: 2}
   animProfile: {fileID: 11400000, guid: 233f73693cf31484f8a4602e9335efe0, type: 2}
@@ -47,6 +49,8 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 3
   chainAttackSkill: {fileID: 11400000, guid: 7beed09c3b62332459a0f4612ea244b6, type: 2}
+  partyFollowUpSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
   introChainCutscene: {fileID: 0}
   partyRole: 1
   skillSlots: []
@@ -62,6 +66,7 @@ MonoBehaviour:
   helperCommandSlot:
     slotId: milano.command
     displayName: COMMAND
+    slotKind: 0
     hotkey: 0
     defaultOptionIndex: 0
     options: []
@@ -73,6 +78,7 @@ MonoBehaviour:
   critRate: 12
   Enagy: 100
   speed: 4.5
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.5
   ArmorScaling: 0.3

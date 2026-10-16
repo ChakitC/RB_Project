@@ -8,7 +8,9 @@ public class UILoadLaval : MonoBehaviour
     [SerializeField] private GameObject weaponEquipmentObject;
     [SerializeField] private GameObject accessoryEquipmentObject;
     [SerializeField] private BasementAccessoryScreenController accessoryScreen;
+    [SerializeField] private BasementGunMenuScreenController gunMenuScreen;
     [SerializeField] private UnityEngine.UI.Button accessoryScreenButton;
+    [SerializeField] private BasementCharacterMenuScreenController characterMenu;
 
     [Tooltip("Optional. Used to resolve static weapon affix stat bonuses for the status preview. " +
              "When empty, any loaded WeaponAffixDatabase is used instead.")]
@@ -19,6 +21,7 @@ public class UILoadLaval : MonoBehaviour
     private UIEquipment weaponEquipmentUI;
     private UIEquipment accessoryEquipmentUI;
     private ActiveSkillScreenController activeSkillScreenInstance;
+    private BasementCharacterPresentation statusPresentation;
     
     
     [Header("References Text")]
@@ -56,6 +59,7 @@ public class UILoadLaval : MonoBehaviour
         ResolveWeaponEquipmentUI();
         ResolveAccessoryEquipmentUI();
         if (accessoryScreen != null) accessoryScreen.EquipmentChanged += RefreshStats;
+        if (gunMenuScreen != null) gunMenuScreen.EquipmentChanged += RefreshStats;
     }
     
     private void BindLevelSystem(LevelSystem newLs)
@@ -73,6 +77,7 @@ public class UILoadLaval : MonoBehaviour
 
     private void OnEnable()
     {
+        SyncStatusPresentation();
         LoadLavel();
         // ถ้า BindSlot มาก่อนแล้ว ค่อยซับตรงนี้ได้
         if (levelSystem != null)
@@ -88,6 +93,7 @@ public class UILoadLaval : MonoBehaviour
 
     private void OnDisable()
     {
+        ReleaseStatusPresentation();
         if (levelSystem != null)
             levelSystem.LevelChanged -= OnLevelChanged;
     }
@@ -95,10 +101,14 @@ public class UILoadLaval : MonoBehaviour
     private void OnDestroy()
     {
         if (accessoryScreen != null) accessoryScreen.EquipmentChanged -= RefreshStats;
+        if (gunMenuScreen != null) gunMenuScreen.EquipmentChanged -= RefreshStats;
         UnsubscribeEquipmentChanged();
 
         if (activeSkillScreenInstance != null)
+        {
+            activeSkillScreenInstance.Closed -= OnActiveSkillsClosed;
             Destroy(activeSkillScreenInstance.gameObject);
+        }
     }
     private void OnLevelChanged(int newLevel)
     {
@@ -113,6 +123,7 @@ public class UILoadLaval : MonoBehaviour
     public void BindSlot(PartySlot slot)
     {
         _slot = slot;
+        SyncStatusPresentation();
         if (accessoryScreenButton != null) accessoryScreenButton.interactable = slot != null && slot.Selected != null;
 
         ClearUI();
@@ -137,8 +148,41 @@ public class UILoadLaval : MonoBehaviour
 
     public void SendEquipmentData()
     {
-        SendWeaponEquipmentData();
-        SendAccessoryEquipmentData();
+        // Dedicated screens bind when opened. Refreshing their hidden legacy
+        // counterparts here rebuilds inventory UI and the weapon preview on Status entry.
+        if (gunMenuScreen == null) SendWeaponEquipmentData();
+        if (accessoryScreen == null) SendAccessoryEquipmentData();
+    }
+
+    // Submenus hide the Canvas, keeping this parent status session alive.
+    // Re-resolve when a preview is rebuilt or the public slot binding changes.
+    private void LateUpdate() => SyncStatusPresentation();
+
+    private void SyncStatusPresentation()
+    {
+        // The integrated screen owns its pose through the profile's menu entry.
+        if (characterMenu != null)
+        {
+            ReleaseStatusPresentation();
+            return;
+        }
+        var next = isActiveAndEnabled && _slot != null && _slot.Selected != null
+            ? _slot.GetComponent<PartySlotVisualPreview>()?.Presentation : null;
+        if (next == statusPresentation)
+        {
+            // Bind/Unbind may reset animation state without replacing the presentation object.
+            if (next != null) next.SetInCharacterMenu(true);
+            return;
+        }
+        ReleaseStatusPresentation();
+        statusPresentation = next;
+        statusPresentation?.SetInCharacterMenu(true);
+    }
+
+    private void ReleaseStatusPresentation()
+    {
+        if (statusPresentation != null) statusPresentation.SetInCharacterMenu(false);
+        statusPresentation = null;
     }
 
     public void SendWeaponEquipmentData()
@@ -167,6 +211,13 @@ public class UILoadLaval : MonoBehaviour
 
     public void ToggleWeaponEquipment()
     {
+        if (gunMenuScreen != null)
+        {
+            if (gunMenuScreen.IsOpen) gunMenuScreen.Close();
+            else OpenWeaponEquipment();
+            return;
+        }
+
         ResolveWeaponEquipmentUI();
         ResolveAccessoryEquipmentUI();
 
@@ -199,6 +250,14 @@ public class UILoadLaval : MonoBehaviour
 
     public void OpenWeaponEquipment()
     {
+        if (characterMenu != null && !characterMenu.CanInteract) return;
+        if (gunMenuScreen != null)
+        {
+            EnsureBoundSlot();
+            gunMenuScreen.Open(_slot, CTX != null ? CTX.playerInventory : null);
+            return;
+        }
+
         ResolveWeaponEquipmentUI();
         ResolveAccessoryEquipmentUI();
         EnsureBoundSlot();
@@ -228,12 +287,14 @@ public class UILoadLaval : MonoBehaviour
 
     public void OpenAccessoryScreen()
     {
+        if (characterMenu != null && !characterMenu.CanInteract) return;
         if (_slot == null || _slot.Selected == null || accessoryScreen == null || CTX == null) return;
         accessoryScreen.Open(_slot, CTX.playerInventory);
     }
 
     public void OpenActiveSkillTree()
     {
+        if (characterMenu != null && !characterMenu.CanInteract) return;
         EnsureBoundSlot();
         CharacterStats selectedCharacter = _slot != null ? _slot.Selected : null;
         if (selectedCharacter == null)
@@ -243,7 +304,10 @@ public class UILoadLaval : MonoBehaviour
         }
 
         if (activeSkillScreenInstance == null && activeSkillScreenPrefab != null)
+        {
             activeSkillScreenInstance = Instantiate(activeSkillScreenPrefab);
+            activeSkillScreenInstance.Closed += OnActiveSkillsClosed;
+        }
 
         if (activeSkillScreenInstance == null)
         {
@@ -253,10 +317,24 @@ public class UILoadLaval : MonoBehaviour
 
         activeSkillScreenInstance.BindLobby(selectedCharacter);
         activeSkillScreenInstance.Open();
+        characterMenu?.SuspendForSkills();
+    }
+
+    public void CloseActiveSkillTree() => activeSkillScreenInstance?.Close();
+
+    private void OnActiveSkillsClosed()
+    {
+        characterMenu?.Resume();
     }
 
     public void CloseWeaponEquipment()
     {
+        if (gunMenuScreen != null && gunMenuScreen.IsOpen)
+        {
+            gunMenuScreen.Close();
+            return;
+        }
+
         ResolveWeaponEquipmentUI();
         ResolveAccessoryEquipmentUI();
         EnsureBoundSlot();
@@ -539,6 +617,7 @@ public class UILoadLaval : MonoBehaviour
         if (_slot == null || _slot.Selected == null)
             return;
 
+        LoadLavel();
         Calculatestatusfromslot();
         UpdateStatTexts();
     }
@@ -592,6 +671,7 @@ public class UILoadLaval : MonoBehaviour
     }
     public void ClickUplevel()
     {
+        if (characterMenu != null && !characterMenu.CanInteract) return;
         
        
         if (CTX.playerInventory.Gold < cost) return;
@@ -599,6 +679,7 @@ public class UILoadLaval : MonoBehaviour
         XpManager.Instance.GrantXp(levelSystem, cost);
         UpdateExpTexts();
         UpdateGold();
+        RefreshStats();
 
     }
     

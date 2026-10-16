@@ -18,6 +18,8 @@ MonoBehaviour:
   CharacterWeaponType: 6
   CharacterPrefab: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
   CharacterPrefabBasement: {fileID: 5208880862330083427, guid: 8ec41e28a797156478e9d8b082760e28, type: 3}
+  basementAnimationProfile: {fileID: 11400000, guid: 1a40f38fee254284897e74604306fd29, type: 2}
+  basementAnimatorPath: 
   characterAvatar: {fileID: 9000000, guid: c3ad3ffbeca2c8d469e319eff2954ddf, type: 3}
   controller: {fileID: 9100000, guid: 48e6511e44d5d4348855e0d5067a844b, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
@@ -47,6 +49,8 @@ MonoBehaviour:
   weaponHandMode: 3
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  partyFollowUpSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
   introChainCutscene: {fileID: 0}
   partyRole: 0
   skillSlots: []
@@ -55,6 +59,7 @@ MonoBehaviour:
   helperCommandSlot:
     slotId: 
     displayName: 
+    slotKind: 0
     hotkey: 0
     defaultOptionIndex: 0
     options: []
@@ -66,6 +71,7 @@ MonoBehaviour:
   critRate: 7
   Enagy: 100
   speed: 4.5
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.5
   ArmorScaling: 0.35

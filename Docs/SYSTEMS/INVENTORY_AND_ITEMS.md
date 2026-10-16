@@ -1,5 +1,59 @@
 # Inventory And Items
 
+## Basement menu presentation profiles (2026-10-10)
+
+Accessory and GunMenu keep their existing `Open(PartySlot, PlayerInventory)`,
+`Close`, `CanInteract` and `EquipmentChanged` APIs and assignment/save behavior.
+They now delegate camera/UI/ally transitions to the shared
+`BasementMenuPresentationController` on CameraManager. Each screen binds a
+`BasementMenuDefinitionSO`; the selected character's existing animation profile
+can override that menu's clip and camera. Item lists and modal Back handling remain
+with the screen controllers. A scene can have only one menu presentation session.
+Character Status can own that session with one Accessory or GunMenu child. Child
+Back switches directly to the parent camera/pose without restoring formation or
+unlocking selection. Active Skill Tree is a modal over Status, keeping the same
+camera while hiding and disabling Status; its Closed event refreshes and resumes
+the parent. Direct standalone Accessory/GunMenu opening remains supported.
+
+Opening resolves the character/menu pair, locks selection and starts the clip,
+Cinemachine blend and ally fade. UI alpha follows the final portion of the actual
+blend; interaction starts only after camera and UI are ready. Root Close,
+disable or target loss cancels the whole session and restores cached background
+enabled states, materials, selection, all visited camera priorities/lenses, viewport
+and blend settings. Nested details/pickers dismiss first.
+Formation and menu cameras temporarily share a character-relative LookAt reference
+during the session. Cinemachine uses it to keep the character framed while blending,
+including child Back and return to formation, retaining authored endpoint rotation
+and roll. Closing removes these temporary camera extensions.
+Weapon refresh never owns animation. Accessory category and light solid-frame
+colors, item ownership, unique rules and save formats remain unchanged.
+
+See `../PREFABS_AND_AUTHORING.md`, Basement menu cameras and animation, for the
+Blender static-camera bake workflow and the Aires GunMenu reference preset.
+
+The shared animation trial has ended: all eight production characters use their
+own Basement animation profiles again. Aires keeps its authored Inmenu/Accessory/
+GunMenu clips; the other seven profiles copy these clips into previously empty
+transitions while preserving their own formation Idle/Pickup and camera settings.
+The integrated status screen gets its animation and camera from the character's
+`menus` entry for `CharacterMenu`, using the same resolver as Accessory/GunMenu.
+`UILoadLaval` only drives the legacy `inMenuIdle` path when no integrated status
+controller is assigned. Submenu Back resolves and restores the parent entry.
+Each production character has a separate status camera preset; the shared menu
+definition still provides a fallback. CharacterMenuMind presents the existing status data for all
+characters: EQUIP opens Accessory, GUN opens weapon equipment and SKILL opens the
+existing Active Skill Tree. BACK, Level, XP, Gold and UPLEVEL remain available.
+The upgrade action refreshes both stats and the current balance immediately.
+Opening Status does not bind/rebuild hidden legacy equipment grids when dedicated
+Accessory/GunMenu controllers are assigned. Those controllers bind on their own
+Open calls; legacy hosts without them retain the previous binding path.
+Other-party character shaders fade through per-material property blocks, preserving
+existing renderer-wide/indexed overrides and shared materials. URP Lit eye/prop
+materials still use temporary transparent copies because their render keywords change.
+Aires uses the supplied looping CharacterMenu Idle; other profiles retain their
+status clips. Inventory assignment, upgrade rules and save formats are unchanged.
+
+
 Inventory and equipment are split between player inventory state, character
 equipment state, weapon instances, accessory loadouts, pickups, drops, and save
 data.
@@ -139,6 +193,18 @@ passive providers stop contributing immediately.
 
 Weapon instance state must stay synchronized with `WeaponSystem` when ammo,
 upgrade, affix, or equip state changes.
+
+### Basement weapon previews
+
+`PartySlotVisualPreview` and `CharacterDragWeaponPreview` resolve the selected
+character's equipment through `CharacterWeaponPreviewResolver`, preserving party
+index, save slot and preferred inventory/equipped-instance inputs. They pass the
+resolved `GunConfig` to `BasementCharacterPresentation.ShowWeapon`.
+`BasementWeaponPresentation` on the common presentation prefab exclusively owns
+the mounted objects, hand lookup and offsets. Weapon-specific mount overrides
+still take precedence over the shared fallback offsets. It reuses mounts on
+refresh and clears them before the owner replaces the model. Preview creation
+does not grant equipment or participate in inventory saving.
 
 ## Accessories
 

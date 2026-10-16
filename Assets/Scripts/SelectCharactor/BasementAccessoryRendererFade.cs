@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-/// <summary>Temporary material instances for fading a Basement party preview without changing its assets.</summary>
+/// <summary>Per-renderer fading; only shaders requiring transparent keywords need material copies.</summary>
 public sealed class BasementAccessoryRendererFade : IDisposable
 {
     static readonly int DitherAlpha = Shader.PropertyToID("_DitherAlpha");
@@ -13,24 +13,43 @@ public sealed class BasementAccessoryRendererFade : IDisposable
     readonly Material[] fadeMaterials;
     readonly float[] originalDither;
     readonly Color[] originalColors;
+    readonly MaterialPropertyBlock[] originalBlocks;
+    readonly MaterialPropertyBlock[] fadeBlocks;
+    readonly bool hasMaterialCopies;
 
     public BasementAccessoryRendererFade(Renderer target)
     {
         renderer = target;
         originallyHidden = target.forceRenderingOff;
         originalMaterials = target.sharedMaterials;
-        fadeMaterials = new Material[originalMaterials.Length];
+        fadeMaterials = (Material[])originalMaterials.Clone();
         originalDither = new float[originalMaterials.Length];
         originalColors = new Color[originalMaterials.Length];
+        originalBlocks = new MaterialPropertyBlock[originalMaterials.Length];
+        fadeBlocks = new MaterialPropertyBlock[originalMaterials.Length];
         for (int i = 0; i < originalMaterials.Length; i++)
         {
             var source = originalMaterials[i];
             if (source == null) continue;
+            if (source.HasProperty(DitherAlpha))
+            {
+                originalBlocks[i] = new MaterialPropertyBlock();
+                target.GetPropertyBlock(originalBlocks[i], i);
+                var block = fadeBlocks[i] = new MaterialPropertyBlock();
+                target.GetPropertyBlock(block, i);
+                // A per-material block takes precedence over the renderer-wide block.
+                if (block.isEmpty) target.GetPropertyBlock(block);
+                originalDither[i] = block.HasFloat(DitherAlpha) ? block.GetFloat(DitherAlpha) : source.GetFloat(DitherAlpha);
+                continue;
+            }
+            if (source.shader.name != "Universal Render Pipeline/Lit")
+            {
+                Debug.LogWarning($"[Basement Accessory] {source.name} uses unsupported fade shader {source.shader.name}.", target);
+                continue;
+            }
             var material = new Material(source) { hideFlags = HideFlags.HideAndDontSave };
             fadeMaterials[i] = material;
-            if (material.HasProperty(DitherAlpha))
-                originalDither[i] = material.GetFloat(DitherAlpha);
-            else if (material.shader.name == "Universal Render Pipeline/Lit")
+            hasMaterialCopies = true;
             {
                 // A few preview eye/prop materials use URP Lit instead of the character shader.
                 originalColors[i] = material.GetColor(BaseColor);
@@ -48,10 +67,8 @@ public sealed class BasementAccessoryRendererFade : IDisposable
                 material.renderQueue = (int)RenderQueue.Transparent;
                 material.SetShaderPassEnabled("ShadowCaster", false);
             }
-            else
-                Debug.LogWarning($"[Basement Accessory] {source.name} uses unsupported fade shader {source.shader.name}.", target);
         }
-        target.sharedMaterials = fadeMaterials;
+        if (hasMaterialCopies) target.sharedMaterials = fadeMaterials;
     }
 
     public void Apply(float hiddenAmount)
@@ -63,8 +80,11 @@ public sealed class BasementAccessoryRendererFade : IDisposable
         {
             var material = fadeMaterials[i];
             if (material == null) continue;
-            if (material.HasProperty(DitherAlpha))
-                material.SetFloat(DitherAlpha, Mathf.Lerp(originalDither[i], 1f, hiddenAmount));
+            if (fadeBlocks[i] != null)
+            {
+                fadeBlocks[i].SetFloat(DitherAlpha, Mathf.Lerp(originalDither[i], 1f, hiddenAmount));
+                renderer.SetPropertyBlock(fadeBlocks[i], i);
+            }
             else if (material.shader.name == "Universal Render Pipeline/Lit")
             {
                 var color = originalColors[i];
@@ -78,10 +98,14 @@ public sealed class BasementAccessoryRendererFade : IDisposable
     {
         if (renderer != null)
         {
-            renderer.sharedMaterials = originalMaterials;
+            if (hasMaterialCopies) renderer.sharedMaterials = originalMaterials;
+            for (int i = 0; i < originalBlocks.Length; i++)
+                if (originalBlocks[i] != null)
+                    renderer.SetPropertyBlock(originalBlocks[i].isEmpty ? null : originalBlocks[i], i);
             renderer.forceRenderingOff = originallyHidden;
         }
-        foreach (var material in fadeMaterials)
-            if (material != null) UnityEngine.Object.Destroy(material);
+        for (int i = 0; i < fadeMaterials.Length; i++)
+            if (fadeMaterials[i] != null && fadeMaterials[i] != originalMaterials[i])
+                UnityEngine.Object.Destroy(fadeMaterials[i]);
     }
 }

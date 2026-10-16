@@ -19,4 +19,5 @@ public sealed class BasementAccessoryTests
     [Test] public void EquipReplaceAndPersistAllFiveSlots() => Invoke(nameof(EquipReplaceAndPersistAllFiveSlots));
     [Test] public void RejectUniqueDuplicateAndOtherOwnerWithoutChangingAssignments() => Invoke(nameof(RejectUniqueDuplicateAndOtherOwnerWithoutChangingAssignments));
     [Test] public void PrefabAndSceneBindingsAreComplete() => Invoke(nameof(PrefabAndSceneBindingsAreComplete));
+    [Test] public void DitherFadePreservesPropertyBlocksWithoutMaterialCopies() => Invoke(nameof(DitherFadePreservesPropertyBlocksWithoutMaterialCopies));
 }

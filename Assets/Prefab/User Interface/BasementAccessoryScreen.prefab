@@ -1550,11 +1550,11 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7239332931553270514}
+  - {fileID: 128500138473817908}
   - {fileID: 1170460679810056321}
   - {fileID: 5366642398358876525}
   - {fileID: 2076112534285317939}
   - {fileID: 2866926101515230036}
-  - {fileID: 128500138473817908}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1601,7 +1601,7 @@ MonoBehaviour:
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1920, y: 1080}
-  m_ScreenMatchMode: 0
+  m_ScreenMatchMode: 1
   m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
@@ -1672,6 +1672,7 @@ MonoBehaviour:
   - {fileID: 5366642398358876525}
   - {fileID: 2076112534285317939}
   - {fileID: 2866926101515230036}
+  menuDefinition: {fileID: 11400000, guid: 2b38eb41d331aef4c958747cacde16d6, type: 2}
 --- !u!1 &2323628165300150156
 GameObject:
   m_ObjectHideFlags: 0

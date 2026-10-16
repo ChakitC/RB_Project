@@ -177,6 +177,13 @@ public class CharacterStats : ScriptableObject
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Basement Prefab"), AssetsOnly]
     public GameObject CharacterPrefabBasement;
 
+    [FoldoutGroup("Character Detail"), LabelText("Basement Animation"), AssetsOnly]
+    public BasementAnimationProfileSO basementAnimationProfile;
+
+    [FoldoutGroup("Character Detail"), LabelText("Basement Animator Path")]
+    [Tooltip("Exact path relative to Basement Prefab. Empty means the prefab root.")]
+    public string basementAnimatorPath;
+
     [PropertyOrder(-155)]
     [FoldoutGroup("Character Detail", Expanded = true), LabelText("Avatar"), AssetsOnly]
     public Avatar characterAvatar;

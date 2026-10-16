@@ -13,6 +13,7 @@ public class UItoolbarManager : MonoBehaviour
   
   public void OpenInventoryMenu()
   {
+    if (bct != null && bct.SupplyRoom != null && bct.SupplyRoom.IsOpen) return;
     if (bct == null || bct.Inventory == null || bct.Inventory.InventoryMenu == null)
     {
       Debug.LogWarning("InventoryMenu not assigned on BasementContext / Inventory");
@@ -34,6 +35,7 @@ public class UItoolbarManager : MonoBehaviour
 
   public void OpenAssociatesMenu()
   {
+    if (bct != null && bct.SupplyRoom != null && bct.SupplyRoom.IsOpen) return;
     Debug.Log("Opening Associates Menu");
 
     if (associatesCue != null)
@@ -42,6 +44,7 @@ public class UItoolbarManager : MonoBehaviour
 
   public void OpenUpgradeMenu()
   {
+    if (bct != null && bct.SupplyRoom != null && bct.SupplyRoom.IsOpen) return;
     Debug.Log("Opening Upgrade Menu");
 
     if (upgradeCue != null)
@@ -50,6 +53,15 @@ public class UItoolbarManager : MonoBehaviour
   
   public void OpenShopMenu()
   {
+    if (bct == null) bct = GetComponentInParent<BasementContext>();
+    if (bct == null) bct = FindFirstObjectByType<BasementContext>(FindObjectsInactive.Include);
+    if (bct != null && bct.SupplyRoom != null)
+    {
+      bool wasOpen = bct.SupplyRoom.IsOpen;
+      bct.SupplyRoom.Open();
+      if (!wasOpen && bct.SupplyRoom.IsOpen && shopCue != null) AudioService.Instance.Play(shopCue);
+      return;
+    }
     var shopPanel = ResolveShopPanel();
     if (shopPanel == null)
     {

@@ -28,6 +28,48 @@ public sealed class BasementAccessoryTestFixture
     static T Get<T>(object obj, string field) => (T)obj.GetType().GetField(field, Hidden).GetValue(obj);
     static void Call(object obj, string method) => obj.GetType().GetMethod(method, Hidden).Invoke(obj, null);
 
+    public void DitherFadePreservesPropertyBlocksWithoutMaterialCopies()
+    {
+        var root = Own(new GameObject("Dither property block test"));
+        var renderer = root.AddComponent<MeshRenderer>();
+        var material = Own(new Material(Shader.Find("ZLZ/AnimeToon/Character")));
+        material.SetFloat("_DitherAlpha", .2f);
+        renderer.sharedMaterials = new[] { material, material };
+        var global = new MaterialPropertyBlock();
+        global.SetFloat("_DitherAlpha", .3f); global.SetFloat("_TestValue", 7f);
+        renderer.SetPropertyBlock(global);
+        var indexed = new MaterialPropertyBlock();
+        indexed.SetFloat("_DitherAlpha", .4f); indexed.SetFloat("_TestValue", 9f);
+        renderer.SetPropertyBlock(indexed, 1);
+        var check = new MaterialPropertyBlock();
+        using (var fade = new BasementAccessoryRendererFade(renderer))
+        {
+            fade.Apply(.5f);
+            Assert.That(renderer.sharedMaterials, Is.EqualTo(new[] { material, material }));
+            renderer.GetPropertyBlock(check, 0);
+            Assert.That(check.GetFloat("_DitherAlpha"), Is.EqualTo(.65f).Within(.001f));
+            Assert.That(check.GetFloat("_TestValue"), Is.EqualTo(7f));
+            renderer.GetPropertyBlock(check, 1);
+            Assert.That(check.GetFloat("_DitherAlpha"), Is.EqualTo(.7f).Within(.001f));
+            Assert.That(check.GetFloat("_TestValue"), Is.EqualTo(9f));
+            Assert.That(material.GetFloat("_DitherAlpha"), Is.EqualTo(.2f));
+            fade.Apply(1); Assert.That(renderer.forceRenderingOff, Is.True);
+        }
+        renderer.GetPropertyBlock(check, 0); Assert.That(check.isEmpty, Is.True);
+        renderer.GetPropertyBlock(check, 1);
+        Assert.That(check.GetFloat("_DitherAlpha"), Is.EqualTo(.4f));
+        Assert.That(check.GetFloat("_TestValue"), Is.EqualTo(9f));
+        renderer.GetPropertyBlock(check);
+        Assert.That(check.GetFloat("_DitherAlpha"), Is.EqualTo(.3f));
+        Assert.That(renderer.forceRenderingOff, Is.False);
+    }
+
+    static float Dither(Renderer renderer)
+    {
+        var block = new MaterialPropertyBlock(); renderer.GetPropertyBlock(block, 0);
+        return block.HasFloat("_DitherAlpha") ? block.GetFloat("_DitherAlpha") : renderer.sharedMaterial.GetFloat("_DitherAlpha");
+    }
+
     public void Setup()
     {
         Directory.CreateDirectory(SaveSystem.CurrentDirectory);
@@ -107,6 +149,7 @@ public sealed class BasementAccessoryTestFixture
         var slots = Get<BasementAccessorySlotView[]>(controller, "slots");
         Assert.That(slots.Select(s => s.SlotIndex), Is.EqualTo(new[]{0,1,2,3,4}));
         Assert.That(prefab.GetComponent<GraphicRaycaster>(), Is.Not.Null);
+        Assert.That(prefab.GetComponent<CanvasScaler>().screenMatchMode, Is.EqualTo(CanvasScaler.ScreenMatchMode.Expand));
         Assert.That(prefab.GetComponentsInChildren<Image>(true).Where(i => i.name.Contains("_Color") || i.name.Contains("BG_Disclipstion")).All(i => !i.raycastTarget), Is.True);
         var scene = EditorSceneManager.OpenPreviewScene("Assets/Scenes/Basement/Basement.unity");
         try
@@ -152,6 +195,7 @@ public sealed class BasementAccessoryTestFixture
         physicalLens.PhysicalProperties.GateFit = UnityEngine.Camera.GateFitMode.Horizontal;
         accessory.Lens = physicalLens;
         Set(manager,"accessoryBlendDuration",0.8f);brain.DefaultBlend=new CinemachineBlendDefinition(CinemachineBlendDefinition.Styles.EaseInOut,0.8f);
+        manager.RegisterMenu(Get<BasementMenuDefinitionSO>(screen, "menuDefinition"), accessory);
         managerObject.SetActive(true);
         var background=Own(new GameObject("Background",typeof(Canvas),typeof(GraphicRaycaster)));
         var nested=Own(new GameObject("Nested",typeof(Canvas)));nested.transform.SetParent(background.transform);
@@ -215,7 +259,7 @@ public sealed class BasementAccessoryTestFixture
             while (!screen.CanInteract && Time.unscaledTime < deadline)
             {
                 sawPartialAlpha |= group.alpha > 0f && group.alpha < 1f;
-                float dither = bodyRenderer.sharedMaterial.GetFloat("_DitherAlpha");
+                float dither = Dither(bodyRenderer);
                 sawCharacterFade |= dither > 0.2f && dither < 1f && !bodyRenderer.forceRenderingOff;
                 Assert.That(originalBodyMaterial.GetFloat("_DitherAlpha"), Is.EqualTo(0.2f));
                 Assert.That(hiddenRenderer.forceRenderingOff, Is.True);
@@ -250,7 +294,7 @@ public sealed class BasementAccessoryTestFixture
         bool sawCharacterReturn = false;
         while (screen.IsOpen && Time.unscaledTime < deadline)
         {
-            float dither = bodyRenderer.sharedMaterial.GetFloat("_DitherAlpha");
+            float dither = Dither(bodyRenderer);
             sawCharacterReturn |= dither > 0.2f && dither < 1f && !bodyRenderer.forceRenderingOff;
             yield return null;
         }

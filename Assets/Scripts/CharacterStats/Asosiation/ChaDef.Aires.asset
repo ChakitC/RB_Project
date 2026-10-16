@@ -18,6 +18,8 @@ MonoBehaviour:
   CharacterWeaponType: 3
   CharacterPrefab: {fileID: 6529442347700744484, guid: 6fc8435470cea994d843648ad902acba, type: 3}
   CharacterPrefabBasement: {fileID: 4578862238211764230, guid: 56ba8f587cb37a94d8d4b223e45cf8cf, type: 3}
+  basementAnimationProfile: {fileID: 11400000, guid: 37157604a58ef294eb4d403212a1748e, type: 2}
+  basementAnimatorPath: Aires
   characterAvatar: {fileID: 9000000, guid: 411cad361d9bf2c45b315ee7ff2425f0, type: 3}
   controller: {fileID: 9100000, guid: fc3e6424aee06f4498f1cedcc3b293ac, type: 2}
   animProfile: {fileID: 11400000, guid: a616c757aab22224faaf2ff69aa02880, type: 2}
@@ -47,7 +49,7 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 1
   chainAttackSkill: {fileID: 0}
-  partyComboSkill: {fileID: 11400000, guid: ed8cb7c2d4176eb43a38effedf0632ad, type: 2}
+  partyFollowUpSkill: {fileID: 11400000, guid: ed8cb7c2d4176eb43a38effedf0632ad, type: 2}
   defensiveBlock: {fileID: 11400000, guid: 26cd5a91f7fba784fb451277d017e6f3, type: 2}
   introChainCutscene: {fileID: 0}
   partyRole: 0
@@ -103,6 +105,7 @@ MonoBehaviour:
   critRate: 5
   Enagy: 100
   speed: 4.2
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.4
   ArmorScaling: 0.55

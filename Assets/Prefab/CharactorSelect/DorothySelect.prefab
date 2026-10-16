@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 71383472020464470, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
       propertyPath: m_Name
       value: DorothySelect
@@ -59,7 +63,25 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2104657972465998469}
+    - targetCorrespondingSourceObject: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5173242275683995219}
   m_SourcePrefab: {fileID: 100100000, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+--- !u!4 &5491711843212910477 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3988973151672750391, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+  m_PrefabInstance: {fileID: 8894001377395904186}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6226808124622681940 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3244781816248416750, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+  m_PrefabInstance: {fileID: 8894001377395904186}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6509833029278997328 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2394302598338516458, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
+  m_PrefabInstance: {fileID: 8894001377395904186}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &6812684406776190323 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2730962025402883017, guid: 53ae910d38386ed4d860521b07a5e2a0, type: 3}
@@ -78,3 +100,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   def: {fileID: 11400000, guid: 9c8a18aa233223d4c837f37c9244adff, type: 2}
+--- !u!114 &5173242275683995219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6812684406776190323}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06e614437be102c419fbdf5d069765c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BasementDragRig
+  head: {fileID: 6226808124622681940}
+  leftFoot: {fileID: 6509833029278997328}
+  rightFoot: {fileID: 5491711843212910477}
+  gripOffset: {x: 0, y: 0, z: 0}

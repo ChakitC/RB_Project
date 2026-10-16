@@ -14,6 +14,7 @@ public class BasementContext : MonoBehaviour
 
    public UIInventory Inventory;
    public ShopPanelUI Shop;
+   public BasementSupplyRoomController SupplyRoom;
 
    private void Awake()
    {

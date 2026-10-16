@@ -18,6 +18,8 @@ MonoBehaviour:
   CharacterWeaponType: 6
   CharacterPrefab: {fileID: 7728014391609529648, guid: 9825266718e5e7d4f89962764e689158, type: 3}
   CharacterPrefabBasement: {fileID: 5358490787443463952, guid: bc56484e0a2221946a51ae0eb45d5d80, type: 3}
+  basementAnimationProfile: {fileID: 11400000, guid: 24181525c362bf241ae08ed1986670b3, type: 2}
+  basementAnimatorPath: Roger
   characterAvatar: {fileID: 9000000, guid: 43f45bf73dac45e43ad9de42bb9938e8, type: 3}
   controller: {fileID: 9100000, guid: 108e6fe407750bc4ba608605b8d13a76, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
@@ -47,9 +49,20 @@ MonoBehaviour:
   weaponHandMode: 0
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  partyFollowUpSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
   introChainCutscene: {fileID: 0}
+  partyRole: 0
   skillSlots: []
   skillPointsPerLevel: 1
+  helperProcSlots: []
+  helperCommandSlot:
+    slotId: 
+    displayName: 
+    slotKind: 0
+    hotkey: 0
+    defaultOptionIndex: 0
+    options: []
   maxHP: 1000
   maxStamina: 80
   Damage: 10
@@ -58,6 +71,7 @@ MonoBehaviour:
   critRate: 7
   Enagy: 100
   speed: 4.5
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.5
   ArmorScaling: 0.35
@@ -67,7 +81,6 @@ MonoBehaviour:
   CritDamageScaling: 0
   EnagyScaling: 0
   SpeedScaling: 0
-  passives: []
   dashCue: {fileID: 0}
   voiceProfile:
     defaultSkillVoiceCue: {fileID: 0}

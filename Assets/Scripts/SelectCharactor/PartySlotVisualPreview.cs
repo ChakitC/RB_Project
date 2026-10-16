@@ -1,35 +1,18 @@
-using System;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 public class PartySlotVisualPreview : MonoBehaviour
 {
-    [Header("Root Model")]
+    [Header("Presentation")]
     [SerializeField] private Transform modelRoot;
+    [SerializeField] private BasementCharacterPresentation presentationPrefab;
     [SerializeField] private WeaponDatabase weaponDatabase;
 
-    [Header("Weapon Preview")]
-    [SerializeField] private string rightHandName = "Weapon.R";
-    [SerializeField] private string leftHandName = "Weapon.L";
-
-    [SerializeField] private Vector3 rightLocalPos;
-    [SerializeField] private Vector3 rightLocalRotEuler;
-    [SerializeField] private Vector3 rightLocalScale = Vector3.one;
-
-    [SerializeField] private Vector3 leftLocalPos;
-    [SerializeField] private Vector3 leftLocalRotEuler;
-    [SerializeField] private Vector3 leftLocalScale = Vector3.one;
-
-    [Header("Runtime")]
-    [SerializeField] private Animator animator;
-
-    private GameObject currentModel;
-    private GameObject rightWeaponObj;
-    private GameObject leftWeaponObj;
+    private BasementCharacterPresentation presentation;
     private int currentSlot;
     private int partyIndex;
 
-    public Animator Animator => animator;
+    public Animator Animator => presentation != null ? presentation.Animator : null;
+    public BasementCharacterPresentation Presentation => presentation;
     public Transform PresentationRoot => modelRoot;
 
     public void SetPartyContext(int saveSlot, int partyMemberIndex)
@@ -40,55 +23,23 @@ public class PartySlotVisualPreview : MonoBehaviour
 
     public void BuildCharacter(CharacterStats selected, Transform slotRoot)
     {
-        ClearTemporarySelectObjects(slotRoot);
-
-        if (modelRoot == null)
+        if (!selected)
         {
-            Debug.LogError("[PartySlotVisualPreview] modelRoot is null", this);
+            ClearPreview();
             return;
         }
-
-        ClearModelPreview();
-        animator = null;
-
-        if (selected == null)
+        if (!modelRoot || !presentationPrefab)
         {
-            Debug.LogWarning("[PartySlotVisualPreview] selected is null -> skip model build", this);
+            Debug.LogError("[PartySlotVisualPreview] Assign the model root and shared presentation prefab.", this);
             return;
         }
+        if (!presentation)
+            presentation = Instantiate(presentationPrefab, modelRoot, false);
 
-        if (selected.CharacterPrefabBasement == null)
-        {
-            Debug.LogError($"[PartySlotVisualPreview] CharacterPrefabBasement is null (selected: {selected.name})", this);
-            return;
-        }
-
-        currentModel = Instantiate(selected.CharacterPrefabBasement, modelRoot, false);
-        currentModel.name = $"{selected.name}_Preview";
-        DisablePreviewEquipmentSaveParticipation(currentModel);
-
-        var t = currentModel.transform;
-        t.localPosition = Vector3.zero;
-        t.localRotation = Quaternion.identity;
-
-        animator = currentModel.GetComponentInChildren<Animator>(true);
-        if (!animator)
-            animator = currentModel.GetComponent<Animator>();
-
-        if (!animator)
-        {
-            Debug.LogError("[PartySlotVisualPreview] new model has no Animator", currentModel);
-            SafeDestroy(currentModel);
-            currentModel = null;
-            return;
-        }
-
-        animator.enabled = true;
-        animator.Rebind();
-        animator.Update(0f);
-        ResetPickedState(animator);
-
-        RefreshWeapon(selected);
+        bool built = presentation.Build(selected);
+        var selectable = GetComponentInParent<CharacterSelectable>(true);
+        if (selectable) selectable.BindPresentation(presentation);
+        if (built) RefreshWeapon(selected);
         RefreshSelectionOutline();
     }
 
@@ -97,294 +48,34 @@ public class PartySlotVisualPreview : MonoBehaviour
         string preferredEquippedInstanceId = null,
         PlayerInventory preferredInventory = null)
     {
-        ClearWeaponPreview();
-
-        if (!animator || selected == null)
-            return;
-
-        bool useRightHand = ShouldUseRightHand(selected);
-        bool useLeftHand = ShouldUseLeftHand(selected);
-
-        if (!useRightHand && !useLeftHand)
-            return;
-
-        if (!CharacterWeaponPreviewResolver.TryResolveSelectedCharacterWeapon(
-                selected,
-                currentSlot,
-                partyIndex,
-                weaponDatabase,
-                preferredInventory,
-                preferredEquippedInstanceId,
-                out var weapon) ||
-            weapon == null)
+        if (!presentation) return;
+        if (selected == null || selected != presentation.CurrentDef)
         {
+            presentation.ClearWeapon();
             return;
         }
 
-        if (useRightHand)
-            rightWeaponObj = SpawnWeaponOnHand(weapon, rightHand: true);
-
-        if (useLeftHand)
-            leftWeaponObj = SpawnWeaponOnHand(weapon, rightHand: false);
-
-        // The weapons just landed under the character, after its selection-outline controller
-        // cached its renderers. Re-sync so they follow the pick-up outline instead of keeping
-        // whatever rendering layers the weapon prefab was authored with.
+        CharacterWeaponPreviewResolver.TryResolveSelectedCharacterWeapon(
+            selected, currentSlot, partyIndex, weaponDatabase,
+            preferredInventory, preferredEquippedInstanceId, out var weapon);
+        presentation.ShowWeapon(weapon);
         RefreshSelectionOutline();
     }
 
-    // The character model and its weapons are spawned after the selection-outline controller
-    // cached its renderers, and some of those prefabs are authored with Rendering Layers =
-    // "Everything" — which opts them into the selection-outline layer and would leave the
-    // outline drawn permanently. Re-sync so the outline only follows the pick-up gesture.
     void RefreshSelectionOutline()
     {
         var selectable = GetComponentInParent<CharacterSelectable>(true);
-        if (selectable != null)
-            selectable.RefreshSelectionOutlineDeferred();
+        if (selectable) selectable.RefreshSelectionOutlineDeferred();
     }
 
     public void ClearPreview()
     {
-        ClearModelPreview();
+        if (presentation) presentation.Clear();
+        var selectable = GetComponentInParent<CharacterSelectable>(true);
+        if (selectable) selectable.BindPresentation(presentation);
     }
 
-    public void ClearTemporarySelectObjects(Transform slotRoot)
-    {
-        ClearTemporarySelectObjectsUnder(slotRoot);
-
-        if (modelRoot != null && modelRoot != slotRoot)
-            ClearTemporarySelectObjectsUnder(modelRoot);
-    }
-
-    void ClearWeaponPreview()
-    {
-        if (rightWeaponObj)
-            SafeDestroy(rightWeaponObj);
-
-        if (leftWeaponObj)
-            SafeDestroy(leftWeaponObj);
-
-        rightWeaponObj = null;
-        leftWeaponObj = null;
-    }
-
-    void ClearModelPreview()
-    {
-        ClearWeaponPreview();
-
-        if (currentModel)
-        {
-            SafeDestroy(currentModel);
-            currentModel = null;
-        }
-
-        if (modelRoot == null)
-            return;
-
-        for (int i = modelRoot.childCount - 1; i >= 0; i--)
-        {
-            var child = modelRoot.GetChild(i);
-            if (!IsGeneratedPreviewRoot(child))
-                continue;
-
-            child.gameObject.SetActive(false);
-            SafeDestroy(child.gameObject);
-        }
-    }
-
-    bool IsGeneratedPreviewRoot(Transform child)
-    {
-        if (!child)
-            return false;
-
-        if (currentModel && child == currentModel.transform)
-            return true;
-
-        if (!child.name.EndsWith("_Preview", StringComparison.Ordinal))
-            return false;
-
-        return child.GetComponentInChildren<CharacterSelectable>(true) == null;
-    }
-
-    void ClearTemporarySelectObjectsUnder(Transform root)
-    {
-        if (!root)
-            return;
-
-        for (int i = root.childCount - 1; i >= 0; i--)
-        {
-            var child = root.GetChild(i);
-            if (!IsTemporarySelectRoot(child))
-                continue;
-
-            child.gameObject.SetActive(false);
-            SafeDestroy(child.gameObject);
-        }
-    }
-
-    bool IsTemporarySelectRoot(Transform child)
-    {
-        if (!child)
-            return false;
-
-        if (currentModel && child == currentModel.transform)
-            return false;
-
-        if (child.name.EndsWith("_Preview", StringComparison.Ordinal))
-            return false;
-
-        if (child.GetComponentInChildren<CharacterSelectable>(true) != null)
-            return true;
-
-        if (child.GetComponentInChildren<CharacterDefHolder>(true) != null)
-            return true;
-
-        return child.name.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    static void DisablePreviewEquipmentSaveParticipation(GameObject root)
-    {
-        if (!root)
-            return;
-
-        var equipments = root.GetComponentsInChildren<CharacterEquipment>(true);
-        for (int i = 0; i < equipments.Length; i++)
-            equipments[i].SetPlayerInventorySaveParticipation(false);
-    }
-
-    GameObject SpawnWeaponOnHand(GunConfig weapon, bool rightHand)
-    {
-        var hand = GetHandTransform(animator, rightHand);
-        if (!hand)
-        {
-            Debug.LogWarning($"[PartySlotVisualPreview] {(rightHand ? "Right" : "Left")} hand not found for weapon preview.", this);
-            return null;
-        }
-
-        var weaponObj = WeaponModelMountUtility.SpawnWeapon(
-            weapon,
-            hand,
-            rightHand,
-            CreateRightFallbackOffset(),
-            CreateLeftFallbackOffset(),
-            this);
-
-        if (weaponObj)
-            weaponObj.name = $"{weaponObj.name}_Preview";
-
-        return weaponObj;
-    }
-
-    WeaponModelMountOffset CreateRightFallbackOffset()
-    {
-        return new WeaponModelMountOffset
-        {
-            localPosition = rightLocalPos,
-            localRotationEuler = rightLocalRotEuler,
-            localScale = rightLocalScale
-        };
-    }
-
-    WeaponModelMountOffset CreateLeftFallbackOffset()
-    {
-        return new WeaponModelMountOffset
-        {
-            localPosition = leftLocalPos,
-            localRotationEuler = leftLocalRotEuler,
-            localScale = leftLocalScale
-        };
-    }
-
-    static bool ShouldUseRightHand(CharacterStats stats)
-    {
-        if (!stats)
-            return true;
-
-        return stats.weaponHandMode == CharacterWeaponHandMode.RightHand
-            || stats.weaponHandMode == CharacterWeaponHandMode.BothHands;
-    }
-
-    static bool ShouldUseLeftHand(CharacterStats stats)
-    {
-        if (!stats)
-            return false;
-
-        return stats.weaponHandMode == CharacterWeaponHandMode.LeftHand
-            || stats.weaponHandMode == CharacterWeaponHandMode.BothHands;
-    }
-
-    Transform GetHandTransform(Animator anim, bool rightHand)
-    {
-        if (!anim)
-            return null;
-
-        var namedMount = FindChildByName(anim.transform, rightHand ? rightHandName : leftHandName);
-        if (namedMount)
-            return namedMount;
-
-        namedMount = FindChildByName(anim.transform, rightHand ? "Weapon.R" : "Weapon.L");
-        if (namedMount)
-            return namedMount;
-
-        namedMount = FindChildByName(anim.transform, rightHand ? "hand.r" : "hand.l");
-        if (namedMount)
-            return namedMount;
-
-        if (anim.isHuman)
-            return anim.GetBoneTransform(rightHand ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand);
-
-        return null;
-    }
-
-    static Transform FindChildByName(Transform root, string targetName)
-    {
-        if (!root || string.IsNullOrWhiteSpace(targetName))
-            return null;
-
-        if (root.name == targetName)
-            return root;
-
-        for (int i = 0; i < root.childCount; i++)
-        {
-            var found = FindChildByName(root.GetChild(i), targetName);
-            if (found)
-                return found;
-        }
-
-        return null;
-    }
-
-    static void ResetPickedState(Animator targetAnimator)
-    {
-        if (!targetAnimator)
-            return;
-
-        foreach (var parameter in targetAnimator.parameters)
-        {
-            if (parameter.type != AnimatorControllerParameterType.Bool)
-                continue;
-
-            if (parameter.name != "IsPicked")
-                continue;
-
-            targetAnimator.SetBool(parameter.name, false);
-            return;
-        }
-    }
-
-    static void SafeDestroy(GameObject go)
-    {
-        if (go == null)
-            return;
-
-#if UNITY_EDITOR
-        if (!Application.isPlaying)
-            Object.DestroyImmediate(go);
-        else
-            Object.Destroy(go);
-#else
-        Object.Destroy(go);
-#endif
-    }
+    // Compatibility entry point. Authored legacy models were migrated out of SlotPoint;
+    // only the presentation may destroy its owned model. Unrelated children are preserved.
+    public void ClearTemporarySelectObjects(Transform slotRoot) { }
 }

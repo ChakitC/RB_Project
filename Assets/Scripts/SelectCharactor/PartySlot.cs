@@ -44,7 +44,6 @@ public class PartySlot : MonoBehaviour
     public void LoadParty()
     {
         EnsureVisualPreview();
-        visualPreview?.ClearTemporarySelectObjects(transform);
 
         if (SaveManager.Instance == null)
         {

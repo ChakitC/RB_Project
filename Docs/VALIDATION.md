@@ -1,5 +1,567 @@
 # Validation
 
+## Milano Basement menu assets (2026-10-12)
+
+- **Compilation:** no default-assembly or Editor source changes; no assembly build
+  required. External runtime audit compiled through MCP without diagnostics.
+  No captured Unity Console errors after the runtime run.
+- **Automated:** camera bake EditMode test **1/1 passed**; Basement PlayMode
+  **10/10 passed**. Full EditMode suite was not repeated.
+- **Runtime:** GameSetup -> Basement, Milano slot 0, Status -> Equip -> Status ->
+  Gun -> Status -> Formation passed clip, loop, camera position/orientation,
+  status lens/speed, animation progression, raycast actions and restoration checks.
+- **Visual: NOT passed.** Reviewed all three 1920x1080 screenshots: blank eyes in
+  Status and missing/deformed face geometry in Equip/Gun. New animation FBXs use
+  a 164-bone face skin versus 151 in the production model, with 13 extra facial
+  bones absent from the production hierarchy. Rig/content compatibility needs
+  resolution; automated menu tests do not validate facial deformation. No model,
+  skin binding or animation curve workaround was applied.
+- Other slots, resolutions and physical input were not checked. Temporary party
+  selection restored and Play Mode stopped. Evidence: `../BuildArtifacts/MilanoMenu/`;
+  helper: `AgentScripts/MilanoMenuRuntimeAudit.cs`. Authoring docs updated.
+
+## Feno Basement menu assets (2026-10-11)
+
+- **Compilation:** no gameplay or Editor assembly sources changed; assembly build
+  was not required. The external runtime audit compiled through Unity MCP with no
+  diagnostics. Unity Console had no captured errors after the runtime check.
+- **Automated:** Basement PlayMode **10/10 passed** after the asset setup.
+  BasementAnimation EditMode **15/17 passed** during setup; existing failures are
+  Roma legacy pickup timing (expected 0, actual 0.66) and the hard-coded Aires
+  camera position (expected -0.399025, actual -0.503107). Neither was modified here.
+- **Runtime:** GameSetup -> Basement, Feno in slot 0: Status -> Accessory -> Status
+  -> Gun -> Status -> Formation passed. Verified actual menu clips, looping,
+  authored camera positions/orientations, status lens/speed, animation advancement,
+  UI raycast actions and pose restoration. Reviewed all three 1920x1080 screenshots.
+  Accessory/Gun shots retain the supplied close framing, including cropped ear tips.
+  Other slots/aspect ratios and physical mouse input were not checked in this pass.
+- Evidence: `../BuildArtifacts/FenoMenu/`; audit helper:
+  `AgentScripts/FenoMenuRuntimeAudit.cs`. Temporary party selection was restored;
+  Editor returned to stopped GameSetup. Setup documentation updated in
+  `PREFABS_AND_AUTHORING.md`.
+
+## Character tracking during menu camera blends (2026-10-11)
+
+- **Compilation:** CheckAssemblyBuild.ps1 passed, **0 errors / 110 warnings**;
+  Unity recompile completed including Editor fixtures. Build log:
+  `../BuildArtifacts/CharacterMenu/tracking-build.log`.
+- **Automated:** scoped CharacterMenu EditMode **2/2 passed**, covering intermediate
+  target-aware orientations, endpoint roll, moving target reference and ignored scale.
+  Basement PlayMode **10/10 passed**. Parent/child tests additionally verify both
+  cameras reference the selected presentation and remove extensions after return.
+- **Runtime:** production Aires Status -> Gun -> Status -> Accessory -> Status ->
+  formation completed with 26-33 target-aware blend samples on each transition.
+  Endpoint orientation matches the authored camera within 0.05 degrees; no extensions
+  remain after return. Inspected Status/Gun midpoint screenshots with the character
+  in frame. The helper invokes existing screen actions without changing inventory or
+  character assignments. Physical input and separate framing reviews for the other
+  seven characters were not performed. Evidence: `tracking-runtime.txt`,
+  `tracking-*.png` beside the build log; helper: `AgentScripts/CharacterMenuTrackingAudit.cs`.
+
+## Unity Test Runner scene-save preflight (2026-10-11)
+
+Before starting either EditMode or PlayMode tests through MCP, inspect all loaded
+scenes' `isDirty` state through Unity MCP. The installed Test Framework calls
+`EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()` in
+`SaveModifiedSceneTask` before storing the scene setup and creating its test scene.
+An unsaved scene can therefore open a modal Save dialog and leave the test request
+waiting for user input. Cancel aborts the test run; it does not discard scene edits.
+
+If any scene is dirty, resolve its pending edits before launching tests. Save only
+changes covered by the current task's authorization; for unrelated or unidentified
+edits, ask the user how to preserve them. Do not clear the dirty flag, discard edits,
+or suppress the dialog to force tests to proceed. Check again before another suite
+if intervening authoring work changed the Editor state.
+
+The user reported GameSetup's repeated Save prompt during tests/Codex work. At the
+inspection on 2026-10-11, `Assets/Scenes/GameSetup.unity` was clean in the Editor,
+unchanged on disk against Git, and all open Editor windows reported no unsaved
+changes. The Test Runner prompt mechanism is confirmed from the installed package;
+the specific edit that dirtied the scene before earlier prompts was not captured.
+This investigation changed documentation only; no scene save or gameplay changes
+were made, and compilation/tests were not rerun.
+
+## Character Status opening hitch (2026-10-10)
+
+Measured the production Aires Status opening in the Editor. Three original runs
+spent 120-138 ms in BindSlot and 128-129 ms enabling the host, before camera/UI
+transition. Isolating work showed the hidden legacy weapon grid binding taking
+247 ms in one sample. Dedicated menus now bind on their own Open path rather than
+rebuilding that grid during Status entry. After that change, three runs measured
+10-13 ms binding and 11-15 ms enabling. Transition readiness remained 0.84-0.87 s,
+including the unchanged authored 0.8-second camera blend.
+
+Further isolation measured 75-77 ms in presentation opening and 91 ms constructing
+fade materials for 35 other-party renderers in a separate sample. Character dither
+fades now use indexed MaterialPropertyBlocks, preserving original indexed/global
+overrides and shared materials; only URP Lit copies remain for transparent keywords.
+Regression coverage adds mixed indexed/global block restoration and unchanged
+shared materials, and updates PlayMode fade checks to read renderer overrides.
+
+Required CheckAssemblyBuild.ps1 passed with **0 errors / 110 warnings** after both
+fixes; Unity recompile also completed. New scoped EditMode regression **1/1 passed**;
+Basement PlayMode **9/9 passed**, including gradual fade/return, item assignment and
+camera restoration. The Editor connection briefly dropped and later timed out;
+the completed EditMode result was recovered and PlayMode then ran successfully.
+
+Final three production runs: BindSlot **10-12 ms**, enable **11-13 ms**, presentation
+open **12.5 ms on the first sample / 2 ms on repeats**. Isolating fade setup for the
+same 35 other-party renderers measured **0.45 ms**, versus the earlier 91 ms sample.
+Camera/UI interaction became ready at **0.81-0.83 seconds**, including the unchanged
+0.8-second blend. This fixes synchronous opening work rather than shortening the
+authored transition. The timing helper exercises real binding/enable/open paths;
+physical pointer input and a standalone build were not benchmarked.
+Final production screenshot `open-performance-final.png` shows Status correctly;
+all 35 other-party renderers are hidden and interaction is ready. The Editor is
+left in Play Mode on Aires Status (slot 1), matching the initial user test state.
+No new gameplay exceptions were captured; Pipeline request timeout logs remain.
+Timing samples are Editor measurements, not standalone-build benchmarks. Evidence:
+`../BuildArtifacts/CharacterMenu/timing.txt` and `open-performance-build.log`;
+reproduction helper: `AgentScripts/CharacterMenuTimingAudit.cs`.
+
+## Character Status profile menu migration (2026-10-10)
+
+Moved production status authoring to each profile's `Menus > CharacterMenu` entry,
+preserving the complete previous animation transition and adding independent camera
+presets for the seven characters previously using Aires's default. The old serialized
+`inMenuIdle` remains hidden for legacy hosts; integrated status uses the same menu
+entry resolution as Accessory/GunMenu.
+
+- **Compilation:** required `CheckAssemblyBuild.ps1` passed, **0 errors / 110 warnings**;
+  Unity recompile completed without errors. Log:
+  `../BuildArtifacts/CharacterMenu/profile-migration-build.log`.
+- **Automated:** scoped CharacterMenu EditMode authoring **1/1 passed**, validating
+  one status entry per production profile, assigned clips and eight independently
+  editable cameras. Basement PlayMode **9/9 passed**, including parent/child return,
+  restoration and per-character camera handling. The two historical GunMenu EditMode
+  failures documented below were not in this scoped EditMode run and remain unresolved.
+- **Runtime:** all eight characters used their menu-entry clip, speed, position,
+  rotation and lens and returned to formation. Aires also opened/returned from both
+  item menus and Skill Tree. A temporary cloned Aires profile used a different clip,
+  speed, camera position, rotation and FOV to verify that Menus settings take effect
+  instead of legacy `inMenuIdle`; child Back restored the changed clip/position.
+  All temporary overrides were restored. The initial audit ran before Basement was
+  loaded; the helper now waits for the scene's controllers and the rerun passed.
+- **Preservation:** all save files match the fresh pre-runtime backup by hash;
+  Play Mode stopped and no new runtime Console errors. Physical input, standalone
+  builds and new per-character camera compositions were not exercised. Authoring
+  and inventory-system documentation updated alongside this change.
+
+## Basement direct animation transitions (2026-10-11)
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed with **0 errors / 110 warnings**
+  (42.19 seconds), using the existing external BasementDragSway assembly artifact
+  root. Unity recompile completed without errors for runtime, Editor and tests.
+- **EditMode:** Basement filter **29/32 passed**. New regression tests
+  `InitialPickupAndSameModelRefreshPreservePlayback` and
+  `MenuSwitchNeverRestartsIdleAndRestoresOnce` both passed. They verify all eight
+  roster models start at full Pickup weight without creating an Idle state, and
+  same-definition refresh preserves state, time, weights and menu ownership.
+  Direct parent/child menu switches leave Idle time/target weight untouched and
+  restore the original update mode only when leaving the menu session.
+- **Remaining authoring mismatches:** the two documented GunMenu camera assertions
+  still fail. `AllEightPrefabBindingsAndLegacyTiming` also finds Roma's legacy
+  controller transition at 0 seconds while the Basement profile remains 0.66 seconds.
+  Neither the legacy controller nor animation-profile timings were changed here.
+- **PlayMode:** Basement filter **10/10 passed**, including parent/child menu return,
+  animation playback, model replacement, unscaled sway and equipment regressions.
+  The initial EditMode run stalled while the Editor main thread was blocked; it
+  completed after the user intervened. Computer Use could not inspect Unity because
+  that app was not approved. Subsequent MCP tests completed normally.
+- **Runtime limits:** this change was exercised through Unity Test Runner's real
+  PlayMode scenes, not a separate manual mouse/visual pass in production Basement.
+- **Evidence:** `../BuildArtifacts/BasementDragSway/direct-transitions-build.log`,
+  `direct-transitions-editmode.json` and `direct-transitions-playmode.json`.
+  Authoring/API behavior updated in `PREFABS_AND_AUTHORING.md` under Basement
+  character animation and Drag sway and model sizes.
+
+## Basement drag sway (2026-10-10)
+
+- **Compilation:** `CheckAssemblyBuild.ps1` completed with exit code 0,
+  **0 errors / 111 warnings**, using the external
+  `BuildArtifacts/BasementDragSway/Assembly` artifact root (932 default-assembly
+  sources; dependency build elapsed 12m25.77s). Completion confirmed 2026-10-11.
+  Unity recompile also completed without errors, including the new Editor fixture
+  and test wrappers.
+- **Automated:** `Basement` EditMode **28/30 passed**. All five new
+  `BasementDragSwayTests` passed: direction/reversal/clamping/settling, size and
+  30/60/120 FPS parity at 720/1080/2160 viewport heights, animated head anchoring
+  with nonuniform parent scale, focus/reset, missing-rig fallback, and all eight
+  production models at 0.5x/1x/2x with lifecycle/oversized-weapon checks.
+  The two failures are the previously documented GunMenu camera expectations:
+  `ProductionMenuPresetsMatchSources` (-0.399025 vs -0.503107369) and
+  `AuthoringUsesEquipmentButtonAndReferenceLens` (0.1356294 positional difference).
+  Camera data and these expectations were not changed by this feature.
+- **PlayMode:** `Basement` filter **10/10 passed**, including the new actual
+  LateUpdate test across all eight models at `Time.timeScale = 0`, plus existing
+  animation, accessory, character-menu and GunMenu regression tests.
+- **Runtime/visual:** entered through GameSetup -> Basement. The audit drove
+  controlled pointer samples through the production selectable/presentation and
+  exercised the real manager cancellation for all eight models at three scales
+  (**24 traces**). Formation selection was seeded by the audit rather than a native
+  mouse click. Roster pointer-down/begin-drag/drag/end-drag event handlers spawned
+  a preview, produced sway, placed it in the nearest slot and restored selection.
+  Inspected captured images for model/weapon/outline movement and stationary labels.
+  No new Console errors were reported. Native physical-mouse feel remains a manual
+  tuning check; automated inputs exercise the production handlers.
+- **Cleanup:** stopped Play Mode and restored all 23 save files byte-for-byte from
+  the pre-runtime backup. Editor remains in GameSetup: automatic approval rejected
+  restoring the previously open unrelated DefensiveBlock scene.
+- **Evidence:** `../BuildArtifacts/BasementDragSway/` contains EditMode/PlayMode JSON,
+  `Runtime/slots.txt`, `Runtime/roster.txt` and screenshots. Repeatable runtime audit:
+  `AgentScripts/BasementDragSwayRuntimeAudit.cs`. Setup/tuning instructions are in
+  `PREFABS_AND_AUTHORING.md`, **Drag sway and model sizes**.
+
+## Character Menu Mind integration (2026-10-10)
+
+### Formation animation return fade (2026-10-11)
+
+Asset-only correction: Roma/Roger Idle fade was 0 seconds; Milano was 0.0161168575.
+All three now use 0.25 seconds. No runtime C# change or assembly build was needed.
+Direct invocation of MenuPoseAndSelectionRestore, MenuLoopAndMissingEntryPreservePlayback,
+and MenuSwitchNeverRestartsIdleAndRestoresOnce passed (3 fixture checks, not a Test
+Runner suite). Live Roma/Aires/Feno/Milano menu exits showed Idle weight increasing
+from 0 through 0.35-0.40 to 1, with the outgoing menu still weighted mid-transition.
+Roger's serialized fade was verified; its model was not present in this runtime check.
+The separate camera tracking audit stopped on `Status: blend missing target` in
+the current live session; no camera code or scene configuration was changed here.
+
+### Camera blend-start regression (2026-10-11)
+
+- Compilation: Unity recompile passed; CheckAssemblyBuild passed with 0 errors,
+  110 warnings. Scoped CharacterMenu EditMode tests passed 3/3, including five
+  successive Cinemachine updates preserving authored roll.
+- Runtime: the outgoing Status camera previously lost its 13.193-degree roll on
+  the first Gun blend frame (13.196-degree orientation jump). After caching the
+  authored pose, that sample changes smoothly by 0.572 degrees at blend weight
+  0.039. Status entry, Gun, return, Equip, return and formation all completed
+  target-aware blends (31-35 samples each), retaining endpoints and cleaning up
+  temporary extensions. CSV evidence: ../BuildArtifacts/CharacterMenu/blend-start-*.csv.
+- Status-entry fieldOfView conversion changes the numeric value but leaves the
+  output projection matrix unchanged before blending; it is not a framing jump.
+- The full PlayMode test suite was not rerun for this fix. User requested keeping
+  GameSetup's unsaved edits. A previously queued EditMode run completed, after
+  which GameSetup reported clean; the cause of that dirty-state change was not
+  established. No explicit scene save/discard was issued by the agent.
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed with **0 errors / 110 warnings**.
+  Unity recompile completed, including the new Editor fixtures/test assemblies.
+  Final runtime Console check reported no new errors.
+- **Automated:** Basement EditMode **22/24 passed**; PlayMode **9/9 passed**.
+  The new fixture covers status authoring, parent/child return, Skill modal gating,
+  selection/background/camera restoration and slot loss with a child open.
+  After correcting the nested prefab's Artboard anchors, the scoped authoring
+  test passed **1/1**, including centered anchors, fixed size and serialized binding.
+  `ActiveSkillFeatureSmokeTests.RunFromCommandLine()` also passed.
+- **Unresolved existing GunMenu expectations:**
+  `BasementAnimationTests.ProductionMenuPresetsMatchSources` passes the source-bake
+  comparisons but fails its old hardcoded X expectation (-0.399025 versus the
+  current -0.503107369). `BasementGunMenuTests.AuthoringUsesEquipmentButtonAndReferenceLens`
+  finds a 0.1356294 positional difference between the scene's legacy gun camera
+  offset and the imported reference. This change does not alter that GunMenu
+  source, preset or legacy offset; those two expectations remain unresolved.
+- **Runtime:** GameSetup -> Basement, Aires in all four slots: name/status pose,
+  advancing animation, actual button raycasts, EQUIP/GUN/SKILL open and return,
+  Gold refresh and BACK to formation passed. The other seven characters passed
+  name/pose/animation/raycast/BACK checks with their retained status clips.
+  Aires repeated all menu flows at 1920x1080, 2560x1080 and 1440x1080; final images
+  confirm proportional sprites/text and fitted letterboxing. Restored FullHD.
+  UPLEVEL exercised the existing spend/refresh path on a capped character and
+  restored the balance; advancing a non-capped character's level was not exercised.
+  Physical Escape-key input was not injected; Back and modal Closed paths were
+  exercised. Individual camera composition for the other seven characters remains
+  the shared default rather than separately authored shots.
+- **Data preservation:** runtime audit restores selected slots and the temporary
+  Gold change. All backed-up SaveData file hashes match after the audit.
+  Evidence lives outside Assets in `../BuildArtifacts/CharacterMenu/`:
+  `compilation.log`, `editmode-results.json`, `playmode-results.json`, `runtime.txt`
+  and full-screen PNG captures. Authoring/runtime audit scripts are in `AgentScripts`.
+
+## Aires overlapping weapon preview (2026-10-10)
+
+Disabled the inherited `SubmachineGun_02_Right_EditorPreview` in `AiresSelect.prefab`
+through Unity MCP and in the currently running Aires presentation. The source
+character prefab is unchanged. Verified the saved override is inactive and inspected
+the live right-hand children to confirm only the equipped mounted weapon is active.
+Asset-only change: no C# compilation required; no automated test suite was run.
+
+## Fill missing character menu poses from Aires (2026-10-10)
+
+Unity MCP populated empty Inmenu Idle, Accessory and GunMenu transitions in Roma,
+Feno, Milano, Abbygail, Dorothy, Noemi and Roger's individual profiles from Aires.
+The migration reported exactly those three additions per profile, with no changes
+to existing formation Idle/Pickup or camera overrides. New menu entries use default
+menu cameras. Profile references remain per-character; the shared trial is not enabled.
+This is an asset-only change: no runtime/Editor source compilation was required.
+Automated tests and runtime checks were not rerun per the user's preceding request.
+Borrowed Generic clips retain the previously documented cross-rig visual limitations.
+
+## Restore individual character profiles (2026-10-10)
+
+Restored all eight production CharacterStats to their original per-character
+BasementAnimation assets through Unity MCP and verified the saved references.
+Aires keeps the authored Inmenu/Accessory/GunMenu transitions in its own profile;
+the shared test asset remains unassigned. Updated the fixture's production-binding
+expectations accordingly. No default Assembly-CSharp source changed. Automated
+tests and runtime checks were not rerun, as requested; earlier shared-trial results
+below describe the previous configuration.
+
+## Formation idle / character status correction (2026-10-10)
+
+The shared trial had incorrectly replaced Basement formation idle with Inmenu idle.
+`Shared_Aires_MenuTest` now restores `Aires_Formation_Idle` and retains Pickup,
+with `Aires_Inmenu_Idle` in the new optional `inMenuIdle` transition.
+`UILoadLaval` owns a separate character-information session; submenu Back restores
+that pose, and information-panel disable restores formation/pickup. Preview rebuilds
+and slot rebinding are reconciled without restarting an unchanged status pose.
+
+- **Compilation:** required `CheckAssemblyBuild.ps1` passed, **0 errors / 111 warnings**;
+  Unity recompile reported completed with no script errors (including Editor/Tests).
+  The shared asset migration ran successfully through Unity MCP and was saved.
+- **Automated:** `Basement` EditMode **23/23**, PlayMode **8/8** passed.
+  Includes `FormationStatusAndSubmenuRemainSeparate` and corrected shared-profile
+  assertions. The initial EditMode tool call timed out while the Editor was not
+  responding; on continuation its completed result was recovered and verified,
+  then PlayMode was run successfully. No source edits were needed during continuation.
+- **Runtime:** GameSetup -> Basement passed for all eight models across slots 0-3:
+  formation idle -> pickup -> idle -> status idle -> both submenus -> Back to status
+  -> information-panel close -> formation idle. Both menu clips advanced, cameras
+  restored their viewport/custom blends, and no FBX camera appeared. Aires formation
+  and status idle playback times were also checked for advancement. Temporary slot
+  bindings were restored and Play Mode was stopped. No new Console errors since
+  cursor 823 (the older MCP timeout errors remain in the Console).
+- **Visual:** captured submenu shots for all eight and formation/status screenshots
+  for Aires at 1920x1080. An additional capture attempt timed out entering a menu and
+  produced stale Game View images; focusing Game View and repeating completed the
+  full audit and replaced those captures. This run confirms state/clip restoration,
+  not final art compatibility: the previously recorded cross-rig face/weapon issues
+  remain. No layout/camera data changed and other aspect ratios were not rerun.
+
+Evidence: `P:/Game_RB_Project/BuildArtifacts/BasementStatusIdleFix/` contains
+`editmode-results.json`, `playmode-results.json` and `Runtime/audit.txt` plus screenshots.
+
+## Shared Aires menu animation trial (2026-10-10)
+
+All eight production character definitions now bind `Shared_Aires_MenuTest.asset`.
+The supplied Inmenu/AccessoryMenu/GunMenu Idle clips loop; original individual
+profiles and per-model Animator paths are preserved.
+
+- **Compilation:** Unity recompile completed without script errors for the changed
+  Editor fixture and Tests assembly. No default Assembly-CSharp source changed in
+  this trial, so `CheckAssemblyBuild.ps1` was not rerun.
+- **Automated:** `Basement` filter passed EditMode **22/22**, PlayMode **8/8**.
+  The added shared-profile test verifies all eight references, menu clip names,
+  loop flags, speed/start and camera references. Legacy timing checks now inspect
+  the preserved original profiles independently of the active trial configuration.
+- **Runtime:** GameSetup -> Basement; both production UI entry points exercised
+  for Aires, Roma, Feno, Milano, Abbygail, Dorothy, Noemi and Roger across slots 0-3.
+  Each selected the expected looping menu clip and its playback time advanced;
+  both menus became interactive and restored camera viewport/custom blends on close.
+  Temporary audit slot assignments were restored. No runtime FBX camera and no new
+  Console errors since cursor 592. Editor returned to Edit Mode after the audit.
+- **Visual:** captured both menus for all eight at 1920x1080. Reviewed all Accessory
+  shots and Aires/Dorothy GunMenu shots. Shared body poses are visible, but Milano's
+  face is malformed and weapon grips vary across rigs. The Generic clip has many
+  unmatched clothing/face paths, so shared playback passing does not certify final
+  character art. Other aspect ratios were not rerun for this asset-only presentation
+  change; the previous layout validation below remains historical evidence.
+
+Evidence: `P:/Game_RB_Project/BuildArtifacts/SharedAiresMenuTest/Runtime/`
+contains screenshots and `audit.txt`. The current shared clips supersede the
+"no menu clips supplied" state recorded in the earlier validation below.
+
+## Basement menu presentation profiles (2026-10-10)
+
+Accessory and GunMenu now share transition/visibility ownership and resolve per-menu
+camera/animation data from the selected character's existing Basement profile.
+Aires GunMenu is baked from `Aires_camera_Gunmenumene.fbx` / `Camera Gun Menu`.
+
+- **Compilation:** `CheckAssemblyBuild.ps1 -ArtifactRoot
+  P:/Game_RB_Project/BuildArtifacts/BasementMenuProfiles` passed with **0 errors,
+  110 warnings** (including retained, unused legacy screen timing fields). Unity
+  compiled default, Editor and test sources without script errors. The Editor's
+  Hot Reload integration initially prevented normal refresh/reload; a full compile
+  and reopening the saved project loaded the new assemblies before validation.
+- **Automated:** the `Basement` filter passed **EditMode 21/21**, **PlayMode 8/8**.
+  This includes existing equipment/ownership/persistence, selection and model-swap
+  tests plus menu clip start/speed/loop/hold, fallback preserving pickup playback,
+  selection restoration, nested-transform FBX bake and ambiguous Camera rejection,
+  production preset parity, per-character camera override and actual blend-driven UI.
+  Interrupted open, inactive screen, missing target, disabled camera manager,
+  zero time scale, mutual exclusion and lens/viewport/blend restoration passed.
+  A new EditMode loop test initially sampled before applying its start time; applying
+  the graph at delta zero before advancing corrected the test, without runtime changes.
+- **Runtime:** entered through GameSetup -> Basement. Opened and closed both menus
+  for Aires, Roma, Feno, Milano, Abbygail, Dorothy, Noemi and Roger across party
+  indices 0-3 (two character definitions per position). Used the production UI
+  entry points with temporary in-memory slot bindings, then restored them; this
+  audit did not equip items or replace saved party data. All reached interactive
+  state with a valid Animator and returned the original viewport/custom blend asset.
+  No reference FBX Camera was instantiated; no new Console errors during this audit.
+- **Visual/layout:** captured both screens at 1920x1080, 1280x720, 1920x1200 and
+  2560x1080. The initial ultrawide check exposed mismatched fixed pixel controls
+  versus the artboard under MatchWidthOrHeight. CanvasScaler Expand fixes their
+  alignment, and foreground letterbox bars cover overflow/hits outside 16:9.
+  Full HD was restored after capture. Screenshots confirm light solid item frames
+  remain distinct from saturated dashed category outlines.
+- **Content still to author:** only the supplied Aires GunMenu shot and existing
+  Accessory shot are baked. No new character menu clips were supplied, so production
+  menu animation entries intentionally fall back to the current pose. Other
+  character/menu pairs use the default shot; some rigs/poses, notably Dorothy and
+  Noemi, are not framed appropriately by the Aires GunMenu fallback. Their final
+  visual acceptance requires matching Blender camera presets and authored clips.
+  Runtime/control checks passing does not certify those fallback shots as final art.
+
+Evidence: `P:/Game_RB_Project/BuildArtifacts/BasementMenuProfiles-build.log`,
+`P:/Game_RB_Project/BuildArtifacts/BasementMenuProfiles/test-results.json`, and
+`P:/Game_RB_Project/BuildArtifacts/BasementMenuProfiles/Runtime/` (screenshots and audit.txt). Authoring and runtime inspection
+scripts are retained under `AgentScripts/BasementMenuSetup.cs` and
+`AgentScripts/BasementMenuRuntimeAudit.cs` and run via Unity MCP `run_script`.
+
+
+## Basement presentation ownership and shared weapons (2026-10-09)
+
+Slot selection and drag commands now enter through BasementCharacterPresentation.
+The common prefab owns model, animation and weapon lifetime; slot/drag adapters
+resolve equipment data and send it to BasementWeaponPresentation.
+
+- **Compilation:** CheckAssemblyBuild.ps1 passed with **0 errors, 106 warnings**.
+  Unity compiled runtime, Editor and test assemblies; the final native probe
+  reported scriptCompilationFailed=false.
+- **Automated tests:** Basement animation + Accessory **EditMode 12/12**
+  (9 animation, 3 Accessory), **PlayMode 4/4** (3 animation, 1 Accessory).
+  CharacterAnimBrainSmokeTests passed **128/128**. No failures or skips.
+  Added coverage checks facade routing, independent slot/drag state, preservation
+  of unrelated children, shared weapon offsets/hand changes/reuse, missing Animator
+  selection, model swaps and immediate deactivation before deferred destruction.
+- **Serialized references:** SlotPoint was the only serialized PartySlotVisualPreview
+  owner; drag adapters are created at runtime. All four Basement slot instances had
+  identity fallback mount offsets and no overrides. No external script reference
+  pointed into the removed legacy Roma Select subtree. The source slot now contains
+  no legacy model; cleanup compatibility APIs no longer scan/delete arbitrary
+  children. Existing prefab-facing compatibility fields remain where needed.
+- **Runtime:** GameSetup entered Basement with four valid owners, Animators and
+  unchanged slot camera anchors. Same-character refresh reused the model. Production
+  pointer handlers dragged all eight characters from the list into slots, preserving
+  shared owners and deliberately named decoration children. Slot/drag weapon
+  availability matched for all eight; cancel and reopen created a fresh preview.
+  Idle/pickup captures were visually checked for model placement, weapons and outline.
+  MapRun contained three Battle brains and zero Basement owners; returning to
+  Basement restored four valid owners in Idle.
+- **Limits:** Runtime drag checks dispatch production pointer handlers through MCP;
+  a physical mouse pass and a full combat match are not claimed. Console still has
+  unrelated PrefabPalette/PathDr and empty asset-path errors, plus expected animation
+  observer/root-policy exceptions from the smoke fixture.
+
+Evidence: ../BuildArtifacts/BasementPresentationArchitecture/ contains compilation.log,
+test-results.json, slots-runtime.json, drag-runtime.json, battle-runtime.json,
+return-runtime.json and idle/pickup.png. Play Mode ended in unchanged GameSetup;
+the 23 backed-up save files were restored and hash-verified. Authoring and equipment
+ownership guidance was updated in PREFABS_AND_AUTHORING.md and
+SYSTEMS/INVENTORY_AND_ITEMS.md.
+
+## Basement transition-driven playback (2026-10-09)
+
+The controller now delegates Speed, Start Time and ordinary fades to
+`Play(ClipTransition)`. All eight profiles explicitly set Idle/Pickup Start Time
+to `0x`; initial/reset Idle still overrides fade to zero. Non-looping Pickup holds
+its final pose through Animancer's normal sampling, without an end callback or
+time/speed clamp. This supersedes the callback-specific assertions in the earlier
+migration report below.
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed, 0 errors and 106 warnings.
+  Unity compiled runtime, Editor fixture and test assemblies successfully.
+- **Automated:** `BasementAnimation.Tests` passed 8/8 and
+  `BasementAccessory.Tests` 3/3. The additional case verifies custom transition
+  Start Time and Speed are respected, including reset; all production profiles
+  retain explicit zero start times and legacy clips/fade durations.
+  `BasementAnimation.PlayMode.Tests` passed 2/2 and
+  `BasementAccessory.PlayMode.Tests` 1/1.
+- **Runtime coverage:** PlayMode animates all eight production models and checks
+  reactivation. The non-looping test now samples actual bone position after clip
+  end, waits longer to confirm the pose remains held, checks a repeated pickup
+  does not restart, then releases to Idle and picks up again from the start.
+- **Limits:** the full GameSetup/drag/Battle scene-transition pass from the shared
+  prefab revision was not repeated for this refinement. Console still contains
+  the unrelated PrefabPalette Editor path/asset exceptions.
+
+Evidence: `../BuildArtifacts/BasementTransitionPlayback/compilation.log` and
+`test-results.json`. Authoring guidance and official Animancer references are in
+`PREFABS_AND_AUTHORING.md`, under Basement character animation.
+
+## Shared Basement presentation prefab (2026-10-09)
+
+- **Compilation:** `CheckAssemblyBuild.ps1` passed with 0 errors and 106 warnings.
+  Unity compiled the runtime, Editor and test assemblies; Console had no compile
+  errors. Existing PrefabPalette path exceptions can still appear after reload.
+- **EditMode:** `BasementAnimation.Tests` 7/7 and `BasementAccessory.Tests` 3/3.
+  Tests verify all eight model/data bindings and original clip/fade settings,
+  model replacement with the same shared owner, graph destruction on clear,
+  independent slot/drag states, missing Animator paths/clips, selection and outline
+  availability, shared prefab references, cleanup protection and unchanged camera
+  anchors. Weapon lookup must not select another Animator when the binding is absent.
+  `CharacterAnimBrainSmokeTests` passed 128/128 regression cases.
+- **PlayMode:** `BasementAnimation.PlayMode.Tests` 2/2 and
+  `BasementAccessory.PlayMode.Tests` 1/1. Production skeletons are now instantiated
+  through the common prefab and checked for Idle/Pickup and reactivation reset.
+- **Runtime:** GameSetup entered Basement with one common presentation per slot.
+  Exercised roster pointer/drag/drop handlers for all eight characters across four
+  slots, verified the owner survived each replacement, and checked cancel/reopen.
+  Pick/release preserved slot positions and Accessory camera anchors. A camera
+  capture confirmed the initial lineup and weapons. Boss Rush 01 loaded MapRun
+  with three Battle brains and zero Basement presentation owners. Returning to
+  Basement restored four owners with valid Animators in Idle.
+- **Limits:** runtime drag checks drive the production event handlers through MCP;
+  they are not a manual mouse usability pass or a full boss fight. The existing
+  Battle smoke suite deliberately logs observer/root-policy probe exceptions.
+
+Evidence: `../BuildArtifacts/BasementSharedPresentation/` contains compilation,
+test results, drag/scene-transition reports, a screenshot and save-restore hashes.
+All 23 saved files matched their pre-runtime hashes after restoration.
+
+For future authoring validation, run both Basement animation test assemblies and
+the Accessory regressions. Check the slot and roster button reference
+`BasementCharacterPresentation.prefab`; check each CharacterStats model, Basement
+profile and exact Animator path. Models must have no Basement controller/Animancer,
+one enabled skeleton Animator, no runtime controller, and root motion disabled.
+In PlayMode also swap characters, reopen/cancel drag, mount weapons, open Accessory,
+then enter Battle and return. Compilation does not validate these serialized links.
+
+## Basement Animancer migration (2026-10-09)
+
+- **Compilation:** `Assets/Scripts/CheckAssemblyBuild.ps1` passed with 0 errors
+  and 106 warnings. Unity compiled the runtime, Editor fixture and dedicated test
+  assemblies; `EditorUtility.scriptCompilationFailed` is false.
+- **EditMode:** `BasementAnimation.Tests` passed 5/5 and
+  `BasementAccessory.Tests` passed 3/3 in the final combined run. Coverage includes
+  state changes, duplicate commands, explicit reset, missing clips/references,
+  preview replacement and all eight prefab bindings/legacy blend durations.
+  The `CharacterAnimBrainSmokeTests` filter passed 128/128 existing regression cases.
+- **PlayMode:** `BasementAnimation.PlayMode.Tests` passed 2/2: all eight production
+  skeletons animate and reset on reactivation, and a non-looping test clip reaches
+  its real Animancer end callback, holds, then releases to Idle. The isolated scene
+  has no camera, so instance culling is temporarily disabled for the bone assertions.
+  Asset tests verify preserved authored culling. Existing
+  `BasementAccessoryPlayModeTests.OpenPickCancelEquipAndRestore` passed 1/1.
+- **Runtime/visual:** entered through GameSetup into Basement; checked all four
+  live PartySlots' Idle/Pickup, stable slot positions and weapon anchors. Exercised
+  the production roster's pointer/drag/drop handlers for all eight characters across
+  the four slots and its disable/cancel cleanup. Inspected Idle/Pickup captures and
+  a second lineup covering Feno, Abbygail, Dorothy and Roger. Loaded Boss Rush 01
+  through `SceneLoaderSystem`: MapRun had three active Battle brains and zero
+  Basement controllers. Returned through `LoadBasement`; all four preview bindings
+  were restored in Idle. Savedata was backed up and restored with matching hashes.
+- **Limits:** this is a scene-transition and animation smoke pass, not a full boss
+  fight or frame-by-frame review of every blend. Console contains unrelated
+  PrefabPalette Editor path/asset exceptions; no animation compilation errors.
+
+Evidence is under `../BuildArtifacts/BasementAnimation/`: `test-results.json`,
+`drag-runtime.json`, `battle-runtime.json`, `return-runtime.json`, and the three
+PNG captures. The test report retains the initial failed culling run as well as
+the passing final run; the old nested Battle Animator culling settings were
+replaced with the original Basement settings. Noemi keeps its authored culling.
+The original Controller assets and Battle animation sources were not modified.
+
 ## Roma Momentum Combat Surge (2026-10-06)
 
 - **Compilation:** required `CheckAssemblyBuild.ps1` passed with 0 errors and
@@ -4533,3 +5095,301 @@ GameSetup Play Mode rendered all four lobby characters and the scene without
 visible missing-shader pink; no new Console errors occurred during the final
 capture. Image: ../BuildArtifacts/NoASP-GameSetup.png. This is a lobby visual
 smoke check, not full combat/art parity coverage or a standalone player build.
+
+## Basement GunMenu integration (2026-10-10)
+
+Compilation: required CheckAssemblyBuild.ps1 passed with 0 errors and 107
+warnings. Unity compiled runtime, Editor and test assemblies; final native
+probe reports scriptCompilationFailed=false and isCompiling=false.
+
+Automated validation: Basement EditMode filter passed 17/17 (GunMenu authoring,
+Accessory, animation, board pages and skill loadout UI). PlayMode passed all six
+distinct relevant cases across the final runs: GunMenu 2/2, animation 3/3 and
+Accessory 1/1. The initial combined run passed 5/6: the Accessory test did not
+observe a partial-alpha frame during its 0.8s camera blend. A focused retry at
+Full HD reproduced that assertion; reducing the test Game View to 640x360 passed
+without changing production code or test assertions. This indicates sensitivity
+to Editor rendering/frame cadence; it is not a full-resolution performance pass.
+Game View was restored to its original Full HD setting afterwards.
+
+GunMenu coverage includes the UILoadLaval EQUIPMENT entry, null/invalid target,
+map and Accessory mutual exclusion, repeated opens, interaction gating, unscaled
+paused-time open/close, Back callback, interrupted opening, disable/re-enable,
+lost selection and restoration of UI, camera lens/priority/viewport and drag
+selection. Authoring checks validate the variant, all 12 artwork sprites, scene
+bindings, Back event, disabled Information control, FBX physical lens and blend
+rules. Accessory regression also covers picker cancel/equip/unequip and fading
+other party characters.
+
+Runtime visual smoke: entered GameSetup and its Basement flow with existing
+party data. Invoked the actual serialized EQUIPMENT Button.onClick for Aires,
+confirmed GunMenuCamera and interactive alpha=1, then invoked the prefab Back
+button and verified restored character camera, status Canvas and selection.
+Opened Roma through the same UILoadLaval route and checked screenshots at
+2560x1080 and 1440x1080; Aires was captured at 1920x1080. Artwork and camera
+share the fitted 16:9 area with black letterbox bars. Opened Accessory afterwards
+and confirmed its existing camera and interactable state. Existing character
+poses and weapon models are retained; weapon list/status remain dummy artwork.
+Escape is wired to the same gated Back method but physical keyboard input was
+not simulated. This is an Editor smoke check, not a standalone player build.
+
+Evidence is in C:/Users/Hyperlore14/Documents/Codex/2026-10-09/assets-spain-ui-gunmenu:
+work/gunmenu-integration contains compilation.log, editmode-results.json,
+playmode-gunmenu-results.json, playmode-basement-initial.json,
+playmode-accessory-retry.json and playmode-accessory-final.json. The outputs
+folder contains Basement-GunMenu-Aires.png and the two Roma aspect-ratio captures.
+
+Final state: Play Mode stopped, GameSetup clean, original Game View size restored.
+Save JSON files were backed up before manual runtime verification and checked
+against that backup afterwards. Console history retains pre-existing gameplay
+errors and Pipeline timeout diagnostics from Editor transitions; no clean-Console
+claim is made. Authoring documentation is updated in PREFABS_AND_AUTHORING.md.
+
+## Live GunMenu weapon selection (2026-10-10)
+
+Compilation: CheckAssemblyBuild.ps1 passed with 0 errors and 106 warnings after
+final changes. Unity compiled runtime, Editor and test assemblies successfully.
+The final additions to tooltip presentation refresh only TMP material bindings
+following the tooltip's forced Canvas rebuild; they were checked visually.
+
+Automated checks: Basement EditMode 17/17 passed. Basement PlayMode 7/7 passed,
+including a new WeaponsEquipPersistAndRejectOtherOwner case; after UI polish the
+three GunMenu PlayMode tests were rerun and passed 3/3. PlayMode used the 640x360
+Game View to avoid the existing frame-sensitive Accessory fade assertion, then
+restored Full HD. The new test uses save slot 907132 with backup/restore, checks
+camera input gating, real equipment assignment, two separate instances of the
+same gun, rejection of another owner's gun and missing IDs, duplicate-click
+suppression, event counts, disk equipment persistence, details/Back behavior,
+reopen without duplicated cards and an empty inventory. Existing camera,
+Accessory and animation regression tests remain passing.
+
+Runtime smoke in the production GameSetup -> Basement flow: the actual EQUIPMENT
+Button.onClick loaded 21 weapon cards for Aires. Invoking a free card's Button
+changed SMG_GR01 to RomaGun instance e901a9cdb42b4609a6aa9788b32b51a9; both the
+BasementWeaponPresentation model and displayed weapon stats matched. Back restored
+the status Canvas and displayed character damage 32. Reloading Basement preserved
+that exact assigned instance and model. The grid raycast hit the card and viewport;
+a scroll event moved normalized position from 1 to 0.70037. Information displayed
+the existing tooltip, including affixes. Screenshots were reviewed at Full HD.
+The earlier fitted camera/artboard aspect policy is retained; a standalone build,
+physical keyboard input and a full combat playthrough were not performed.
+
+Evidence: C:/Users/Hyperlore14/Documents/Codex/2026-10-09/assets-spain-ui-gunmenu/
+work/gunmenu-weapons contains compilation.log, editmode-results.json,
+playmode-results.json, playmode-final.json, runtime-change.json and
+runtime-reload.json. The outputs folder contains Basement-GunMenu-Weapons.png
+and Basement-GunMenu-WeaponDetails.png. Authoring documentation is updated in
+PREFABS_AND_AUTHORING.md under Live weapons in Basement GunMenu.
+Final tooltip verification used the production ToggleDetails path after a fresh
+Play Mode start and again after closing/reopening: header stats, selection prompt
+and affix tooltip remained visible. TMP base materials are rebound before showing
+details and refreshed on the following frame after the forced layout pass.
+Play Mode is stopped. All 23 backed-up save JSON files match their pre-test hashes;
+only slot_0_equipment.json required restoration, and no slot 907132 files remain.
+Unity reports no script compilation failure. GameSetup remains marked dirty by
+the Editor after Play Mode; it was left open without discarding or saving that state.
+
+GunMenu list reference refinement (2026-10-10): changed only the card and screen
+prefabs through PrefabUtility. Reviewed Full HD screenshot with 21 real weapon
+cards; Button.onClick equipped RomaGun and updated the held model/stats. ScrollRect
+moved normalized position from 1 to 0.70037. No runtime C# changed, so assembly build
+and automated suites were not rerun; Unity reported no compilation failure.
+The initial smoke helper ran before party initialization and was rerun successfully
+after Basement loaded. Play Mode stopped; all 23 save JSON files match the fresh
+pre-test backup. Screenshot: outputs/Basement-GunMenu-List-Reference.png in the
+Codex assets-spain-ui-gunmenu task directory. Documentation updated.
+
+GunMenu bottom clipping correction (2026-10-10): prefab-only viewport/rail height
+change through Unity API. Full HD top and bottom scroll screenshots confirmed no
+cards protrude below the lower-left frame. Runtime contained 21 cards, scrolling
+changed normalized position from 1 to 0.751553, and an outside-viewport raycast at
+local (50,-690) did not hit a weapon card. No gameplay C# changed; automated suites
+and assembly build were not rerun. Play Mode stopped. Evidence is in work/gunmenu-clip
+and outputs/Basement-GunMenu-Clipped.png within the Codex task directory.
+
+## GunMenu hover inspection and weapon drag (2026-10-10)
+
+CheckAssemblyBuild.ps1 passed: 0 errors, 106 warnings. Unity compiled runtime and
+Editor fixture changes. Scoped GunMenu EditMode authoring test passed 1/1, and
+final scoped GunMenu PlayMode suite passed 3/3. Existing assignment test now covers
+immediate hover highlight, 0.55-second delayed tooltip, exit cancellation, hovered
+item ownership, hiding details on drag, outside-drop cancellation, rejecting an
+occupied weapon, slot drop equipping/saving exactly once and an inert Information
+action. Teardown exposed an inactive-object coroutine error; the header refresh
+now checks activeInHierarchy before starting, and the regression suite passes.
+
+Production Basement smoke used ExecuteEvents pointer/drag/drop handlers with the
+real 21-card inventory. The equipped-slot hit area received raycasts, the drag
+image did not block them, and dropping changed the assigned instance/model/stats.
+Hovering a RomaGun card displayed its own Rare +6 affix details while another gun
+remained equipped. Equipped-slot hover was also verified. Full HD screenshots
+confirmed the white dashed border and tooltip; the dash mesh had 120 vertices and
+was not culled. Missing CanvasRenderer on the first authored outline was corrected
+and added to automated coverage. Information is non-interactable with no callbacks.
+
+Evidence: work/gunmenu-pointer/build.log and playmode-results.json in the Codex
+assets-spain-ui-gunmenu task directory; outputs/Basement-GunMenu-Hover.png and
+Basement-GunMenu-HoverOutline.png. Play Mode stopped and Full HD restored. Runtime
+verification used dispatched Unity pointer events, not physical mouse automation;
+a standalone build and full combat playthrough were not run. Authoring docs updated.
+All 23 pre-smoke save JSON files match their backup hashes after restoring only slot_0_equipment.json.
+
+## GunMenu drag/owner visual parity (2026-10-10)
+
+Compilation: CheckAssemblyBuild.ps1 passed with 0 errors and 107 warnings. Unity
+reported no script compilation failure. Scoped GunMenu EditMode authoring test
+passed 1/1; scoped PlayMode suite passed 3/3. The equipment fixture now checks
+source alpha 0.35 while dragging, pointer offset (20,-20), opacity restoration on
+outside drop, successful drop and close, plus unassigned/assigned owner badge
+transitions. It verifies database portrait resolution for an owner outside the
+party and the selected character's portrait after equipment changes.
+
+Runtime: production GameSetup -> Basement flow loaded 21 weapon cards. Dispatched
+pointer drag events showed alpha 0.35, exact Full HD pointer offset (20,-20), and
+8 active owner badges; ending the drag returned all source alphas to 1. Full HD
+screenshot reviewed: outputs/Basement-GunMenu-DragParity.png in the Codex task.
+Build log and test result JSON are in work/gunmenu-parity. No manual equip was
+performed in this smoke check; all 23 save JSON files match their pre-smoke hashes.
+Play Mode stopped; the previous play-mode start-scene setting was restored and
+RectorDefensiveBlock remains the active clean edit scene. Authoring docs updated.
+Physical mouse input and a standalone build were not exercised.
+
+GunMenu list reordering validation (2026-10-10): CheckAssemblyBuild.ps1 passed
+with 0 errors / 107 warnings. Unity compiled the Editor fixture; scoped GunMenu
+EditMode passed 1/1 and PlayMode passed 3/3. WeaponsEquipPersistAndRejectOtherOwner
+now covers owned/current weapon drag, card-to-card swaps over filtered inventory
+gaps, self-drop, saved order, portrait rebinding, unchanged equipped instance and
+rejected equip of another owner's weapon. Production GameSetup -> Basement ->
+EQUIPMENT smoke dispatched begin-drag/drag/drop/end-drag events through actual
+raycast targets: Dorothy's weapon swapped inventory indices 1 and 0, its portrait
+followed, 8 owner badges remained, source faded/restored, order saved, and Aires's
+FenoGun and ownership assignments stayed unchanged. Screenshot captured after
+swap. This is EventSystem dispatch, not physical mouse automation. Play Mode was
+stopped, original RectorDefensiveBlock edit scene/start-scene setting retained,
+and smoke-test save changes restored from a fresh pre-run backup.
+
+## Basement Supply preview validation (2026-10-15)
+
+Target scene: `Assets/Scenes/Test Supply.unity`, using its existing Neria and
+Supply camera. No production Basement/shop scene or save schema is migrated.
+
+- `CheckAssemblyBuild.ps1`: passed, 0 errors / 110 warnings from the existing
+  project dependencies and sources. Unity also compiled the Editor fixture and
+  the new test assemblies without source errors.
+- EditMode filter `BasementSupplyTests`: passed 1/1. Checks serialized bindings,
+  disabled/unwired BUY, no inventory/shop service in the prefab, seven-column
+  grid, bottom scroll clearance, sprite imports, scaling and Build Settings.
+- PlayMode filter `BasementSupplyPlayModeTests`: covers null/duplicate entries,
+  selection, category changes, repeated BACK/open, hidden-item rejection,
+  missing artwork, long-description scrolling, null database and empty states.
+  Results are recorded under `BuildArtifacts/BasementSupply` outside Assets.
+- `AgentScripts/BasementSupplyRuntimeAudit.cs`, entry `Aspect(width,height)`,
+  runs in Play Mode through Unity MCP. It selects the actual Game View size,
+  dispatches clicks to EventSystem raycast hits (cards, all three tabs, final
+  row, BACK and OPEN SUPPLY), checks disabled BUY and unchanged save-file hashes,
+  and captures the composited screen outside Assets. Required sizes: 1920x1080,
+  1280x720, 1920x1200, 2560x1080. This is event dispatch, not physical mouse input.
+
+The first Full HD smoke displayed 23 unique database items and the existing
+character/camera correctly, with no new Console errors. Its visual scroll check
+identified the clipped lower-left edge of the rotated viewport; 200px bottom
+padding now lets the final row scroll above that edge. The original short-list
+test expected normalized scroll = 1 even when the content was shorter than its
+viewport; the assertion now checks the actual top-anchored content position.
+
+Final validation: after the Save dialog was resolved, the corrected PlayMode
+suite passed 2/2. EditMode passed 1/1. Results are saved in
+`BuildArtifacts/BasementSupply/editmode-results.json` and `playmode-results.json`.
+The final assembly check also passed with 0 errors / 110 warnings (`build.log`).
+
+All four resolution audits passed selection, category changes, final-row access,
+BACK/reopen, disabled BUY and unchanged save hashes (`runtime-audit.txt`). Visual
+inspection identified character clipping on ultrawide displays; the preview-only
+camera viewport now fits the centered 16:9 artboard. All four audits passed again
+after this fix. Final screenshots are `Supply-1920x1080.png`, `Supply-1280x720.png`,
+`Supply-1920x1200.png` and `Supply-2560x1080.png` in that evidence directory.
+Game View was restored to Full HD and Play Mode stopped.
+
+The final Console still contains Editor exceptions from SoloAnimationEditor,
+AnimatorInspector and TransformInspector, plus a Pipeline MCP request timeout.
+Their stacks do not point to Supply scripts; a completely error-free Console
+cannot be claimed. No Supply runtime error was captured during the audits.
+Physical mouse/keyboard input (including Escape) and a standalone build were
+not exercised; click verification used real raycast hits and EventSystem dispatch.
+
+BUY hover follow-up: `BasementSupplyBuyHover` hides the outline by default and
+on disable, and shows it only during pointer hover. Assembly check passed with
+0 errors / 110 warnings (`buy-hover-build.log`); Unity compilation passed and
+the existing PlayMode suite passed 2/2 again. In Test Supply Play Mode,
+`BasementSupplyBuyHoverSetup.Verify` passed actual BUY raycast targeting,
+pointer enter/exit and close/reopen reset, with BUY still disabled and unwired.
+This used EventSystem dispatch rather than physical mouse input. The same
+Animancer/Unity Inspector exceptions remain; no Supply error was captured.
+
+Category artwork follow-up: replaced the generated tab appearance with supplied
+sprites and a persistent white selection frame. Unity compiled successfully;
+PlayMode selection/filter/open-close and incomplete-data tests passed 2/2.
+`BasementSupplyCategorySetup.Verify` passed actual exposed-tab raycasts for all
+three categories, exclusive selection frames, expansion/retraction and reopening.
+Screenshots `Category-0.png`, `Category-1.png`, `Category-2.png` were inspected.
+The runtime aspect audit now clicks exposed strips because tab centers may be
+covered by another tab. No physical mouse automation was performed.
+Final category build: 0 errors / 110 warnings (`category-build.log`). The updated
+aspect audit passed again at all four required sizes with unchanged save hashes;
+Game View was restored to 1920x1080 and Play Mode stopped. Console still contains
+the previously identified Animancer/Unity Inspector exceptions, with no Supply
+runtime error during the final audit.
+
+## Basement Supply room transition validation (2026-10-15)
+
+Run the PlayMode filter `BasementSupply` for the existing two browser tests and
+three new room-transition tests. The room fixture checks Shop entry, camera
+switch/restore only at full black, unscaled fades at timeScale zero, ignored
+repeated commands, BACK routing, exact enabled-state restoration, interrupted
+opening/open/closing, map-mode rejection and missing-binding rejection. The
+missing-binding test intentionally expects one configuration error log.
+
+`AgentScripts/BasementSupplyRuntimeAudit.cs`, entry RoomAspect(width,height), runs
+after GameSetup has loaded Basement. It dispatches real EventSystem raycast hits
+to SHOP, categories, final item and BACK; checks camera/UI/party restoration,
+input locking, disabled BUY, absent preview launcher, no extra AudioListener,
+missing scripts and unchanged save-file hashes. Captures are named
+`BuildArtifacts/BasementSupply/Basement-Room-WxH.png`; audit output is in
+`room-runtime-audit.txt`. Shader compilation is awaited before capturing because
+Unity briefly displayed cyan replacement shaders on first activation.
+
+Runtime audits passed at 1920x1080, 1280x720, 1920x1200 and 2560x1080 after fixing
+the existing Basement toolbar's constant-pixel scaling. All four captures were
+visually inspected. A separate existing CharacterMenuRuntimeAudit run passed
+status, Equipment, Gun, Skill and return flows after a Supply visit; its temporary
+party selection and gold balance were restored by that audit.
+
+Compilation: CheckAssemblyBuild.ps1 passed with 0 errors / 110 warnings
+(`room-build.log`), and Unity compiled the Editor/test assemblies. EditMode
+BasementSupplyTests passed 1/1. PlayMode results are in `room-playmode-results.json`.
+The final PlayMode rerun passed 5/5, including EventSystem navigation suppression
+and selection restoration. A final production Full HD visit also passed after
+that change. BACK and RequestClose were exercised; sending an Editor Game View
+key event did not inject a legacy Input Escape press, so physical Escape remains
+unverified. Its Update path calls the same tested RequestClose method.
+Physical mouse/keyboard input and a standalone build are not exercised by these
+EventSystem audits. Existing Animancer/Unity Inspector exceptions are separate
+from Supply validation; MCP timeouts also occurred while Test Runner was blocked,
+then the completed results were recovered. Do not report the entire Console as
+error-free. The explicit missing-binding test's expected log is not a regression.
+
+### Supplied item selection frame (2026-10-15)
+
+Replaced the Supply-only procedural dashed graphic with the original red frame
+sprite. No runtime/default-assembly source changed; CheckAssemblyBuild and Test
+Runner were not rerun for this artwork-only update. The MCP authoring script
+compiled successfully with no diagnostics.
+
+Play Mode `BasementSupplyRuntimeAudit.RoomAspect` passed again at 1920x1080,
+1280x720, 1920x1200 and 2560x1080: category/card raycasts, final item, reopening,
+BACK transition, unchanged saves and disabled BUY. An additional EventSystem
+click selected the boots and confirmed exactly one active selection, with every
+frame's raycastTarget disabled. The Screen and Room prefabs each contain 23
+updated cached cards. Visual evidence: `BuildArtifacts/BasementSupply/Selection-Reference-1920x1080.png`
+and the four `Basement-Room-WxH.png` captures. Existing Animancer SoloAnimationEditor,
+AnimatorInspector and TransformInspector exceptions remain separate from this change.

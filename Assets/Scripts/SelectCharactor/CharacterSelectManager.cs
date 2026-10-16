@@ -19,6 +19,8 @@ public class CharacterSelectManager : MonoBehaviour
         HandleClickAndDrag();
     }
 
+    void OnDisable() => CancelDrag();
+
     public void CancelDrag()
     {
         if (_selected != null) ResetY();
@@ -78,6 +80,7 @@ public class CharacterSelectManager : MonoBehaviour
             }
 
             _selectedSelectable.SetPicked(true);
+            _selectedSelectable.BeginDrag(Camera.main, Input.mousePosition);
             PlayPickupCharacterVoice(_selectedSelectable);
         }
     }
@@ -126,6 +129,7 @@ public class CharacterSelectManager : MonoBehaviour
 
     void DragFollowGround()
     {
+        _selectedSelectable.UpdateDrag(Input.mousePosition);
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 1000f, groundLayer))

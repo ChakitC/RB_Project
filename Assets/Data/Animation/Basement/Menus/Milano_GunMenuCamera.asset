@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33db7c17d36d893438765545e01368f9, type: 3}
+  m_Name: Milano_GunMenuCamera
+  m_EditorClassIdentifier: Assembly-CSharp::BasementMenuCameraPresetSO
+  sourceFbx: {fileID: 919132149155446097, guid: 2c73d997610324f4d892b0ad17d66af1, type: 3}
+  cameraPath: Milano Camera CharacterGun Menu
+  position: {x: 0.9101887, y: 1.8655365, z: 2.2611377}
+  rotation: {x: -0.0790748, y: -0.9424578, z: 0.11116971, w: 0.30522415}
+  lens:
+    FieldOfView: 49.55028
+    OrthographicSize: 0.0046153865
+    NearClipPlane: 0.099999994
+    FarClipPlane: 1000
+    Dutch: 0
+    ModeOverride: 3
+    PhysicalProperties:
+      GateFit: 2
+      SensorSize: {x: 36, y: 24}
+      LensShift: {x: 0, y: 0}
+      FocusDistance: 10
+      Iso: 200
+      ShutterSpeed: 0.005
+      Aperture: 16
+      BladeCount: 5
+      Curvature: {x: 2, y: 11}
+      BarrelClipping: 0.25
+      Anamorphism: 0

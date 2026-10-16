@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 202749202924340033, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 6066458133561170235, guid: 27694573f02cf864493d4799a6c90543, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.761
@@ -48,6 +52,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6604429701215309218, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5677449
+      objectReference: {fileID: 0}
+    - target: {fileID: 6604429701215309218, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.40044472
+      objectReference: {fileID: 0}
+    - target: {fileID: 6604429701215309218, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.57677656
+      objectReference: {fileID: 0}
+    - target: {fileID: 6604429701215309218, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.429696
+      objectReference: {fileID: 0}
     - target: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
       propertyPath: m_Name
       value: Noemi Variant
@@ -59,7 +79,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1007854843890977646}
+    - targetCorrespondingSourceObject: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9196052851876381600}
   m_SourcePrefab: {fileID: 100100000, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+--- !u!4 &4659041069484849732 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6312401308168708518, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+  m_PrefabInstance: {fileID: 1671427688646237154}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5208880862330083427 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6880289854966530945, guid: 27694573f02cf864493d4799a6c90543, type: 3}
@@ -78,3 +106,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   def: {fileID: 11400000, guid: b67c36477807dce418a129c31f6a3a46, type: 2}
+--- !u!114 &9196052851876381600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5208880862330083427}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06e614437be102c419fbdf5d069765c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BasementDragRig
+  head: {fileID: 4659041069484849732}
+  leftFoot: {fileID: 5518527418475255360}
+  rightFoot: {fileID: 6553959048054428317}
+  gripOffset: {x: 0, y: 0, z: 0}
+--- !u!4 &5518527418475255360 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6604429701215309218, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+  m_PrefabInstance: {fileID: 1671427688646237154}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6553959048054428317 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5604252166807030143, guid: 27694573f02cf864493d4799a6c90543, type: 3}
+  m_PrefabInstance: {fileID: 1671427688646237154}
+  m_PrefabAsset: {fileID: 0}

@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dd4ba26f2485304db6fdceb7ff294e8, type: 3}
+  m_Name: Milano_BasementAnimation
+  m_EditorClassIdentifier: Assembly-CSharp::BasementAnimationProfileSO
+  idle:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -8853062798856045536, guid: cbc14a58df1a3a74eaa1058d09a71c3a, type: 3}
+    _NormalizedStartTime: 0
+  pickup:
+    _FadeDuration: 0.013789177
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 2098114265036632977, guid: b4a40cfa374e275439b6d1f9eb0dfef1, type: 3}
+    _NormalizedStartTime: 0
+  inMenuIdle:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: -655830814078093314, guid: 3151223a21995554ba2d363a595f386a, type: 3}
+    _NormalizedStartTime: 0
+  menus:
+  - menu: {fileID: 11400000, guid: 2b38eb41d331aef4c958747cacde16d6, type: 2}
+    animation:
+      _FadeDuration: 0.66666675
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 6366803921170030402, guid: 08c1e475359fbad45961d4ee112ed3ab, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 11400000, guid: a8d65fe87dca9af4e8699d1294f3164b, type: 2}
+  - menu: {fileID: 11400000, guid: 39d04e2a366c2c54b8a5d937d9a96a05, type: 2}
+    animation:
+      _FadeDuration: 0.66666675
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 3186700139899345005, guid: 9e054a14b61551c4e87e16bb8680e13c, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 11400000, guid: 302eca6384d5a1d48bdecc3e16d338a3, type: 2}
+  - menu: {fileID: 11400000, guid: b1adb1d015cfd344d9aa603aa10c27ed, type: 2}
+    animation:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -655830814078093314, guid: 3151223a21995554ba2d363a595f386a, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 11400000, guid: e19b4fa38cfe17144be3f7ef6f3abf22, type: 2}
+  references:
+    version: 2
+    RefIds: []

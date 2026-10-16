@@ -1,5 +1,336 @@
 # Prefabs And Authoring
 
+## Character Menu Mind layout (2026-10-10)
+
+`Assets/Spain/UI/Character Menu Mind/CharacterMenuMind.prefab` is the uGUI layout
+assembled from the 16 supplied PSD layer exports. It is nested in
+`Assets/Prefab/User Interface/UpgradUI.prefab`, which retains the existing
+`UILoadLaval` entry point and inactive legacy children. The Basement scene uses
+this integrated host for every character. Its overlay Canvas uses a 1920x1080
+reference resolution and Expand scaling. The centered Artboard has fixed
+1920x1080 dimensions; `BasementCharacterMenuScreenController.LateUpdate` scales
+the whole board to fit its parent so sprites and TMP text scale together.
+Keep its AspectRatioFitter disabled and both anchors at (0.5, 0.5).
+All PNGs retain their full-canvas positions; do not use Set Native Size on the
+individual layers. Sprite imports use Single mode, no mipmaps, and uncompressed
+2048 maximum resolution to preserve the typography and transparent edges.
+
+`Artboard/EquipButton`, `GunButton`, and `SkillButton` contain bounded transparent
+hit targets, Button components, and explicit up/down navigation. The host binds
+EQUIP to Accessory, GUN to weapon equipment and SKILL to Active Skill Tree through
+the existing `UILoadLaval` actions. Each Label uses a UI Mask to clip its
+Halftone child to the letter shapes, restoring the PSD clipping effect. Decorative
+images do not receive raycasts. CharacterStatus and CharacterLogo hold the right
+panel layers. Name, Level, XP, eight stats, Gold and UPLEVEL use existing character
+and inventory data. BACK closes the status session. The center remains transparent
+over the Basement environment; use the scene EventSystem, not an embedded one.
+The layout CanvasGroup starts hidden and the host controller reveals it after
+the camera transition. Bind owner, camera manager, selection, group, artboard,
+definition, background roots and all four letterbox bars on the host controller.
+
+`CharacterMenu.asset` uses `Aires_CharacterMenuCamera.asset`, baked from
+`Assets/Character/Aires/Aires_CharacterMenu_Camera.fbx`, path
+`Camera CharacterStatus Menu`. Register the scene `CharacterMenuCamera` in
+`CameraManager.menuCameras`. Edit each character's `BasementAnimationProfileSO`
+under **Menus > CharacterMenu**: Animation owns the status clip/fade/speed/start
+time and Camera references that character's `<Name>_CharacterMenuCamera.asset`.
+All eight production profiles have this entry and separate camera assets, initially
+copied from the existing shot. Adjusting one character's camera does not alter the
+others. The menu definition's Default Camera remains a fallback for missing overrides.
+Aires uses looping `Aires_CharacterMenu_Idle`; other characters retain their previous
+status transitions. The old `inMenuIdle` field is hidden but retained for serialized
+compatibility with legacy status hosts. The integrated screen exclusively uses
+its Menus entry. `AgentScripts/CharacterMenuProfileMigration.cs` migrates missing
+entries/cameras without replacing existing ones. Null material slots in
+`AiresSelect.prefab` were restored from
+the corresponding source renderers without replacing its animation/weapon overrides.
+
+Status is the parent presentation. Accessory/GunMenu return directly to its camera
+and pose; Skill Tree temporarily hides/disables the status UI within that session.
+Only closing Status restores formation, background UI and selection. See
+`VALIDATION.md`, Character Menu Mind integration, for automated and runtime results.
+The return animation uses the character profile's Idle Fade Duration. Roma, Roger
+and Milano now use 0.25 seconds, matching the other production profiles; their
+previous 0/near-zero values visibly snapped on menu exit. This setting also applies
+when returning to Idle from Pickup. Pickup fade settings are unchanged.
+
+## Basement menu cameras and animation (2026-10-10)
+
+Menu camera blends track the selected character (2026-10-11). CameraManager's
+`Menu Blend Look At Offset` selects a character-local framing point, default (0, 1.1, 0).
+It uses presentation-root position/rotation and ignores imported scale. Runtime-only
+`BasementMenuBlendTarget` extensions supply this reference to formation and visited
+menu cameras. Preset endpoints remain unchanged; generated camera states represent
+authored roll as Dutch so Cinemachine preserves tilt while blending around the target.
+The extension caches authored orientation separately: Cinemachine writes the upright
+RawOrientation back to its Transform each frame. Reading roll from that output would
+erase the outgoing camera's tilt and cause a jump at blend start. CameraManager updates
+the cached pose for the active camera and restores it when removing the extension.
+Extensions are removed on session close/interruption. No manual aim component is needed.
+
+`AiresSelect.prefab` overrides the inherited
+`SubmachineGun_02_Right_EditorPreview` GameObject to inactive. This placement preview
+comes from `Assets/Prefab/Charactor/Aires.prefab`; keep it disabled in the Basement
+variant because `BasementWeaponPresentation` mounts the equipped weapon at runtime.
+Enabling both produces two overlapping guns under `Weapon.R`.
+
+Accessory and GunMenu now use `BasementMenuDefinitionSO` assets in
+`Assets/Data/Animation/Basement/Menus`. Each definition owns its default camera,
+EaseInOut blend duration, final UI reveal duration and other-character visibility.
+The defaults remain 0.8s / 0.5s / 0.45s. Screen-local legacy fade fields are retained
+for serialized compatibility and hidden from the Inspector; edit the menu definition
+for current timing. Both screen CanvasScalers use Expand with a 1920x1080 reference
+and a fitted 16:9 artboard, keeping authored pixel offsets aligned on wide/tall displays.
+Letterbox bars render above the artboard and intercept hits outside the visible area.
+
+`CameraManager.menuCameras` binds each definition to a scene CinemachineCamera.
+The same object owns `BasementMenuPresentationController`, which handles one menu
+session, backgrounds, selection/drag locking, letterbox and ally material restoration.
+Screen controllers implement `IBasementMenuView` and retain inventory operations.
+Do not add an Animator/Animancer or weapon spawner to a menu UI prefab.
+
+### Blender camera workflow
+
+1. Author the character origin and static camera in the same Blender coordinate
+   system. Export the camera as FBX; preserve the imported Unity model hierarchy.
+2. Create **Game > Basement > Menu Camera Preset**, assign Source FBX and select
+   the Camera path. Multiple cameras require an explicit selection.
+3. Press **Bake Camera** in Edit Mode. The preset stores camera position/rotation
+   relative to the imported model root, including intermediate parent transforms,
+   plus Cinemachine lens settings (physical sensor, gate fit, shift, clipping and FOV).
+   Reimporting the FBX does not overwrite the baked preset; press Bake again deliberately.
+4. Assign the preset to the menu default or a character's menu entry. No reference
+   FBX camera is instantiated/enabled during play. Inspect the resulting shot at 16:9.
+
+`Aires_GunMenuCamera.asset` is baked from
+`Assets/Spain/UI/Gunmenu/Aires_camera_Gunmenumene.fbx`, camera path `Camera Gun Menu`:
+position (-0.399025, 2.098622, 1.953272), Euler (13.439820, 189.280000, 0.000014),
+26mm lens, 36x24 sensor, Horizontal gate fit, zero shift, near/far 0.1/1000.
+Its imported root has identity rotation and scale. Avoid applying Blender/FBX axis
+or scale conversion a second time. The runtime pose uses the stable
+`PartySlot.PresentationRoot`, never an animated bone.
+
+### Per-character menu animation
+
+Use the existing `CharacterStats.basementAnimationProfile`. Its `menus` array
+contains a menu definition, a `ClipTransition` and an optional camera override.
+Use one entry per menu. A missing entry/camera uses the menu default camera;
+a missing clip preserves the current pose without restarting it. Duplicate menu
+entries are reported and resolve to defaults instead of selecting an arbitrary one.
+The original Aires profile has a GunMenu camera override as the first authoring example.
+
+### Current character profiles (2026-10-10)
+
+Milano menu assets updated (2026-10-12): `Milano_BasementAnimation.asset` uses
+the clips in `Assets/Character/Milano`: `Milano_CharacterMenu_Idle`,
+`Milano_EquipMenu_Idle` and `Milano_GunMenu_Idle` for CharacterMenu, Accessory
+and GunMenu respectively. All three have Loop Time enabled; legacy `inMenuIdle`
+also uses Milano's CharacterMenu clip. Existing transition timing and formation
+Idle/Pickup remain. The individual `Milano_CharacterMenuCamera`,
+`Milano_EquipMenuCamera` and `Milano_GunMenuCamera` presets are baked from
+the CharacterStatus, Equip and CharacterGun FBX cameras in Milano's `Menu Camera`
+folder. The gun source filename intentionally retains `Menuu.fbx`. These assignments
+supersede Milano's borrowed Aires clips below. Re-bake after source camera changes.
+
+Visual compatibility remains unresolved: the supplied menu FBXs have 164 face
+renderer bones, including 13 `cc_fs_999c93b5a182_*` bones absent from the current
+151-bone `Milano.fbx`/MilanoSelect model. Runtime screenshots show blank eyes in
+CharacterMenu and missing/deformed face geometry in Equip/Gun. The references are
+configured, but this content is not visually accepted; export animations against
+the production rig or deliberately migrate the model and its skin bindings together.
+
+Feno menu assets updated (2026-10-11): `Feno_BasementAnimation.asset` now uses
+`Assets/Character/Feno/Feno_CharacterMenu_Idle.fbx`, `Feno_AccessoryMenu_Idle.fbx`
+and `Feno_GunMenu_Idle.fbx` for CharacterMenu, Accessory and GunMenu respectively.
+All three imported clips have Loop Time enabled; the legacy `inMenuIdle` also uses
+Feno's CharacterMenu clip. Existing transition timing and formation Idle/Pickup remain.
+The three `Menus/Feno_*MenuCamera.asset` presets are baked from the matching FBX
+cameras in `Assets/Character/Feno/Menu Camera` (CharacterStatus, Accessory,
+CharacterGun). These assignments supersede the borrowed Aires menu clips below
+for Feno. Re-bake the individual preset after changing its source camera.
+
+The shared trial has ended. All eight production CharacterStats again reference
+their own `<Character>_BasementAnimation.asset`. Original formation idle/pickup
+and Animator paths are preserved. Aires additionally keeps the supplied Inmenu,
+Accessory and GunMenu transitions and cameras in `Aires_BasementAnimation.asset`.
+The other seven profiles now use Aires clips only for previously empty Inmenu,
+Accessory and GunMenu transitions. Their existing formation Idle/Pickup and
+camera overrides are preserved; newly added menu entries use the menu's default
+camera. These are separately editable transitions in each character's own profile,
+not a shared profile reference or automatic fallback link to Aires. The known
+cross-rig face/weapon limitations below still apply to these borrowed menu clips.
+`Shared_Aires_MenuTest.asset` remains available but is
+not assigned to production characters.
+
+The retained shared test asset contains the following configuration:
+Formation Idle uses `Aires_Formation_Idle`; the separate `inMenuIdle` transition
+uses `Aires_Inmenu_Idle` only while the character information panel is open.
+Accessory uses `Aires_AccessoryMenu_Idle`; GunMenu uses
+the supplied `Aires_GunMenu_Idle`. These three FBX clips have Loop Time enabled.
+Transitions use 0.25s fade, speed 1 and start time 0. Pickup retains
+`Aires_Formation_Pickup` from the cloned Aires profile. Menu entries reference their
+existing default camera presets. Each character keeps its own `basementAnimatorPath`.
+
+This was a temporary content configuration, not automatic Generic-rig retargeting.
+Main body paths overlap, but clothing/face paths differ: the Accessory clip has
+211 Transform paths, with 71-198 matching paths across these models. Runtime shots
+show Milano's face becoming malformed and some weapon grips not aligning. Use this
+profile for menu/transition tests, not final character-art acceptance. To restore
+individual content, assign the preserved `<Character>_BasementAnimation.asset`
+to that character's `basementAnimationProfile`; no prefab changes are required.
+The `Assets/Tests/DefensiveBlock/Aires.Test.asset` fixture keeps its previous profile.
+
+The state flow is **Formation Idle <-> Pickup**, **Formation Idle -> character
+information (In menu) -> Accessory/GunMenu**. Back from either submenu restores
+In menu; closing the information panel restores the current formation/pickup state.
+`UILoadLaval` owns that parent session through `SetInCharacterMenu`, including slot
+rebinding, preview rebuild and disable cleanup. Submenus hide its Canvas without
+disabling its GameObject, so the parent pose remains the return destination.
+A profile without `inMenuIdle` falls back to its formation/pickup pose.
+
+Assign the authored AnimationClip and its Fade Duration, Speed and Start Time.
+Looping/non-looping behavior follows the clip; non-looping states hold naturally.
+Menu playback temporarily uses unscaled time. Selection commands during the menu
+update the desired picked state without replacing its pose. Closing crossfades back
+to that selected/idle state and restores the prior update mode. Mounted weapon changes
+continue through `BasementWeaponPresentation` without restarting the menu animation.
+
+For a new screen, create a definition/preset, bind a CinemachineCamera in the manager,
+implement `IBasementMenuView`, then call `TryOpen(definition, slot, view)` and `Close()`.
+The central controller exposes `CanInteract`, `IsTransitioning` and `Owns(view)`.
+Only call Close for the owned view. Active Skill and combat presentation are unchanged.
+
+## Basement character animation
+
+`Assets/Prefab/CharactorSelect/BasementCharacterPresentation.prefab` owns the
+shared `BasementCharacterPresentation`, `BasementAnimationController`,
+`AnimancerComponent` and `BasementWeaponPresentation`, with a `ModelRoot` child. Both `SlotPoint.prefab`'s
+`PartySlotVisualPreview.presentationPrefab` and `CharactorSlotUI.prefab`'s
+`SpawnOnDragOutButton.presentationPrefab` reference this same asset. Each slot or
+drag preview creates its own instance, so picking one cannot affect another.
+The wrappers delegate model creation, animation binding and teardown to this owner.
+
+`BasementCharacterPresentation` is the common entry point: `Build`, `Clear`,
+`SetPicked`, `ResetToIdle`, `ShowWeapon` and `ClearWeapon`. Slot and drag wrappers
+expose their owned `Presentation`; `CharacterSelectable` receives that instance
+through `BindPresentation` and never searches for an animation controller.
+Selection/outline and party saving remain with their existing input/slot modules.
+Definition sync reads the bound presentation's `CurrentDef`, not arbitrary child
+holders (which may belong to outgoing models or decorations).
+
+`PartySlotVisualPreview` and `CharacterDragWeaponPreview` resolve equipment data
+using their save slot/inventory context, then pass the selected `GunConfig` to
+`ShowWeapon`. Only `BasementWeaponPresentation` creates and destroys mounted objects.
+Configure fallback hand names and offsets on that component in the shared prefab;
+per-weapon `GunConfig` mount overrides still take precedence. Repeated refreshes
+reuse the mounted objects; changing models clears weapons before destroying the
+old skeleton. The legacy drag `SetAnimator` API is retained for compatibility;
+the presentation's live Animator is the authoritative binding.
+
+Each playable `CharacterStats` holds `CharacterPrefabBasement` (model only),
+`basementAnimationProfile`, and `basementAnimatorPath` (exact path relative to that
+model; empty means its root). The eight model prefabs contain no Basement controller
+or Animancer component. Their separate `BasementAnimationProfileSO` assets live in
+`Assets/Data/Animation/Basement`.
+Assign Idle and Pickup transitions there; Fade Duration is the time to enter
+that pose. Initial poses play immediately: slots start in Idle, roster previews
+start in Pickup without creating or evaluating Idle first. Clip loop settings are preserved;
+a non-looping clip holds its last frame until the selection changes.
+Both transitions use an explicit Start Time of `0x` to restart on entry, including
+when reversing an unfinished blend. Repeated `SetPicked` commands do not replay.
+`ClipTransition` owns Fade Duration, Speed and Start Time; the controller uses
+`Play(transition)` and only overrides fade to zero for the initial pose or explicit Idle reset. If an
+author changes Start Time, reset uses that authored initial pose too.
+
+Non-looping clips hold their final pose naturally while their state time continues
+to advance. Do not add an end callback, clamp time or set speed to zero just to
+hold Pickup. This follows the developer's [Playing Animations](https://kybernetik.com.au/animancer/docs/manual/playing/)
+and [End Events](https://kybernetik.com.au/animancer/docs/manual/events/end/) guidance.
+
+Bind the shared controller's Animancer explicitly; leave its Animator and profile
+empty on the shared asset. `Build` binds them from the selected data and resolves
+only the exact Animator path, never the first Animator in the hierarchy.
+The target must match the clip's relative paths. Aires, Feno, Milano and Roger animate
+their named model child; the other four animate the prefab root. Each prefab has
+one enabled Animator with an Avatar, no Runtime Animator Controller, and root
+motion disabled. Outer Animator components on nested layouts remain disabled as
+Basement-only overrides. Do not apply these overrides to shared model prefabs.
+
+`CharacterSelectable.SetPicked` and drag preview selection call the presentation,
+which forwards animation commands to its controller.
+`Build(selected)` retains its existing API and starts new slot models in Idle;
+the new `Build(selected, startPicked)` overload lets roster previews start directly
+in Pickup. The matching animation `Bind` overload sets the initial selection state.
+Refreshing an already-built definition is a no-op: it preserves model, state,
+playback time, blend weights, menu ownership and drag sway. Changing definitions
+still clears the old model/graph. Call `ResetToIdle` explicitly when a reset is wanted.
+Wrappers expose the bound Animator for weapon mounts; they must not call
+Animator.Rebind or set Mecanim parameters. The legacy
+`CharacterSelectable.animator` and `pickedBoolName` fields remain for serialized/API
+compatibility; the latter no longer controls animation. A missing animation binding
+does not cancel selection or its outline. Ambiguous preview controllers are reported
+instead of choosing the first child. Combat Brain/Driver/Profile assets are independent.
+
+Model replacement/clear calls `Unbind` before destroying the old model, destroying
+its Animancer graph/output. The shared owner survives
+model swaps. `SlotPoint.prefab` no longer contains the old authored Roma model.
+Slot refresh and dropping never scan/delete children by name or by the presence
+of `CharacterDefHolder`/`CharacterSelectable`; unrelated children are preserved.
+The public `ClearTemporarySelectObjects` compatibility entry points are now no-ops.
+The existing slot `modelRoot`
+remains `PartySlot.PresentationRoot` for the Accessory camera; do not replace that
+anchor with the animated skeleton. Re-enabling a bound presentation resets to Idle.
+
+Original Basement Controllers are retained as migration references. Dorothy's
+profile takes its clips from its Basement Controller, correcting the former empty
+Battle Controller assignment. Existing per-character blend durations are preserved.
+
+Menu entry takes animation ownership before cancelling formation dragging, so
+selection cleanup cannot play Idle between Pickup and the menu. Child-menu entry
+and return call `SwitchMenu(entry)` directly, preserving unscaled playback and the
+original update-mode restoration state. A missing destination clip retains the
+current pose. `ExitMenu` is reserved for leaving the menu session and then restores
+the current formation/selection pose. Existing transition fade durations still apply.
+
+### Drag sway and model sizes
+
+The shared `BasementCharacterPresentation.prefab` owns `BasementDragSway` and a
+`SwayRoot` above `ModelRoot`. Keep slot roots, labels and menu-camera anchors outside
+that sway root. The model and its mounted weapons rotate together without editing
+animation bones or enabling root motion/physics.
+
+Each of the eight Basement model prefabs has `BasementDragRig` on its root. Bind
+Head, Left Foot and Right Foot explicitly to bones in that model; these are Generic
+rigs, not Humanoid bindings. Grip Offset uses model-local axes and fractions of the
+initial head-to-feet length. Do not include hats, render bounds or weapons in size
+measurement. For a new model, add this component and bind all three bones. A missing
+or foreign binding warns once per model build and leaves ordinary dragging usable
+without sway.
+
+`Build` captures the authored body vector before evaluating either initial animation,
+so Pickup previews do not need a hidden Idle evaluation. `BeginDrag` measures
+its world length including parent/model scale and freezes spring frequency for that
+gesture. Animation crouching cannot change the weight. The live animated head is
+the pivot: each LateUpdate removes the previous sway and compensates the new rotation
+so the grip stays at its unswayed animated position, including scaled parents.
+
+Shared Inspector defaults: Sensitivity **15 degrees per viewport-height/second**,
+Max Angle **20 degrees**, Frequency **2 Hz**, Damping Ratio **0.6**, Reference Height
+**1.29451823** (Roma at normal scale). Effective frequency is
+`clamp(frequency * sqrt(referenceHeight / bodyHeight), 1.4, 2.8)` Hz. Larger models
+therefore swing more slowly. Only horizontal pointer speed drives the spring; the
+rotation axis follows the drag camera's forward direction. Integration uses unscaled
+time and substeps no longer than 1/120 second. Focus changes and frames exceeding
+0.1 second discard the pointer delta to avoid a resume impulse.
+
+Presentation exposes `BeginDrag(Camera, Vector2)`, `UpdateDrag(Vector2)` and
+`EndDrag()`. Formation input forwards through its bound `CharacterSelectable`;
+roster input forwards through `CharacterDragVisualPreview.Presentation`, beginning
+only after placing the spawned preview. No-event frames still damp toward zero.
+Release, cancellation, entering menus, clearing/replacing models and disabling restore
+the original pivot pose and erase spring velocity. Selection-only `SetPicked(true)`
+does not start sway. Placement and party-save rules remain owned by existing inputs.
+
 ## Character passive UI
 
 Assign a prefab with a `PassiveHudView` root to `PassiveDefinition.hudPrefab`.
@@ -4344,3 +4675,265 @@ frame, using existing sprites from `Assets/Spain/Accessory_Icon/Chibi`. Slots
 These are static preview assignments, not runtime inventory bindings. Replace
 the Image sprite or disable the child to change the dummy. Icon anchors preserve
 the reference positions; individual sizes and rotations match the tilted frames.
+
+## Gun menu artwork
+
+`Assets/Spain/UI/Gunmenu/GunMenu.prefab` is a standalone uGUI Canvas using Screen
+Space Overlay and a 1920x1080 Scale With Screen Size reference (match 0.5).
+The Artboard uses Fit In Parent at 16:9, preserving the artwork on wider or
+narrower screens. Instantiate it as a scene root, with one active EventSystem
+and a compatible input module in the host scene.
+
+The 12 separate artwork Images retain their original full-canvas transparent
+padding. Unity back-to-front group order is Guninventory, GunStatus, Slot_Gun,
+Information Button, Back. Within each group the PSD order is reversed. Preserve
+zero offsets, full stretch, and no added rotation on artwork Images. The source
+PNGs are imported as single Full Rect sprites without mipmaps or compression.
+Back/Black.png was copied from the matching Gunmenu PSD export to complete the
+reference. The scene/character background and hidden PSD layer are excluded.
+
+Back/HitArea and Information Button/HitArea contain Buttons with bounded,
+normalized transparent raycast Images. Decorative artwork does not intercept
+pointer input. Button targetGraphics reference their respective artwork Images;
+onClick events remain unwired. Dummy_GunItem and Dummy GunIn slot Icon are static
+preview artwork, and the scroll illustrations do not implement scrolling or
+inventory selection. Gameplay integration is not part of this visual prefab.
+
+Validation: reopened the saved prefab, checked all 12 sprite references and
+missing scripts, rendered Unity camera previews at 1920x1080, 2560x1080, and
+1440x1080, and checked button bounds at each aspect ratio. No new Console errors
+were reported. No project C# sources were changed, no gameplay tests were run,
+and Play Mode integration remains unverified.
+## Basement GunMenu screen
+
+The Basement character status panel's existing EQUIPMENT button still calls
+`UILoadLaval.OpenWeaponEquipment`. Its new `gunMenuScreen` scene reference routes
+that action to `BasementGunMenuScreenController`; do not add a second entry button.
+Callers without the new reference retain the legacy equipment panel. The
+ACCESSORY entry and its picker remain separate.
+
+`Assets/Prefab/User Interface/BasementGunMenuScreen.prefab` is a variant of the
+GunMenu artwork prefab. It adds a hidden CanvasGroup, controller and four black
+letterbox bars. Keep the original 16:9 Artboard and all 12 sprite layers. Back's
+localized HitArea calls the controller's `Back`; Information is reserved and inactive. The live inventory grid, assignment flow and scrolling are
+described below in Live weapons in Basement GunMenu.
+
+The Basement instance binds `cameraManager`, `characterSelection`, and the same
+backgroundRoots as the accessory screen (UI, CanvaCharactorInfo, MapUI). Opening
+uses the selected PartySlot, cancels dragging, caches/disables background Canvas
+and GraphicRaycaster components, and fades the other party members over 0.45s.
+The controller reuses BasementAccessoryRendererFade without editing shared
+materials. Back/Escape works after the opening transition completes; close or
+teardown restores the original enabled states, selection and camera settings.
+The selected character keeps its existing Basement animation and weapon model.
+
+`GunMenuCamera` is a CinemachineCamera in the Basement scene, using the existing
+output camera and brain. `Aires_camera_Gunmenumene.fbx` is an authoring reference
+only. Its root-local camera offset is (-0.399025, 2.098622, 1.953272), with Euler
+(13.439820, 189.280000, 0.000014); apply these relative to PartySlot.PresentationRoot
+without the marker's FBX import-axis rotation or 100x scale. The physical lens is
+26 mm, 36x24 sensor, 49.55028-degree sensor FOV, Horizontal gate fit and zero shift.
+The existing BasementAccessoryBlends asset adds 0.8s EaseInOut rules to/from
+GunMenuCamera. The default 2s map blend and existing accessory rules are retained.
+
+CameraManager owns one presentation session at a time. BeginGunMenuView and
+EndGunMenuView use the same internal transition/lens/viewport restoration as the
+unchanged accessory API. GunMenuViewport and GetGunMenuRevealProgress expose the
+camera's fitted 16:9 viewport and the final 0.5s UI reveal. Menus cannot overlap
+one another or open from the map view. Timing uses unscaled time. Closing during
+a reveal cancels it; missing/disabled targets and scene teardown restore state.
+
+Validation entry points: BasementGunMenu.Tests and BasementGunMenu.PlayMode.Tests,
+plus BasementAccessory.Tests and BasementAccessory.PlayMode.Tests for regression.
+The GunMenu fixture uses temporary objects and a backed-up test save slot for equipment checks.
+### Live weapons in Basement GunMenu
+
+BasementGunMenuScreen's weapons reference now points to BasementGunMenuWeapons.
+UILoadLaval passes its BasementContext inventory when opening the selected party
+slot and listens to EquipmentChanged to recalculate the status panel. The
+standalone source GunMenu art prefab remains the original layered reference;
+the Basement variant disables only its dummy inventory, dummy equipped icon and
+painted scrollbar, replacing them with interactive children.
+
+WeaponScroll uses a rotated, masked uGUI ScrollRect with four 204px card columns,
+10px gaps and a matching scrollbar. BasementGunMenuWeaponCard is the reusable
+cell prefab. The view reuses cells across refreshes/reopens, binds individual
+weapon instance IDs, with ownership restrictions and a gold equipped border. Clicking a
+free weapon calls EquipmentAssignmentService.TryEquip with the selected
+character's owner ID. The service enforces existing ownership/save rules; this
+screen never transfers another character's weapon implicitly. Duplicate clicks
+on the current instance do not equip or save again.
+
+After successful equip the view refreshes PartySlot.RefreshSelectedWeaponVisual,
+the equipped icon and weapon-only stats from WeaponStatPreview, then raises
+EquipmentChanged. Only the weapon model changes; character animation and the
+reference camera stay intact. Inventory slot/reset and equipped weapon events
+queue refreshes, and bindings are removed on close/disable. The click handler
+revalidates the selected owner and CanInteract gate before every operation.
+
+Hovering a list card or the equipped slot shows a white dashed outline immediately
+and InventorySlotTooltipUI after 0.55 unscaled seconds, with that weapon's upgrades
+and affixes. Leaving or dragging dismisses it. Information has no callback and is
+inactive, reserved for a future screen. Back/Escape first dismisses visible details,
+then closes the GunMenu. An empty inventory or unavailable inventory has an explicit
+message; missing icons retain the card hit area. No unequip command or
+new save schema is introduced by this screen.
+
+GunMenu list reference refinement (2026-10-10): weapon card art now stretches to
+200x200 inside the existing 204x204 card with a 2px selection border. Paper, Name
+and State child objects are retained for binding but hidden to match the image-only
+reference. Equipment ownership/button gating is unchanged. WeaponScroll starts at
+(1216,-340) in the existing rotated artboard; the four-column grid and fade remain.
+
+GunMenu bottom clipping correction (2026-10-10): WeaponScroll viewport and
+LiveScrollbar height are 640 rather than 750, ending inside the lower black frame.
+The existing Mask clips both rendering and pointer hits. Content height is retained
+so all inventory rows remain reachable by scrolling.
+
+GunMenu hover and drag (2026-10-10): BasementGunMenuWeaponHover binds card/slot data
+and owns the delayed tooltip and highlight lifecycle. HoverDashes uses a single
+non-raycasting BasementGunMenuDashedOutline mesh under the existing mask.
+BasementGunMenuWeaponCard routes left-button drag events to the view, which creates
+a non-raycasting drag image on the root Canvas. BasementGunMenuWeaponDropSlot
+on EquippedWeapon accepts that screen's active drag; it uses the same Equip path
+as a click. List cards also accept drops to swap inventory positions. Drop outside these targets, close, disable and source removal cancel the drag.
+All inventory weapons can be dragged for sorting, including equipped weapons. Equipping another owner's weapon remains blocked.
+The legacy InventorySlotUI reference on EquippedWeapon is retained as an anchor but disabled
+to avoid duplicate pointer handlers. Its transparent Image is the hover/drop hit
+area, including when the slot has no equipped icon. Information's persistent
+listeners are empty and its hit Image is not a raycast target.
+
+GunMenu drag/owner visual parity (2026-10-10): BasementGunMenuWeaponCard now has a
+CanvasGroup; active drag fades its source card to alpha 0.35 and restores alpha 1
+on cancellation, successful drop, refresh/reuse or close. DraggedWeapon follows
+pointer coordinates with a (20,-20) Canvas-local offset, matching DragItemUI.
+Each card's 40x40 EquippedCharacterIcon is anchored bottom-right and has raycasts
+disabled. It is hidden for unassigned or unresolved owners. The screen's serialized
+characterDatabase points to the same CharacterDatabase asset used by existing
+character UI; character owner IDs resolve via CharacterEquipment parsing, the
+bound selected character first, then database.GetById (including off-party owners).
+HoverDashes remains the final sibling. Equip ownership restrictions, click-to-equip,
+tooltip delay, Information placeholder and the image-only diagonal grid remain.
+
+GunMenu list reordering (2026-10-10): cards implement IDropHandler and route the
+active drag to BasementGunMenuWeapons.DropWeaponOnCard. Weapon instance IDs map
+the filtered grid back to actual inventory indices before PlayerInventory.MoveOrSwap;
+empty slots and other item types do not shift the mapping. Successful swaps save
+inventory order through SaveManager.SaveInventoryOnly and refresh card bindings.
+Both equipped and unassigned weapons can be reordered, while ownership, equipped
+instance, character presentation and EquipmentChanged remain untouched. Portraits
+and the gold equipped border follow the instance. Self drops do nothing. An owned
+card's Button remains non-interactable for equip clicks; its drag/drop handlers
+remain enabled. No prefab or save-schema migration is required.
+
+## Supply preview in Test Supply (2026-10-15)
+
+Open `Assets/Scenes/Test Supply.unity` and enter Play Mode. The scene uses its
+existing Neria model, `SoloAnimation` supply clip, and
+`Character/Camera Supply/Camera Supply` camera. Its authored lens and pose are
+retained; the unused `Main Camera` Camera component is disabled. The original
+scene geometry and character setup remain in place. No additional preview scene
+or Build Settings entry is created.
+
+`BasementSupplyPreviewCameraFrame` on the Supply camera fits its viewport to the
+same centered 16:9 area as the UI. This preserves character framing on ultrawide
+and taller displays without changing the authored camera pose or lens.
+
+`Assets/Prefab/User Interface/BasementSupplyScreen.prefab` owns the overlay Canvas,
+1920x1080 centered artboard, outside letterbox bars, launch button and SupplyScreen.
+CanvasScaler uses Expand. The root artboard mask clips the rotated artwork;
+the item viewport has its own rotated Mask. The grid uses seven 172px cells,
+8px gaps and 200px bottom padding so the final row can scroll fully into view
+at the left edge of the sloping screen. Decorative graphics do not receive
+raycasts. `BasementSupplyItemCard.prefab` owns each selectable card.
+
+The item selection uses the supplied `Selectio Item Frame.png` red dashed art.
+Its `SupplyItemSelection` sprite rect is (1135,365,200,201), in bottom-left
+source-pixel coordinates. The selection Image cancels the baked 8.1-degree angle
+locally and fits the 172px card; the rotated grid supplies the final screen angle.
+It is maskable and does not receive raycasts. `AgentScripts/BasementSupplySelectionSetup.cs`
+updates the card prefab and cached cards in both Screen and Room prefabs. Preserve
+the source PNG and update all three prefabs when changing this decoration.
+
+The `BasementSupplyScreenController` on SupplyScreen references the existing
+ItemDatabase asset in the Inspector. It reads `items` in database order, skips
+null and repeated references, and displays ItemDefinition icon, displayName,
+description and baseBuyPrice. The three tabs are All, Weapons and Accessories.
+Each open/category switch resets to the first item and top of the list. Long
+descriptions have a separate vertical ScrollRect; missing artwork and empty
+categories show placeholders. BACK/Escape closes the screen; OPEN SUPPLY opens
+it again. The public `Open()`, `Close()`, `SetCategory(int)` (0/1/2) and
+`SelectItem(ItemDefinition)` methods only change preview UI state.
+
+Category tabs now use the supplied `Category Icon Item Type`, `Category Icon
+Dummy`, `Category Icon Dummy 2` and `Category Selection Frame` sprites, without
+generated color panels, labels or procedural category outlines. Orange is All,
+blue is Weapons, grey is Accessories. The selected tab expands outward and its
+white frame stays visible until another category is selected. Other tabs retract
+behind the paper while retaining an exposed clickable strip. The controller's
+`categoryTabs`, `categoryExpandedPositions` and `categoryPaper` bindings control
+position, scale and draw order. Artwork retains its baked angle; hit areas follow
+the same angle. `AgentScripts/BasementSupplyCategorySetup.cs` records the prefab
+upgrade; apply it after the original one-time setup if rebuilding from scratch.
+
+BUY is deliberately non-interactable and has no purchase listener. This preview
+uses `BasementSupplyBuyHover` on BuyDisabled to show its red raster outline only
+while hovered; leaving the button or closing/reopening the screen hides it.
+The outline itself does not receive raycasts. This preview
+does not bind PlayerInventory, ShopService or ShopPanelUI, roll weapon instances,
+or write saves. Base prices are labelled as such, not live shop offers. Production
+Basement shop and character-unlock flows are unchanged.
+
+Artwork comes from `Assets/Spain/UI/Basement Supply UI`, imported as transparent
+sprites without mipmaps or NPOT resizing (single layers except the cropped item
+selection sprite). Raster layers retain their
+original canvas coordinates and baked angle. A cream UI Image supplies the
+missing paper base; BACK uses Novecento TMP, while live information uses Sarabun.
+The flattened Dummy Item images are references only, not interactive content.
+
+`AgentScripts/BasementSupplySetup.cs` records the one-time MCP authoring process.
+It refuses to overwrite an existing Supply Preview UI root: edit the existing
+prefab for further changes instead of rebuilding the scene hierarchy.
+
+## Supply Room in production Basement (2026-10-15)
+
+Start through `Assets/Scenes/GameSetup.unity`, then click SHOP in Basement.
+`BasementContext.SupplyRoom` now routes that button to a read-only Supply room
+visit. Unbound contexts retain the original ShopPanelUI route. BUY remains disabled;
+no purchase, inventory-instance generation or save migration is introduced.
+
+`Assets/Prefab/User Interface/BasementSupplyRoom.prefab` captures the user's current
+Test Supply room, including Neria/SoloAnimation, camera, walls, floor, props and
+the nested Supply UI prefab. Its Basement instance is translated to approximately
+(91.51, 1.71, 9.68), leaving a 20-unit X gap beyond existing renderer bounds.
+Internal transforms and the camera lens are retained. The separate Test Supply
+scene remains editable. No new Build Settings entry, Directional Light,
+EventSystem or AudioListener is added.
+
+`Supply Room Controller` stays active outside the initially inactive room.
+Its `BasementSupplyRoomController` binds the Basement context, room, screen,
+Supply camera, existing output cameras, background canvases and full-screen
+fade CanvasGroup. Fade covers all aspect-ratio bars and UI at sorting order 32767.
+Defaults are 0.25 seconds to black, one frame at the switched view, and 0.30
+seconds back, using unscaled time. Scene UI's root CanvasScaler now uses Expand
+at 1920x1080 so the existing SHOP button also remains reachable at 1280x720.
+
+The controller exposes Open(), Close(), IsOpen, IsTransitioning and Phase
+(Closed/Opening/Open/Closing). Repeated transition commands are ignored; map
+selection, character presentation and NPC presentation reject entry. It snapshots
+camera/canvas enabled states, raycasters, character selection input and EventSystem
+navigation/selection. At full black it switches output cameras and opens Supply.
+BACK/Escape reverse the transition and restore those snapshots. Disabling the
+controller in any phase also restores input/view and clears the black overlay.
+
+Supply Screen's RequestClose()/CloseRequested event routes BACK and Escape to
+the room controller. Open()/Close() retain immediate UI behavior for the controller
+and standalone previews. With no CloseRequested subscriber, RequestClose() closes
+the preview directly. The Basement instance disables the preview OPEN SUPPLY
+launcher; do not enable that launcher in production. Keep the room controller
+outside the room/UI hierarchy so it can finish transitions while those are hidden.
+
+`AgentScripts/BasementSupplyRoomSetup.cs` records the one-time authoring operation
+and refuses an existing room. Subsequent edits should target the existing prefab
+and bindings rather than rebuilding. This production integration supersedes the
+earlier preview-only note that Basement's SHOP route was unchanged.

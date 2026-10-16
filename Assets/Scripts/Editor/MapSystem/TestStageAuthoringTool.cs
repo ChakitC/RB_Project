@@ -174,6 +174,8 @@ public static class TestStageAuthoringTool
         destination.icon = source.icon;
         destination.CharacterPrefab = source.CharacterPrefab;
         destination.CharacterPrefabBasement = source.CharacterPrefabBasement;
+        destination.basementAnimationProfile = source.basementAnimationProfile;
+        destination.basementAnimatorPath = source.basementAnimatorPath;
         destination.characterAvatar = source.characterAvatar;
         destination.controller = source.controller;
         destination.animProfile = source.animProfile;

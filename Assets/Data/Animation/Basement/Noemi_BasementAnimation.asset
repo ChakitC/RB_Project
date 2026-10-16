@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dd4ba26f2485304db6fdceb7ff294e8, type: 3}
+  m_Name: Noemi_BasementAnimation
+  m_EditorClassIdentifier: Assembly-CSharp::BasementAnimationProfileSO
+  idle:
+    _FadeDuration: 0.25000024
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: a48ece0207722894b90795c434f1b1d1, type: 2}
+    _NormalizedStartTime: 0
+  pickup:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 5af9ee93ada1e1f4a8799c986a88a462, type: 2}
+    _NormalizedStartTime: 0
+  inMenuIdle:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 2153932082440231823, guid: 17af8e3a749306e4499e5063a598dda1, type: 3}
+    _NormalizedStartTime: 0
+  menus:
+  - menu: {fileID: 11400000, guid: 2b38eb41d331aef4c958747cacde16d6, type: 2}
+    animation:
+      _FadeDuration: 0.66666675
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -7633469447645614687, guid: 274e8206db87cf44db6e9bce3c000add, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 0}
+  - menu: {fileID: 11400000, guid: 39d04e2a366c2c54b8a5d937d9a96a05, type: 2}
+    animation:
+      _FadeDuration: 0.66666675
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: -719290078745079023, guid: 5af3db057e053294aba94c015a4c93cd, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 0}
+  - menu: {fileID: 11400000, guid: b1adb1d015cfd344d9aa603aa10c27ed, type: 2}
+    animation:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 2153932082440231823, guid: 17af8e3a749306e4499e5063a598dda1, type: 3}
+      _NormalizedStartTime: 0
+    camera: {fileID: 11400000, guid: a4ec5e0df5bd9434b851e17658cd467a, type: 2}
+  references:
+    version: 2
+    RefIds: []

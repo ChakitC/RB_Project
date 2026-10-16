@@ -463,6 +463,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: -0.0025207133
       objectReference: {fileID: 0}
+    - target: {fileID: -5631171872649100359, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: -5481393938329642602, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_RenderingLayerMask
       value: 4294967295
@@ -1259,6 +1263,10 @@ PrefabInstance:
       propertyPath: m_RenderingLayerMask
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -1174736296199405076, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: -1059359423455423844, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.013358326
@@ -1841,6 +1849,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4735231250059787516, guid: 593976350e751b340bc9e474264dda15, type: 3}
       propertyPath: m_RenderingLayerMask
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4735231250059787516, guid: 593976350e751b340bc9e474264dda15, type: 3}
+      propertyPath: m_UpdateWhenOffscreen
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4749168246751744141, guid: 593976350e751b340bc9e474264dda15, type: 3}

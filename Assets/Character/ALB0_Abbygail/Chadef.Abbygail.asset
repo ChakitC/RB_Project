@@ -18,6 +18,8 @@ MonoBehaviour:
   CharacterWeaponType: 7
   CharacterPrefab: {fileID: 5916267211928686626, guid: 33acf3fc1e40f6c49b65040307f3e6a1, type: 3}
   CharacterPrefabBasement: {fileID: 850771095375289685, guid: 2b42015445faf5b4e81cc24f1ae8f1a8, type: 3}
+  basementAnimationProfile: {fileID: 11400000, guid: d76f393f3cad66b429147573c3c0880c, type: 2}
+  basementAnimatorPath: 
   characterAvatar: {fileID: 9000000, guid: 8131203fb0a8e424ca3b9e144ecc0bca, type: 3}
   controller: {fileID: 9100000, guid: 003a064ee1d2b7641bb4de8c370f49ba, type: 2}
   animProfile: {fileID: 11400000, guid: b88d9d3fb59400d45819b5f7f116407a, type: 2}
@@ -47,6 +49,8 @@ MonoBehaviour:
   weaponHandMode: 3
   combatRole: 0
   chainAttackSkill: {fileID: 0}
+  partyFollowUpSkill: {fileID: 0}
+  defensiveBlock: {fileID: 0}
   introChainCutscene: {fileID: 0}
   partyRole: 1
   skillSlots: []
@@ -76,6 +80,7 @@ MonoBehaviour:
   helperCommandSlot:
     slotId: abbygail.command
     displayName: COMMAND
+    slotKind: 0
     hotkey: 0
     defaultOptionIndex: 0
     options:
@@ -91,6 +96,7 @@ MonoBehaviour:
   critRate: 7
   Enagy: 100
   speed: 4.5
+  slideStaminaPerUnit: 2
   speedDown: 1
   DamageScaling: 0.5
   ArmorScaling: 0.35

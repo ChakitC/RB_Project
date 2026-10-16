@@ -41,14 +41,14 @@
             "slotCount": 5,
             "equippedAccessories": [
                 {
-                    "instanceId": "acc_309314786bb549288b361dcaee570164",
-                    "accessoryId": "Accessory.RabbitCharm",
+                    "instanceId": "",
+                    "accessoryId": "",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "acc_5972c988e12646219e8ab8d7f3caa93f",
-                    "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
+                    "instanceId": "",
+                    "accessoryId": "",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
@@ -77,33 +77,33 @@
             "slotCount": 5,
             "equippedAccessories": [
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
+                    "instanceId": "acc_48d80ae398834f0d981f7682f562a77e",
+                    "accessoryId": "Accessory.RabbitLag",
+                    "modifierId": "Modifier.Vital",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
+                    "accessoryId": "Accessory.RabbitGlove",
+                    "modifierId": "Modifier.Vital",
+                    "upgradeLevel": 0
+                },
+                {
+                    "instanceId": "acc_309314786bb549288b361dcaee570164",
+                    "accessoryId": "Accessory.RabbitCharm",
                     "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
+                    "instanceId": "acc_23e684fb59f74a27817f217dac00ffcf",
+                    "accessoryId": "Accessory.EmergencyPager",
+                    "modifierId": "Modifier.Fierce",
                     "upgradeLevel": 0
                 },
                 {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
-                    "upgradeLevel": 0
-                },
-                {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
-                    "upgradeLevel": 0
-                },
-                {
-                    "instanceId": "",
-                    "accessoryId": "",
-                    "modifierId": "",
+                    "instanceId": "acc_72aac4e0d33647e09edb51223fd277ca",
+                    "accessoryId": "Accessory.CollectorsShades",
+                    "modifierId": "Modifier.Fleet",
                     "upgradeLevel": 0
                 }
             ]
@@ -113,9 +113,9 @@
             "slotCount": 5,
             "equippedAccessories": [
                 {
-                    "instanceId": "acc_ee7816d71f8744fba80f67eda768d73b",
-                    "accessoryId": "Accessory.RabbitGlove",
-                    "modifierId": "Modifier.Vital",
+                    "instanceId": "",
+                    "accessoryId": "",
+                    "modifierId": "",
                     "upgradeLevel": 0
                 },
                 {

@@ -1,49 +1,59 @@
 {
     "maxSlotCount": 0,
-    "gold": 967178,
-    "scrap": 2822,
+    "gold": 960258,
+    "scrap": 3003,
     "slots": [
         {
             "itemId": "SMG_GR01",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "4f8a8b4c374c443787b0d3ca33ff015a",
+                "instanceId": "6b211a78b32f4aaba358dc286515a399",
                 "baseWeaponId": "SMG_GR01",
                 "rarity": 1,
                 "mainAffix": {
-                    "affixId": "weapon.main.broken_guard.v1",
-                    "grantId": "",
+                    "affixId": "weapon.main.echo_chamber.v1",
+                    "grantId": "main:weapon.main.echo_chamber.v1",
                     "hasPrimaryValue": true,
-                    "primaryValue": 0.6056127548217773,
+                    "primaryValue": 0.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [
                     {
                         "affixId": "weapon.sub.crit_rate.v1",
-                        "grantId": "",
+                        "grantId": "sub:0:weapon.sub.crit_rate.v1",
                         "hasPrimaryValue": true,
-                        "primaryValue": 1.4867336750030518,
+                        "primaryValue": 1.2258591651916505,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 16,
-                "currentReserveAmmo": 0,
+                "currentMagazine": 7,
+                "currentReserveAmmo": 208,
                 "reserveAmmoInitialized": true,
-                "upgradeLevel": 3,
-                "upgradeTier": 0,
+                "upgradeLevel": 17,
+                "upgradeTier": 1,
                 "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [],
+                "unlockedUpgradeMilestoneIds": [
+                    "upgrade-tier-10"
+                ],
                 "affixRuntimeStates": [
                     {
-                        "affixId": "weapon.main.broken_guard.v1",
-                        "schemaVersion": 1,
-                        "entries": []
+                        "affixId": "main:weapon.main.echo_chamber.v1",
+                        "schemaVersion": 2,
+                        "entries": [
+                            {
+                                "key": "progress",
+                                "intValue": 1,
+                                "floatValue": 1.0,
+                                "boolValue": false,
+                                "stringValue": ""
+                            }
+                        ]
                     },
                     {
-                        "affixId": "weapon.sub.crit_rate.v1",
+                        "affixId": "sub:0:weapon.sub.crit_rate.v1",
                         "schemaVersion": 1,
                         "entries": []
                     }
@@ -123,50 +133,30 @@
             }
         },
         {
-            "itemId": "SMG_RB01",
+            "itemId": "SMG_GR01",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "b23ad7f589ee4df39ba7be0543042427",
-                "baseWeaponId": "SMG_RB01",
-                "rarity": 1,
+                "instanceId": "e9380f839a7f432a858232500ccab7c9",
+                "baseWeaponId": "SMG_GR01",
+                "rarity": 0,
                 "mainAffix": {
-                    "affixId": "weapon.main.last_round.v1",
-                    "grantId": "main:weapon.main.last_round.v1",
-                    "hasPrimaryValue": true,
-                    "primaryValue": 45.56509017944336,
+                    "affixId": "",
+                    "grantId": "",
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "weapon.sub.max_reserve_ammo.v1",
-                        "grantId": "sub:0:weapon.sub.max_reserve_ammo.v1",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 24.333444595336915,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
-                "shotCounter": 0,
-                "currentMagazine": 14,
-                "currentReserveAmmo": 0,
+                "subAffixes": [],
+                "shotCounter": 81,
+                "currentMagazine": 16,
+                "currentReserveAmmo": 240,
                 "reserveAmmoInitialized": true,
-                "upgradeLevel": 6,
+                "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
                 "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": [
-                    {
-                        "affixId": "main:weapon.main.last_round.v1",
-                        "schemaVersion": 1,
-                        "entries": []
-                    },
-                    {
-                        "affixId": "sub:0:weapon.sub.max_reserve_ammo.v1",
-                        "schemaVersion": 1,
-                        "entries": []
-                    }
-                ]
+                "affixRuntimeStates": []
             },
             "accessoryInstance": {
                 "instanceId": "",
@@ -176,46 +166,35 @@
             }
         },
         {
-            "itemId": "SMG_GR01",
+            "itemId": "Accessory.EmergencyPager",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "a34c97066d874a4c8e9ba92493bab254",
-                "baseWeaponId": "SMG_GR01",
-                "rarity": 1,
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
                 "mainAffix": {
-                    "affixId": "weapon.main.reload_crit_rate.v1",
+                    "affixId": "",
                     "grantId": "",
-                    "hasPrimaryValue": true,
-                    "primaryValue": 6.299465179443359,
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "weapon.sub.crit_rate.v1",
-                        "grantId": "",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 2.0477054119110109,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
+                "subAffixes": [],
                 "shotCounter": 0,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 240,
-                "reserveAmmoInitialized": true,
-                "upgradeLevel": 12,
-                "upgradeTier": 1,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
+                "upgradeLevel": 0,
+                "upgradeTier": 0,
                 "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [
-                    "upgrade-tier-10"
-                ],
+                "unlockedUpgradeMilestoneIds": [],
                 "affixRuntimeStates": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
-                "modifierId": "",
+                "instanceId": "acc_23e684fb59f74a27817f217dac00ffcf",
+                "accessoryId": "Accessory.EmergencyPager",
+                "modifierId": "Modifier.Fierce",
                 "upgradeLevel": 0
             }
         },
@@ -253,56 +232,46 @@
             }
         },
         {
-            "itemId": "SMG_GR01",
+            "itemId": "SMG_RB01",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "6b211a78b32f4aaba358dc286515a399",
-                "baseWeaponId": "SMG_GR01",
+                "instanceId": "b23ad7f589ee4df39ba7be0543042427",
+                "baseWeaponId": "SMG_RB01",
                 "rarity": 1,
                 "mainAffix": {
-                    "affixId": "weapon.main.echo_chamber.v1",
-                    "grantId": "",
+                    "affixId": "weapon.main.last_round.v1",
+                    "grantId": "main:weapon.main.last_round.v1",
                     "hasPrimaryValue": true,
-                    "primaryValue": 0.0,
+                    "primaryValue": 45.56509017944336,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [
                     {
-                        "affixId": "weapon.sub.crit_rate.v1",
-                        "grantId": "",
+                        "affixId": "weapon.sub.max_reserve_ammo.v1",
+                        "grantId": "sub:0:weapon.sub.max_reserve_ammo.v1",
                         "hasPrimaryValue": true,
-                        "primaryValue": 1.2258591651916505,
+                        "primaryValue": 24.333444595336915,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 32,
-                "currentReserveAmmo": 208,
+                "currentMagazine": 17,
+                "currentReserveAmmo": 373,
                 "reserveAmmoInitialized": true,
-                "upgradeLevel": 17,
-                "upgradeTier": 1,
+                "upgradeLevel": 6,
+                "upgradeTier": 0,
                 "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [
-                    "upgrade-tier-10"
-                ],
+                "unlockedUpgradeMilestoneIds": [],
                 "affixRuntimeStates": [
                     {
-                        "affixId": "weapon.main.echo_chamber.v1",
+                        "affixId": "main:weapon.main.last_round.v1",
                         "schemaVersion": 1,
-                        "entries": [
-                            {
-                                "key": "progress",
-                                "intValue": 6,
-                                "floatValue": 0.0,
-                                "boolValue": false,
-                                "stringValue": ""
-                            }
-                        ]
+                        "entries": []
                     },
                     {
-                        "affixId": "weapon.sub.crit_rate.v1",
+                        "affixId": "sub:0:weapon.sub.max_reserve_ammo.v1",
                         "schemaVersion": 1,
                         "entries": []
                     }
@@ -319,63 +288,38 @@
             "itemId": "SMG_GR01",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "e9380f839a7f432a858232500ccab7c9",
+                "instanceId": "237981fb23c54630bdcbf262afab313b",
                 "baseWeaponId": "SMG_GR01",
-                "rarity": 0,
+                "rarity": 2,
                 "mainAffix": {
-                    "affixId": "",
-                    "grantId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
-                    "hasSecondaryValue": false,
-                    "secondaryValue": 0.0
-                },
-                "subAffixes": [],
-                "shotCounter": 81,
-                "currentMagazine": 16,
-                "currentReserveAmmo": 240,
-                "reserveAmmoInitialized": true,
-                "upgradeLevel": 0,
-                "upgradeTier": 0,
-                "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": []
-            },
-            "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
-                "modifierId": "",
-                "upgradeLevel": 0
-            }
-        },
-        {
-            "itemId": "SMG_RB01",
-            "amount": 1,
-            "weaponInstance": {
-                "instanceId": "e901a9cdb42b4609a6aa9788b32b51a9",
-                "baseWeaponId": "SMG_RB01",
-                "rarity": 0,
-                "mainAffix": {
-                    "affixId": "",
-                    "grantId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
+                    "affixId": "Stabiity.1",
+                    "grantId": "main:Stabiity.1",
+                    "hasPrimaryValue": true,
+                    "primaryValue": 7.207703590393066,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [
                     {
-                        "affixId": "weapon.sub.fire_interval.v1",
-                        "grantId": "",
+                        "affixId": "Damge.1",
+                        "grantId": "sub:0:Damge.1",
                         "hasPrimaryValue": true,
-                        "primaryValue": -3.901395797729492,
+                        "primaryValue": 28.415706634521486,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    },
+                    {
+                        "affixId": "Crit.1",
+                        "grantId": "sub:1:Crit.1",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 0.5374920964241028,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     }
                 ],
-                "shotCounter": 0,
+                "shotCounter": 3815,
                 "currentMagazine": 30,
-                "currentReserveAmmo": 240,
+                "currentReserveAmmo": 210,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
@@ -391,7 +335,7 @@
             }
         },
         {
-            "itemId": "Accessory.RabbitGlove",
+            "itemId": "Accessory.CollectorsShades",
             "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
@@ -417,49 +361,32 @@
                 "affixRuntimeStates": []
             },
             "accessoryInstance": {
-                "instanceId": "acc_a3c3255fa6be4a6eba447ce0054e0de7",
-                "accessoryId": "Accessory.RabbitGlove",
-                "modifierId": "",
+                "instanceId": "acc_72aac4e0d33647e09edb51223fd277ca",
+                "accessoryId": "Accessory.CollectorsShades",
+                "modifierId": "Modifier.Fleet",
                 "upgradeLevel": 0
             }
         },
         {
-            "itemId": "SMG_GR01",
+            "itemId": "Accessory.CarrotleafHeavyWeaveArmor",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "237981fb23c54630bdcbf262afab313b",
-                "baseWeaponId": "SMG_GR01",
-                "rarity": 2,
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
                 "mainAffix": {
-                    "affixId": "Stabiity.1",
+                    "affixId": "",
                     "grantId": "",
-                    "hasPrimaryValue": true,
-                    "primaryValue": 7.207703590393066,
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "Damge.1",
-                        "grantId": "",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 28.415706634521486,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    },
-                    {
-                        "affixId": "Crit.1",
-                        "grantId": "",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 0.5374920964241028,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
-                "shotCounter": 3815,
-                "currentMagazine": 9,
-                "currentReserveAmmo": 210,
-                "reserveAmmoInitialized": true,
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
                 "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
@@ -467,9 +394,9 @@
                 "affixRuntimeStates": []
             },
             "accessoryInstance": {
-                "instanceId": "",
-                "accessoryId": "",
-                "modifierId": "",
+                "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
+                "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
+                "modifierId": "Modifier.Vital",
                 "upgradeLevel": 0
             }
         },
@@ -609,6 +536,39 @@
                 "instanceId": "",
                 "accessoryId": "",
                 "modifierId": "",
+                "upgradeLevel": 0
+            }
+        },
+        {
+            "itemId": "Accessory.RabbitHat",
+            "amount": 1,
+            "weaponInstance": {
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
+                "mainAffix": {
+                    "affixId": "",
+                    "grantId": "",
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
+                    "hasSecondaryValue": false,
+                    "secondaryValue": 0.0
+                },
+                "subAffixes": [],
+                "shotCounter": 0,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
+                "upgradeLevel": 0,
+                "upgradeTier": 0,
+                "upgradeExp": 0,
+                "unlockedUpgradeMilestoneIds": [],
+                "affixRuntimeStates": []
+            },
+            "accessoryInstance": {
+                "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
+                "accessoryId": "Accessory.RabbitHat",
+                "modifierId": "Modifier.Vital",
                 "upgradeLevel": 0
             }
         },
@@ -874,7 +834,7 @@
             }
         },
         {
-            "itemId": "Accessory.CarrotleafHeavyWeaveArmor",
+            "itemId": "Accessory.RabbitGlove",
             "amount": 1,
             "weaponInstance": {
                 "instanceId": "",
@@ -900,42 +860,9 @@
                 "affixRuntimeStates": []
             },
             "accessoryInstance": {
-                "instanceId": "acc_d7950dfb72a749bea2e7c5cc61f0bf01",
-                "accessoryId": "Accessory.CarrotleafHeavyWeaveArmor",
-                "modifierId": "Modifier.Vital",
-                "upgradeLevel": 0
-            }
-        },
-        {
-            "itemId": "Accessory.RabbitHat",
-            "amount": 1,
-            "weaponInstance": {
-                "instanceId": "",
-                "baseWeaponId": "",
-                "rarity": 0,
-                "mainAffix": {
-                    "affixId": "",
-                    "grantId": "",
-                    "hasPrimaryValue": false,
-                    "primaryValue": 0.0,
-                    "hasSecondaryValue": false,
-                    "secondaryValue": 0.0
-                },
-                "subAffixes": [],
-                "shotCounter": 0,
-                "currentMagazine": -1,
-                "currentReserveAmmo": -1,
-                "reserveAmmoInitialized": false,
-                "upgradeLevel": 0,
-                "upgradeTier": 0,
-                "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": []
-            },
-            "accessoryInstance": {
-                "instanceId": "acc_37a37e2e9e274ce5a27af988a0698976",
-                "accessoryId": "Accessory.RabbitHat",
-                "modifierId": "Modifier.Vital",
+                "instanceId": "acc_a3c3255fa6be4a6eba447ce0054e0de7",
+                "accessoryId": "Accessory.RabbitGlove",
+                "modifierId": "",
                 "upgradeLevel": 0
             }
         },
@@ -1105,6 +1032,50 @@
             }
         },
         {
+            "itemId": "SMG_RB01",
+            "amount": 1,
+            "weaponInstance": {
+                "instanceId": "b56c7c175a924ab2bc24c25417d3364f",
+                "baseWeaponId": "SMG_RB01",
+                "rarity": 1,
+                "mainAffix": {
+                    "affixId": "weapon.main.reload_stability.v1",
+                    "grantId": "",
+                    "hasPrimaryValue": true,
+                    "primaryValue": 11.694826126098633,
+                    "hasSecondaryValue": false,
+                    "secondaryValue": 0.0
+                },
+                "subAffixes": [
+                    {
+                        "affixId": "weapon.sub.stagger_power.v1",
+                        "grantId": "",
+                        "hasPrimaryValue": true,
+                        "primaryValue": 18.962221145629884,
+                        "hasSecondaryValue": false,
+                        "secondaryValue": 0.0
+                    }
+                ],
+                "shotCounter": 0,
+                "currentMagazine": 30,
+                "currentReserveAmmo": 240,
+                "reserveAmmoInitialized": true,
+                "upgradeLevel": 15,
+                "upgradeTier": 1,
+                "upgradeExp": 0,
+                "unlockedUpgradeMilestoneIds": [
+                    "upgrade-tier-10"
+                ],
+                "affixRuntimeStates": []
+            },
+            "accessoryInstance": {
+                "instanceId": "",
+                "accessoryId": "",
+                "modifierId": "",
+                "upgradeLevel": 0
+            }
+        },
+        {
             "itemId": "Accessory.FenosFieldPack",
             "amount": 1,
             "weaponInstance": {
@@ -1146,7 +1117,7 @@
                 "rarity": 1,
                 "mainAffix": {
                     "affixId": "weapon.main.reload_damage.v1",
-                    "grantId": "",
+                    "grantId": "main:weapon.main.reload_damage.v1",
                     "hasPrimaryValue": true,
                     "primaryValue": 9.933208465576172,
                     "hasSecondaryValue": false,
@@ -1155,7 +1126,7 @@
                 "subAffixes": [
                     {
                         "affixId": "weapon.sub.reload_time.v1",
-                        "grantId": "",
+                        "grantId": "sub:0:weapon.sub.reload_time.v1",
                         "hasPrimaryValue": true,
                         "primaryValue": -8.451177597045899,
                         "hasSecondaryValue": false,
@@ -1312,7 +1283,7 @@
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 98,
+                "currentMagazine": 100,
                 "currentReserveAmmo": 250,
                 "reserveAmmoInitialized": true,
                 "upgradeLevel": 0,
@@ -1432,41 +1403,58 @@
             }
         },
         {
-            "itemId": "SMG_RB01",
+            "itemId": "SMG_RB02",
             "amount": 1,
             "weaponInstance": {
-                "instanceId": "b56c7c175a924ab2bc24c25417d3364f",
-                "baseWeaponId": "SMG_RB01",
+                "instanceId": "8bf9fde8dd194ce296d15e6eb132032d",
+                "baseWeaponId": "SMG_RB02",
                 "rarity": 1,
                 "mainAffix": {
-                    "affixId": "weapon.main.reload_stability.v1",
-                    "grantId": "",
+                    "affixId": "weapon.main.conservation_round.v1",
+                    "grantId": "main:weapon.main.conservation_round.v1",
                     "hasPrimaryValue": true,
-                    "primaryValue": 11.694826126098633,
+                    "primaryValue": 5.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
                 "subAffixes": [
                     {
-                        "affixId": "weapon.sub.stagger_power.v1",
-                        "grantId": "",
+                        "affixId": "weapon.sub.crit_rate.v1",
+                        "grantId": "sub:0:weapon.sub.crit_rate.v1",
                         "hasPrimaryValue": true,
-                        "primaryValue": 18.962221145629884,
+                        "primaryValue": 2.72367525100708,
                         "hasSecondaryValue": false,
                         "secondaryValue": 0.0
                     }
                 ],
                 "shotCounter": 0,
-                "currentMagazine": 30,
-                "currentReserveAmmo": 240,
+                "currentMagazine": 18,
+                "currentReserveAmmo": 0,
                 "reserveAmmoInitialized": true,
-                "upgradeLevel": 15,
-                "upgradeTier": 1,
+                "upgradeLevel": 2,
+                "upgradeTier": 0,
                 "upgradeExp": 0,
-                "unlockedUpgradeMilestoneIds": [
-                    "upgrade-tier-10"
-                ],
-                "affixRuntimeStates": []
+                "unlockedUpgradeMilestoneIds": [],
+                "affixRuntimeStates": [
+                    {
+                        "affixId": "main:weapon.main.conservation_round.v1",
+                        "schemaVersion": 2,
+                        "entries": [
+                            {
+                                "key": "progress",
+                                "intValue": 1,
+                                "floatValue": 1.0,
+                                "boolValue": false,
+                                "stringValue": ""
+                            }
+                        ]
+                    },
+                    {
+                        "affixId": "sub:0:weapon.sub.crit_rate.v1",
+                        "schemaVersion": 1,
+                        "entries": []
+                    }
+                ]
             },
             "accessoryInstance": {
                 "instanceId": "",
@@ -1617,58 +1605,30 @@
             }
         },
         {
-            "itemId": "SMG_RB02",
-            "amount": 1,
+            "itemId": "",
+            "amount": 0,
             "weaponInstance": {
-                "instanceId": "8bf9fde8dd194ce296d15e6eb132032d",
-                "baseWeaponId": "SMG_RB02",
-                "rarity": 1,
+                "instanceId": "",
+                "baseWeaponId": "",
+                "rarity": 0,
                 "mainAffix": {
-                    "affixId": "weapon.main.conservation_round.v1",
-                    "grantId": "main:weapon.main.conservation_round.v1",
-                    "hasPrimaryValue": true,
-                    "primaryValue": 5.0,
+                    "affixId": "",
+                    "grantId": "",
+                    "hasPrimaryValue": false,
+                    "primaryValue": 0.0,
                     "hasSecondaryValue": false,
                     "secondaryValue": 0.0
                 },
-                "subAffixes": [
-                    {
-                        "affixId": "weapon.sub.crit_rate.v1",
-                        "grantId": "sub:0:weapon.sub.crit_rate.v1",
-                        "hasPrimaryValue": true,
-                        "primaryValue": 2.72367525100708,
-                        "hasSecondaryValue": false,
-                        "secondaryValue": 0.0
-                    }
-                ],
+                "subAffixes": [],
                 "shotCounter": 0,
-                "currentMagazine": 14,
-                "currentReserveAmmo": 0,
-                "reserveAmmoInitialized": true,
-                "upgradeLevel": 2,
+                "currentMagazine": -1,
+                "currentReserveAmmo": -1,
+                "reserveAmmoInitialized": false,
+                "upgradeLevel": 0,
                 "upgradeTier": 0,
                 "upgradeExp": 0,
                 "unlockedUpgradeMilestoneIds": [],
-                "affixRuntimeStates": [
-                    {
-                        "affixId": "main:weapon.main.conservation_round.v1",
-                        "schemaVersion": 2,
-                        "entries": [
-                            {
-                                "key": "progress",
-                                "intValue": 4,
-                                "floatValue": 4.0,
-                                "boolValue": false,
-                                "stringValue": ""
-                            }
-                        ]
-                    },
-                    {
-                        "affixId": "sub:0:weapon.sub.crit_rate.v1",
-                        "schemaVersion": 1,
-                        "entries": []
-                    }
-                ]
+                "affixRuntimeStates": []
             },
             "accessoryInstance": {
                 "instanceId": "",
